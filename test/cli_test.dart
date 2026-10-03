@@ -105,6 +105,57 @@ void main() {
     expect(out.toString(), contains('Trivy is disabled'));
   });
 
+  group('format and lint', () {
+    setUp(() {
+      writeFile(
+        root,
+        'inspectra.yaml',
+        'format:\n  enabled: true\nlint:\n  enabled: true\n',
+      );
+      writeFile(
+        root,
+        'analysis_options.yaml',
+        'linter:\n  rules:\n    - prefer_single_quotes\n',
+      );
+      writeFile(
+        root,
+        'lib/app.dart',
+        "export 'src/impl.dart';\n\nint answer() => 42;\n",
+      );
+      writeFile(root, 'lib/src/impl.dart', 'class  Impl{}\n');
+    });
+
+    test('format reports unformatted files and fixes them', () async {
+      expect(await run(['format']), checkFailedExitCode);
+      expect(out.toString(), contains('lib/src/impl.dart'));
+
+      expect(await run(['format', '--fix']), 0);
+      expect(out.toString(), contains('formatted 1 of'));
+
+      expect(await run(['format']), 0);
+      expect(out.toString(), contains('are formatted.'));
+    });
+
+    test('lint reports the issues of analysis_options.yaml', () async {
+      writeFile(root, 'lib/src/impl.dart', 'const greeting = "hello";\n');
+
+      expect(await run(['lint']), checkFailedExitCode);
+      expect(out.toString(), contains('prefer_single_quotes'));
+      expect(
+        File(p.join(root, '.dart_tool/inspectra/lint.json')).readAsStringSync(),
+        contains('"failed": true'),
+      );
+    });
+
+    test('check runs format and lint first', () async {
+      final int exitCode = await run(['check']);
+
+      expect(exitCode, checkFailedExitCode);
+      expect(out.toString(), startsWith('Format: 1 of'));
+      expect(out.toString(), contains('Lint: no issues found.'));
+    });
+  }, tags: ['slow']);
+
   group('trivy', testOn: 'posix', () {
     late FakeTrivy trivy;
 

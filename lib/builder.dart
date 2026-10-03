@@ -8,7 +8,14 @@ library;
 import 'package:build/build.dart';
 
 import 'package:inspectra/src/builders/api_builder.dart';
+import 'package:inspectra/src/builders/quality_builder.dart';
 import 'package:inspectra/src/builders/trivy_builder.dart';
+
+/// Checks the formatting when `format.run_on_build` is set.
+Builder formatBuilder(BuilderOptions options) => const QualityBuilder.format();
+
+/// Analyzes the package when `lint.run_on_build` is set.
+Builder lintBuilder(BuilderOptions options) => const QualityBuilder.lint();
 
 /// Writes the public API dump; see `api` in the configuration.
 Builder apiBuilder(BuilderOptions options) => ApiBuilder.fromOptions(options);

@@ -4,6 +4,7 @@ library;
 import 'package:build/build.dart';
 import 'package:build_test/build_test.dart';
 import 'package:inspectra/builder.dart';
+import 'package:inspectra/src/builders/trivy_builder.dart';
 import 'package:test/test.dart';
 
 import 'support/fixtures.dart';
@@ -45,7 +46,7 @@ void main() {
       final trivy = FakeTrivy(directory, report: _secretReport);
 
       final TestBuilderResult result = await testBuilder(
-        secretScanBuilder(BuilderOptions.empty),
+        TrivyBuilder.secret(inPackage: (_) => true),
         {
           'a|pubspec.yaml': _pubspec(trivy.executable),
           'a|lib/a.dart': 'const token = "...";',
@@ -65,11 +66,29 @@ void main() {
     },
   );
 
+  test('skips build outputs that are not files of the package', () async {
+    final trivy = FakeTrivy(directory);
+
+    await testBuilder(
+      TrivyBuilder.secret(inPackage: (id) => id.path != 'lib/generated.dart'),
+      {
+        'a|pubspec.yaml': _pubspec(trivy.executable),
+        'a|lib/a.dart': 'void main() {}',
+        'a|lib/generated.dart': 'void generated() {}',
+      },
+      rootPackage: 'a',
+      outputs: {'a|inspectra/trivy/secret.json': anything},
+    );
+
+    expect(trivy.scannedFiles, contains('lib/a.dart'));
+    expect(trivy.scannedFiles, isNot(contains('lib/generated.dart')));
+  });
+
   test('only warns when findings do not fail the scan', () async {
     final trivy = FakeTrivy(directory, report: _secretReport);
 
     final TestBuilderResult result = await testBuilder(
-      secretScanBuilder(BuilderOptions.empty),
+      TrivyBuilder.secret(inPackage: (_) => true),
       {
         'a|pubspec.yaml': _pubspec(
           trivy.executable,
@@ -132,7 +151,7 @@ void main() {
     final trivy = FakeTrivy(directory, exitCode: 2);
 
     final TestBuilderResult result = await testBuilder(
-      secretScanBuilder(BuilderOptions.empty),
+      TrivyBuilder.secret(inPackage: (_) => true),
       {
         'a|pubspec.yaml': _pubspec(trivy.executable),
         'a|lib/a.dart': 'void main() {}',
@@ -146,7 +165,7 @@ void main() {
 
   test('does nothing while Trivy is disabled', () async {
     await testBuilder(
-      secretScanBuilder(BuilderOptions.empty),
+      TrivyBuilder.secret(inPackage: (_) => true),
       {'a|pubspec.yaml': 'name: a\n', 'a|lib/a.dart': 'void main() {}'},
       rootPackage: 'a',
       outputs: {},

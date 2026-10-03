@@ -34,6 +34,12 @@ executables:
 # Inspectra checks itself with every feature it ships. See docs/ for what
 # each option does.
 inspectra:
+  format:
+    enabled: true
+    run_on_build: true
+  lint:
+    enabled: true
+    run_on_build: true
   api:
     enabled: true
   trivy:

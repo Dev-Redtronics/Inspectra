@@ -14,11 +14,13 @@ const pubspecSectionKey = 'inspectra';
 /// It is read from `inspectra.yaml` in the package root when that file exists,
 /// and otherwise from the `inspectra:` section of `pubspec.yaml`. Both hold the
 /// same keys. Every feature is opt-in: a package that configures nothing gets
-/// no scans, no API dump and no coverage gate.
+/// no format or lint check, no scans, no API dump and no coverage gate.
 class InspectraConfig {
   /// Creates a configuration from its parts.
   const InspectraConfig({
     required this.packageName,
+    required this.format,
+    required this.lint,
     required this.trivy,
     required this.api,
     required this.coverage,
@@ -40,6 +42,8 @@ class InspectraConfig {
     final root = YamlReader(node, path);
     final config = InspectraConfig(
       packageName: packageName,
+      format: FormatConfig._parse(root.section('format')),
+      lint: LintConfig._parse(root.section('lint')),
       trivy: TrivyConfig._parse(root.section('trivy')),
       api: ApiConfig._parse(root.section('api'), packageName),
       coverage: CoverageConfig._parse(root.section('coverage')),
@@ -97,6 +101,12 @@ class InspectraConfig {
   /// The name of the package this configuration belongs to.
   final String packageName;
 
+  /// The formatting check.
+  final FormatConfig format;
+
+  /// The static analysis check.
+  final LintConfig lint;
+
   /// The security and compliance scans.
   final TrivyConfig trivy;
 
@@ -105,6 +115,125 @@ class InspectraConfig {
 
   /// The test coverage gate.
   final CoverageConfig coverage;
+}
+
+/// The generated files left out of the format check and the coverage report
+/// by default: code generators write them, and their formatting and coverage
+/// are the generator's business.
+const _generatedFiles = <String>[
+  '**.g.dart',
+  '**.freezed.dart',
+  '**.mocks.dart',
+];
+
+/// The formatting check, done by `dart format`.
+class FormatConfig {
+  /// Creates the formatting settings.
+  const FormatConfig({
+    required this.enabled,
+    required this.runOnBuild,
+    required this.failOnFindings,
+    required this.include,
+    required this.exclude,
+    required this.pageWidth,
+  });
+
+  factory FormatConfig._parse(YamlReader yaml) {
+    final config = FormatConfig(
+      enabled: yaml.boolean('enabled', fallback: false),
+      runOnBuild: yaml.boolean('run_on_build', fallback: false),
+      failOnFindings: yaml.boolean('fail_on_findings', fallback: true),
+      include: yaml.strings('include', fallback: defaultInclude),
+      exclude: yaml.strings('exclude', fallback: defaultExclude),
+      pageWidth: yaml.optionalInt('page_width', min: 1, max: 1000),
+    );
+    yaml.ensureFullyRead();
+    return config;
+  }
+
+  /// The Dart files checked by default.
+  static const defaultInclude = <String>['**.dart'];
+
+  /// The files never checked by default: tool caches, build output and the
+  /// output of the common code generators.
+  static const List<String> defaultExclude = [
+    '**/.dart_tool/**',
+    '**/build/**',
+    ..._generatedFiles,
+  ];
+
+  /// Whether the formatting is checked. Off by default.
+  final bool enabled;
+
+  /// Whether `dart run build_runner build` checks it too.
+  final bool runOnBuild;
+
+  /// Whether unformatted files fail the build or the command.
+  final bool failOnFindings;
+
+  /// Globs of the files to check, relative to the package root.
+  final List<String> include;
+
+  /// Globs of the files to leave out, relative to the package root.
+  final List<String> exclude;
+
+  /// The line length, or `null` for the `formatter: page_width` of
+  /// `analysis_options.yaml`, and 80 without one.
+  final int? pageWidth;
+}
+
+/// The lowest severity of a `dart analyze` diagnostic that fails the check.
+enum LintLevel {
+  /// Only errors fail.
+  error,
+
+  /// Errors and warnings fail.
+  warning,
+
+  /// Errors, warnings and infos - including every lint - fail, like
+  /// `dart analyze --fatal-infos`.
+  info,
+
+  /// Nothing fails; diagnostics are only reported.
+  none,
+}
+
+/// The static analysis check, done by `dart analyze`.
+class LintConfig {
+  /// Creates the static analysis settings.
+  const LintConfig({
+    required this.enabled,
+    required this.runOnBuild,
+    required this.failOn,
+  });
+
+  factory LintConfig._parse(YamlReader yaml) {
+    final String failOn = yaml.string('fail_on', fallback: LintLevel.info.name);
+    final config = LintConfig(
+      enabled: yaml.boolean('enabled', fallback: false),
+      runOnBuild: yaml.boolean('run_on_build', fallback: false),
+      failOn: LintLevel.values.firstWhere(
+        (level) => level.name == failOn,
+        orElse: () => throw InspectraConfigException(
+          '${yaml.path.isEmpty ? '' : '${yaml.path}.'}fail_on',
+          'expected one of '
+              '${LintLevel.values.map((level) => level.name).join(', ')}, '
+              'got "$failOn".',
+        ),
+      ),
+    );
+    yaml.ensureFullyRead();
+    return config;
+  }
+
+  /// Whether the package is analyzed. Off by default.
+  final bool enabled;
+
+  /// Whether `dart run build_runner build` analyzes it too.
+  final bool runOnBuild;
+
+  /// The lowest severity that fails the check.
+  final LintLevel failOn;
 }
 
 /// The Trivy scans.
@@ -505,10 +634,7 @@ class CoverageConfig {
       ),
       outputDirectory: yaml.string('output_directory', fallback: 'coverage'),
       reportOn: yaml.strings('report_on', fallback: const ['lib']),
-      exclude: yaml.strings(
-        'exclude',
-        fallback: const ['**.g.dart', '**.freezed.dart', '**.mocks.dart'],
-      ),
+      exclude: yaml.strings('exclude', fallback: _generatedFiles),
       minLineCoverage: yaml.optionalNumber(
         'min_line_coverage',
         min: 0,

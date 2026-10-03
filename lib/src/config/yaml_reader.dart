@@ -92,6 +92,21 @@ class YamlReader {
     );
   }
 
+  /// The whole number at [key] between [min] and [max], or `null` when absent.
+  int? optionalInt(String key, {required int min, required int max}) {
+    final Object? value = _value(key);
+    if (value == null) {
+      return null;
+    }
+    if (value is int && value >= min && value <= max) {
+      return value;
+    }
+    throw InspectraConfigException(
+      _child(key),
+      'expected a whole number between $min and $max, got ${_describe(value)}.',
+    );
+  }
+
   /// The list of strings at [key], or [fallback] when absent.
   List<String> strings(String key, {required List<String> fallback}) {
     final Object? value = _value(key);

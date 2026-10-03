@@ -42,13 +42,16 @@ jobs:
       - name: Resolve dependencies
         run: dart pub get
 
+      # Inspectra's own format check: dart format over the package, without
+      # generated code, failing on any unformatted file.
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed .
+        run: dart run inspectra format
 
-      # --fatal-infos: every lint of analysis_options.yaml is a failure here,
-      # not a hint somebody may or may not read.
+      # Inspectra's own lint check with fail_on: info - every lint of the
+      # preset in lib/analysis_options.yaml is a failure here, not a hint
+      # somebody may or may not read.
       - name: Analyze
-        run: dart analyze --fatal-infos
+        run: dart run inspectra lint
 
   test:
     name: Test (${{ matrix.os }})

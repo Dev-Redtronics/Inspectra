@@ -39,3 +39,8 @@ Future<InspectraConfig> readConfig(BuildStep buildStep) async {
   }
   return InspectraConfig.fromSources(pubspec: pubspec, configFile: configFile);
 }
+
+/// Whether [id] is a file in the package directory, as opposed to an output
+/// another builder keeps in the build cache - such as the test bootstraps of
+/// `build_test`, which `findAssets` reports as well.
+bool isInPackage(AssetId id) => File(id.path).existsSync();

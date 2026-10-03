@@ -21,6 +21,22 @@ targets:
       - CHANGELOG.md
 
 builders:
+  format:
+    import: "package:inspectra/builder.dart"
+    builder_factories: ["formatBuilder"]
+    build_extensions: {"$package$": ["inspectra/format.json"]}
+    auto_apply: root_package
+    build_to: cache
+    # Runs after every builder that generates Dart code, so it checks the
+    # package as the build leaves it.
+    required_inputs: [".dart"]
+  lint:
+    import: "package:inspectra/builder.dart"
+    builder_factories: ["lintBuilder"]
+    build_extensions: {"$package$": ["inspectra/lint.json"]}
+    auto_apply: root_package
+    build_to: cache
+    required_inputs: [".dart"]
   api:
     import: "package:inspectra/builder.dart"
     builder_factories: ["apiBuilder"]

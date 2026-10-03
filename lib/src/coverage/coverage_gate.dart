@@ -5,6 +5,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:coverage/coverage.dart';
 import 'package:glob/glob.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/util/dart_tool.dart';
 import 'package:inspectra/src/util/files.dart';
 import 'package:path/path.dart' as p;
 
@@ -200,7 +201,7 @@ Future<Map<String, HitMap>> _collectWithDart(
   String root,
   Directory raw,
 ) async {
-  await _runTests(_dartExecutable(), [
+  await _runTests(dartExecutable(), [
     'test',
     '--coverage=${raw.path}',
     ...config.testArguments,
@@ -299,11 +300,4 @@ bool _hasOwnCode(File file) {
     (directive) => directive is PartOfDirective,
   );
   return !isPart && unit.declarations.isNotEmpty;
-}
-
-/// The `dart` executable: the one running Inspectra under `dart run`, or the
-/// one on the `PATH` when Inspectra was compiled to an executable.
-String _dartExecutable() {
-  final String running = Platform.resolvedExecutable;
-  return p.basenameWithoutExtension(running) == 'dart' ? running : 'dart';
 }

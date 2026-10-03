@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:glob/glob.dart';
 import 'package:inspectra/src/config/config_exception.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/trivy/finding.dart';
@@ -137,38 +136,10 @@ Map<String, List<int>> collectFiles(
   String root,
   List<String> include,
   List<String> exclude,
-) {
-  final List<Glob> includes = [
-    for (final pattern in include) Glob(pattern, context: p.posix),
-  ];
-  final List<Glob> excludes = [
-    for (final pattern in exclude) Glob(pattern, context: p.posix),
-  ];
-  bool excluded(String path) => excludes.any((glob) => glob.matches(path));
-
-  final files = <String, List<int>>{};
-  void visit(Directory directory) {
-    final List<FileSystemEntity> entries = directory.listSync(
-      followLinks: false,
-    )..sort((a, b) => a.path.compareTo(b.path));
-    for (final entry in entries) {
-      final String relative = posixRelative(entry.path, from: root);
-      if (entry is Directory) {
-        // A directory is skipped when everything below it would be excluded.
-        if (!excluded('$relative/.inspectra')) {
-          visit(entry);
-        }
-      } else if (entry is File &&
-          !excluded(relative) &&
-          includes.any((glob) => glob.matches(relative))) {
-        files[relative] = entry.readAsBytesSync();
-      }
-    }
-  }
-
-  visit(Directory(root));
-  return files;
-}
+) => {
+  for (final String path in listFiles(root, include, exclude))
+    path: File(p.join(root, path)).readAsBytesSync(),
+};
 
 Future<void> _writeReport(String directory, ScanResult result) async {
   final file = File(p.join(directory, '${result.scan}.json'));

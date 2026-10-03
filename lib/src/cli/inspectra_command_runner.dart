@@ -8,9 +8,13 @@ import 'package:inspectra/src/config/config_exception.dart';
 import 'package:inspectra/src/config/config_loader.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/coverage/coverage_gate.dart';
+import 'package:inspectra/src/quality/format_check.dart';
+import 'package:inspectra/src/quality/lint.dart';
+import 'package:inspectra/src/quality/quality_command.dart';
 import 'package:inspectra/src/trivy/finding.dart';
 import 'package:inspectra/src/trivy/trivy.dart';
 import 'package:inspectra/src/trivy/trivy_command.dart';
+import 'package:inspectra/src/util/dart_tool.dart';
 
 /// The exit code when a check failed.
 const checkFailedExitCode = 1;
@@ -29,7 +33,8 @@ class InspectraCommandRunner extends CommandRunner<int> {
       _err = err ?? stderr,
       super(
         'inspectra',
-        'Security scans, public API validation and coverage for Dart packages.',
+        'Format, lint, security scans, public API validation and coverage for '
+            'Dart packages.',
       ) {
     argParser.addOption(
       'directory',
@@ -39,6 +44,8 @@ class InspectraCommandRunner extends CommandRunner<int> {
       valueHelp: 'path',
     );
     addCommand(_CheckCommand());
+    addCommand(_FormatCommand());
+    addCommand(_LintCommand());
     addCommand(_ApiCommand());
     addCommand(_TrivyCommand());
     addCommand(_CoverageCommand());
@@ -61,6 +68,9 @@ class InspectraCommandRunner extends CommandRunner<int> {
       _err.writeln(error);
       return errorExitCode;
     } on CoverageException catch (error) {
+      _err.writeln(error);
+      return errorExitCode;
+    } on DartToolException catch (error) {
       _err.writeln(error);
       return errorExitCode;
     } on FileSystemException catch (error) {
@@ -99,6 +109,24 @@ abstract class _InspectraCommand extends Command<int> {
     return results.every((result) => !result.failed);
   }
 
+  /// Runs the format check and reports whether it passed.
+  Future<bool> runFormat(InspectraConfig config, {bool fix = false}) async {
+    final FormatResult result = await runFormatCheck(
+      config,
+      packageRoot,
+      fix: fix,
+    );
+    out.writeln(result.render());
+    return !result.failed;
+  }
+
+  /// Runs the lint check and reports whether it passed.
+  Future<bool> runLintGate(InspectraConfig config, {bool fix = false}) async {
+    final LintResult result = await runLintCheck(config, packageRoot, fix: fix);
+    out.writeln(result.render());
+    return !result.failed;
+  }
+
   /// Runs the coverage gate and reports whether it passed.
   Future<bool> runCoverageGate(
     InspectraConfig config, {
@@ -122,13 +150,21 @@ class _CheckCommand extends _InspectraCommand {
 
   @override
   String get description =>
-      'Runs every enabled check: API, Trivy scans and coverage.';
+      'Runs every enabled check: format, lint, API, Trivy scans and coverage.';
 
   @override
   Future<int> run() async {
     final InspectraConfig config = loadPackageConfig();
     var passed = true;
     var ranAnything = false;
+    if (config.format.enabled) {
+      ranAnything = true;
+      passed &= await runFormat(config);
+    }
+    if (config.lint.enabled) {
+      ranAnything = true;
+      passed &= await runLintGate(config);
+    }
     if (config.api.enabled) {
       ranAnything = true;
       passed &= await runApiCheck(config);
@@ -143,12 +179,59 @@ class _CheckCommand extends _InspectraCommand {
     }
     if (!ranAnything) {
       out.writeln(
-        'Nothing is enabled. Enable "api", "trivy" or "coverage" in the '
-        'Inspectra configuration.',
+        'Nothing is enabled. Enable "format", "lint", "api", "trivy" or '
+        '"coverage" in the Inspectra configuration.',
       );
     }
     return exitCodeFor(passed: passed);
   }
+}
+
+class _FormatCommand extends _InspectraCommand {
+  _FormatCommand() {
+    argParser.addFlag(
+      'fix',
+      negatable: false,
+      help: 'Format the files instead of only checking them.',
+    );
+  }
+
+  @override
+  String get name => 'format';
+
+  @override
+  String get description =>
+      'Checks that the Dart files are formatted, or formats them with --fix.';
+
+  @override
+  Future<int> run() async => exitCodeFor(
+    passed: await runFormat(loadPackageConfig(), fix: argResults!.flag('fix')),
+  );
+}
+
+class _LintCommand extends _InspectraCommand {
+  _LintCommand() {
+    argParser.addFlag(
+      'fix',
+      negatable: false,
+      help: 'Apply "dart fix --apply" before analyzing.',
+    );
+  }
+
+  @override
+  String get name => 'lint';
+
+  @override
+  String get description =>
+      'Analyzes the package with the rules of analysis_options.yaml.';
+
+  @override
+  Future<int> run() async => exitCodeFor(
+    passed: await runLintGate(
+      loadPackageConfig(),
+      fix: argResults!.flag('fix'),
+    ),
+  );
 }
 
 class _ApiCommand extends _InspectraCommand {

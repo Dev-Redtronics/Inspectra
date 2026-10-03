@@ -28,7 +28,11 @@ sealed class TrivyBuilder implements Builder {
   const TrivyBuilder._(this.scan);
 
   /// The builder of the secret scan.
-  const factory TrivyBuilder.secret() = _SecretScanBuilder;
+  ///
+  /// [inPackage] decides whether a build source is a file of the package,
+  /// rather than an output another builder keeps in the build cache.
+  const factory TrivyBuilder.secret({bool Function(AssetId id) inPackage}) =
+      _SecretScanBuilder;
 
   /// The builder of the license scan.
   const factory TrivyBuilder.license() = _LicenseScanBuilder;
@@ -116,7 +120,10 @@ sealed class TrivyBuilder implements Builder {
 }
 
 final class _SecretScanBuilder extends TrivyBuilder {
-  const _SecretScanBuilder() : super._(TrivyScan.secret);
+  const _SecretScanBuilder({this.inPackage = isInPackage})
+    : super._(TrivyScan.secret);
+
+  final bool Function(AssetId id) inPackage;
 
   @override
   BuildScanConfig _select(TrivyConfig config) => config.secret;
@@ -152,7 +159,7 @@ final class _SecretScanBuilder extends TrivyBuilder {
     );
   }
 
-  static Future<Map<String, List<int>>> _collect(
+  Future<Map<String, List<int>>> _collect(
     BuildStep buildStep,
     List<String> include,
     List<String> exclude,
@@ -166,6 +173,7 @@ final class _SecretScanBuilder extends TrivyBuilder {
         Glob(pattern, context: p.posix),
       )) {
         if (files.containsKey(id.path) ||
+            !inPackage(id) ||
             excludes.any((glob) => glob.matches(id.path))) {
           continue;
         }

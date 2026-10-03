@@ -1,5 +1,6 @@
-/// Security scans with Trivy, public API validation and a coverage gate for
-/// Dart packages, driven by build_runner and a single YAML configuration.
+/// Format and lint checks, security scans with Trivy, public API validation
+/// and a coverage gate for Dart packages, driven by build_runner and a single
+/// YAML configuration.
 ///
 /// Most packages only need Inspectra as a dev dependency and its
 /// configuration; this library is for tooling that wants to run the checks
@@ -15,8 +16,12 @@ export 'src/config/config_loader.dart';
 export 'src/config/inspectra_config.dart';
 export 'src/config/severity.dart';
 export 'src/coverage/coverage_gate.dart';
+export 'src/quality/format_check.dart';
+export 'src/quality/lint.dart';
+export 'src/quality/quality_command.dart';
 export 'src/trivy/finding.dart';
 export 'src/trivy/package_graph.dart';
 export 'src/trivy/scans.dart';
 export 'src/trivy/trivy.dart';
 export 'src/trivy/trivy_command.dart';
+export 'src/util/dart_tool.dart' show DartToolException;
