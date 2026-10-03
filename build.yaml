@@ -1,0 +1,26 @@
+builders:
+  api:
+    import: "package:inspectra/builder.dart"
+    builder_factories: ["apiBuilder"]
+    # The real output is "api.output" from the Inspectra configuration.
+    build_extensions: {"$package$": ["api/package.api"]}
+    auto_apply: root_package
+    build_to: source
+  secret_scan:
+    import: "package:inspectra/builder.dart"
+    builder_factories: ["secretScanBuilder"]
+    build_extensions: {"$package$": ["inspectra/trivy/secret.json"]}
+    auto_apply: root_package
+    build_to: cache
+  license_scan:
+    import: "package:inspectra/builder.dart"
+    builder_factories: ["licenseScanBuilder"]
+    build_extensions: {"$package$": ["inspectra/trivy/license.json"]}
+    auto_apply: root_package
+    build_to: cache
+  vulnerability_scan:
+    import: "package:inspectra/builder.dart"
+    builder_factories: ["vulnerabilityScanBuilder"]
+    build_extensions: {"$package$": ["inspectra/trivy/vulnerability.json"]}
+    auto_apply: root_package
+    build_to: cache

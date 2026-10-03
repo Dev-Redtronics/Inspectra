@@ -6,3 +6,6 @@
 # https://dart.dev/tools/pub/private-files#pubspec-lock.
 pubspec.lock
 .idea
+
+# Inspectra coverage output
+coverage/
