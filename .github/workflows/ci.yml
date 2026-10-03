@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # A dependency that was clean yesterday can have a CVE today, so the
+    # vulnerability scan also runs on a schedule and not only on a push.
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+# A new push to the same branch makes the run in flight obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  TRIVY_VERSION: v0.75.0
+
+jobs:
+  lint:
+    name: Format and analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Resolve dependencies
+        run: dart pub get
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      # --fatal-infos: every lint of analysis_options.yaml is a failure here,
+      # not a hint somebody may or may not read.
+      - name: Analyze
+        run: dart analyze --fatal-infos
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+
+    strategy:
+      # One platform failing is exactly the signal this matrix exists for, so
+      # let the other one finish and report too.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      # Without Trivy the integration tests are skipped, and this job would
+      # prove nothing about the scans.
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          path: ${{ runner.temp }}
+
+      - name: Cache the Trivy database
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: trivy-db-${{ runner.os }}-
+
+      - name: Resolve dependencies
+        run: dart pub get
+
+      - name: Run the tests
+        run: dart test --reporter=github
+
+  inspectra:
+    name: Inspectra on itself
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          path: ${{ runner.temp }}
+
+      - name: Cache the Trivy database
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: trivy-db-${{ runner.os }}-
+
+      - name: Resolve dependencies
+        run: dart pub get
+
+      # Runs the builders the way a consumer's build does: the secret, license
+      # and vulnerability scans (all enabled on build in pubspec.yaml), and the
+      # API builder, which with --only-check fails when api/inspectra.api is
+      # not what the code exports.
+      - name: build_runner --only-check
+        run: dart run build_runner build --only-check
+
+      # The command line: the API check, all four Trivy scans including the
+      # filesystem scan, and the coverage gate, which runs the test suite.
+      - name: inspectra check
+        run: dart run inspectra check
+
+      - name: Upload the coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload the Trivy reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: trivy-reports
+          path: .dart_tool/inspectra/trivy/
+          retention-days: 30
+          if-no-files-found: warn

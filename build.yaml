@@ -1,3 +1,25 @@
+# Inspectra's own build sources. Besides the defaults they list the files
+# the secret scan should see and the files whose edits should rerun it:
+# trivy-secret.yaml, the analysis and test configuration, and the CI
+# workflows. Consumers of Inspectra are not affected by this section.
+targets:
+  $default:
+    sources:
+      - $package$
+      - lib/**
+      - bin/**
+      - test/**
+      - example/**
+      - .github/**
+      - pubspec.yaml
+      - pubspec.lock
+      - build.yaml
+      - analysis_options.yaml
+      - dart_test.yaml
+      - trivy-secret.yaml
+      - README.md
+      - CHANGELOG.md
+
 builders:
   api:
     import: "package:inspectra/builder.dart"

@@ -31,11 +31,20 @@ dev_dependencies:
 executables:
   inspectra:
 
+# Inspectra checks itself with every feature it ships. See docs/ for what
+# each option does.
 inspectra:
   api:
     enabled: true
   trivy:
     enabled: true
+    license:
+      run_on_build: true
+    vulnerability:
+      run_on_build: true
+    filesystem:
+      enabled: true
+      scanners: [vuln, secret, misconfig]
   coverage:
     enabled: true
-    min_line_coverage: 80
+    min_line_coverage: 85

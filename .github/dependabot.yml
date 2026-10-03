@@ -1,0 +1,19 @@
+version: 2
+
+updates:
+  # Inspectra's own dependencies. analyzer and build move together with
+  # build_runner; a bump that breaks the builders fails the CI job that runs
+  # build_runner on Inspectra itself.
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "develop"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "develop"
+    open-pull-requests-limit: 10
