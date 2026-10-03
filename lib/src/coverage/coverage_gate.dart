@@ -277,11 +277,22 @@ Future<void> _runTests(
   }
 }
 
+/// The comment with which `package:coverage` drops a whole file.
+final _ignoreFile = RegExp(
+  r'^\s*//\s*coverage:ignore-file\s*$',
+  multiLine: true,
+);
+
 /// Whether [file] can show up in coverage at all: a part is reported as
-/// its library, and a library of nothing but directives has no lines.
+/// its library, a library of nothing but directives has no lines, and a file
+/// marked `// coverage:ignore-file` is left out on purpose.
 bool _hasOwnCode(File file) {
+  final String content = file.readAsStringSync();
+  if (_ignoreFile.hasMatch(content)) {
+    return false;
+  }
   final CompilationUnit unit = parseString(
-    content: file.readAsStringSync(),
+    content: content,
     throwIfDiagnostics: false,
   ).unit;
   final bool isPart = unit.directives.any(

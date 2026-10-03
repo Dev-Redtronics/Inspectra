@@ -189,6 +189,11 @@ void main() {
     writeFile(root, 'lib/unused.dart', 'int unused() => 3;\n');
     writeFile(
       root,
+      'lib/ignored.dart',
+      '// coverage:ignore-file\nint ignored() => 4;\n',
+    );
+    writeFile(
+      root,
       'test/app_test.dart',
       "import 'package:app/app.dart';\n"
           "import 'package:app/src/impl.dart';\n"
@@ -207,6 +212,7 @@ void main() {
     expect(await run(['coverage']), checkFailedExitCode);
     expect(out.toString(), contains('below the required 70.00%'));
     expect(out.toString(), contains('lib/unused.dart'));
+    expect(out.toString(), isNot(contains('lib/ignored.dart')));
     expect(
       File(p.join(root, 'coverage', 'lcov.info')).readAsStringSync(),
       contains('SF:lib/app.dart'),

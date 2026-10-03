@@ -9,3 +9,7 @@ pubspec.lock
 
 # Inspectra coverage output
 /coverage/
+
+# Writerside build output (docs/)
+/artifacts/
+/artifacts.log
