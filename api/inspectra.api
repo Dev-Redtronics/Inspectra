@@ -30,6 +30,11 @@ class ApiConfig {
   const ApiConfig({required bool enabled, required String output, required List<String> ignoredLibraries, required List<String> nonPublicAnnotations});
 }
 
+abstract class BuildScanConfig extends ScanConfig {
+  final bool runOnBuild;
+  const BuildScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity});
+}
+
 class CoverageConfig {
   final bool enabled;
   final List<String> exclude;
@@ -106,7 +111,7 @@ class InspectraConfigException implements Exception {
   String toString();
 }
 
-class LicenseScanConfig extends ScanConfig {
+class LicenseScanConfig extends BuildScanConfig {
   final List<String> ignoredLicenses;
   final List<String> ignoredPackages;
   final bool includeDevDependencies;
@@ -114,12 +119,11 @@ class LicenseScanConfig extends ScanConfig {
 }
 
 class LockedPackage {
-  final String dependency;
   final Map<String, Object?> json;
   final String name;
   final String source;
   final String version;
-  const LockedPackage({required String name, required String version, required String source, required String dependency, required Map<String, Object?> json});
+  const LockedPackage({required String name, required String version, required String source, required Map<String, Object?> json});
   bool get isExternal;
 }
 
@@ -141,9 +145,8 @@ class PubspecLock {
 abstract class ScanConfig {
   final bool enabled;
   final bool failOnFindings;
-  final bool runOnBuild;
   final List<Severity> severity;
-  const ScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity});
+  const ScanConfig({required bool enabled, required bool failOnFindings, required List<Severity> severity});
 }
 
 class ScanResult {
@@ -158,7 +161,7 @@ class ScanResult {
   Map<String, Object?> toJson();
 }
 
-class SecretScanConfig extends ScanConfig {
+class SecretScanConfig extends BuildScanConfig {
   final String? config;
   static const List<String> defaultExclude;
   static const List<String> defaultInclude;
@@ -218,7 +221,7 @@ enum TrivyScan {
   bool isEnabled(TrivyConfig config);
 }
 
-class VulnerabilityScanConfig extends ScanConfig {
+class VulnerabilityScanConfig extends BuildScanConfig {
   final bool ignoreUnfixed;
   final List<String> ignoredVulnerabilities;
   final bool includeDevDependencies;
@@ -251,7 +254,7 @@ Future<String> renderPackageApi(InspectraConfig config, String packageRoot);
 
 String? resolveSecretConfig(String packageRoot, String? configured);
 
-Future<CoverageReport> runCoverage(CoverageConfig config, String packageRoot);
+Future<CoverageReport> runCoverage(CoverageConfig config, String packageRoot, {double? minLineCoverage});
 
 Future<List<ScanResult>> runTrivyScans(InspectraConfig config, String packageRoot, {Set<TrivyScan>? only});
 
