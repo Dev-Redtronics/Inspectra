@@ -18,7 +18,8 @@
 
 ## Two locations, one format
 
-The whole configuration of %product% is one YAML mapping with three sections: `api`, `trivy` and `coverage`. It can
+The whole configuration of %product% is one YAML mapping with five sections: `format`, `lint`, `api`, `trivy` and
+`coverage`. It can
 live in either of two places.
 
 <tabs group="config-location">
@@ -105,6 +106,8 @@ feature:
 
 | Section | Off by default | What enabling it does |
 |:--|:--|:--|
+| `format` | `enabled: false` | `check` runs the format check; with `run_on_build`, every build does |
+| `lint` | `enabled: false` | `check` runs the lint check; with `run_on_build`, every build does |
 | `api` | `enabled: false` | The API builder writes the dump; `api check` and `check` verify it |
 | `trivy` | `enabled: false` | The secret, license and vulnerability scans run; the filesystem scan stays off |
 | `coverage` | `enabled: false` | `check` runs the coverage gate; there is no threshold until you set one |
@@ -127,7 +130,8 @@ Every key is checked when the configuration is loaded - in each build step and a
         A string where a boolean is expected, a single value where a list is expected, and so on.
     </def>
     <def title="Values outside their range">
-        A severity that does not exist, a scanner Trivy does not know, an empty list of severities or scanners, a
+        A severity that does not exist, a lint level other than error, warning, info or none, a page width that is not
+        a whole number from 1 to 1000, a scanner Trivy does not know, an empty list of severities or scanners, a
         coverage threshold outside 0 to 100, an unknown test runner.
     </def>
     <def title="Empty strings">

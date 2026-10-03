@@ -1,2 +1,2 @@
 # Inspectra analyzes itself with the lint preset it ships.
-include: package:inspectra/analysis_options.yaml
+include: package:inspectra/lints/strict.yaml

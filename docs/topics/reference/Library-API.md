@@ -35,9 +35,33 @@ print(config.trivy.secret.severity);     // [Severity.critical, Severity.high, .
 | `InspectraConfig.defaults(packageName)` | Every default; every feature off. |
 | `configFileName`, `pubspecSectionKey` | `'%config_file%'`, `'%pubspec_key%'` |
 
-The configuration classes - `TrivyConfig`, `SecretScanConfig`, `LicenseScanConfig`, `VulnerabilityScanConfig`,
+The configuration classes - `FormatConfig`, `LintConfig`, `TrivyConfig`, `SecretScanConfig`, `LicenseScanConfig`, `VulnerabilityScanConfig`,
 `FilesystemScanConfig`, `ApiConfig`, `CoverageConfig` - are immutable and have `const` constructors, so tooling can also
 build a configuration without YAML.
+
+## Running the format and lint checks
+
+```dart
+final FormatResult format = await runFormatCheck(config, packageRoot);
+final LintResult lint = await runLintCheck(config, packageRoot, fix: true);
+
+for (final issue in lint.failing) {
+  print('${issue.path}:${issue.line} ${issue.code}');
+}
+```
+
+| API | Description |
+|:--|:--|
+| `runFormatCheck(config, root, {fix})` | What `dart run inspectra format` does, including the JSON report. |
+| `runLintCheck(config, root, {fix})` | What `dart run inspectra lint` does, including the JSON report. |
+| `checkFormat(config:, packageRoot:, files:, {fix})` | `dart format` on an explicit list of files. |
+| `runLint(config:, packageRoot:, {fix})` | `dart analyze`, optionally after `dart fix --apply`. |
+| `parseAnalyzerOutput(output, root)` | The diagnostics of `dart analyze --format=machine`. |
+| `FormatResult` | `checked`, `unformatted`, `fixed`, `failed`, `render()`, `toJson()`. |
+| `LintResult` | `issues`, `failing`, `failOn`, `failed`, `render()`, `toJson()`. |
+| `LintIssue` | `severity`, `type`, `code`, `path`, `line`, `column`, `message`. |
+| `LintLevel` | `error`, `warning`, `info`, `none`. |
+| `DartToolException` | `dart format`, `dart analyze` or `dart fix` could not run or failed. |
 
 ## Running the Trivy scans
 
@@ -132,8 +156,8 @@ for (final file in report.files) {
 
 ## The builders
 
-`package:inspectra/builder.dart` exports the four builder factories - `apiBuilder`, `secretScanBuilder`,
-`licenseScanBuilder`, `vulnerabilityScanBuilder`. They are referenced from %product%'s `build.yaml`; you do not call
+`package:inspectra/builder.dart` exports the six builder factories - `formatBuilder`, `lintBuilder`, `apiBuilder`,
+`secretScanBuilder`, `licenseScanBuilder`, `vulnerabilityScanBuilder`. They are referenced from %product%'s `build.yaml`; you do not call
 them yourself.
 
 <seealso>

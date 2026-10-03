@@ -14,19 +14,30 @@ Inspectra adds Trivy secret, license, vulnerability and filesystem scans, a comm
 gate to Dart and Flutter packages, run by build_runner and configured in pubspec.yaml.
 </web-summary>
 
-%product% is a dev dependency for Dart and Flutter packages that answers three questions on every build and in
+%product% is a dev dependency for Dart and Flutter packages that answers four questions on every build and in
 every CI run:
 
-1. **Is anything unsafe in this repository?** A credential pasted into a source file, a dependency with a
+1. **Is the code formatted and free of analyzer findings?**
+2. **Is anything unsafe in this repository?** A credential pasted into a source file, a dependency with a
    published vulnerability, a dependency whose license you may not ship.
-2. **Did the public API change, and did somebody mean to change it?**
-3. **Is the code tested well enough to merge?**
+3. **Did the public API change, and did somebody mean to change it?**
+4. **Is the code tested well enough to merge?**
 
-It answers them with three features, each of which you enable on its own.
+It answers them with five features, each of which you enable on its own.
 
 ## Features
 
 <deflist type="wide">
+    <def title="Format check" id="feature-format">
+        <code>dart format</code> over every Dart file of the package, generated code left out, failing on any
+        unformatted file - or formatting them with <code>--fix</code>. See <a href="Format-Check.md">Format
+        check</a>.
+    </def>
+    <def title="Lint check" id="feature-lint">
+        <code>dart analyze</code> with the rules of your <code>analysis_options.yaml</code>, failing from a severity
+        you choose, with <code>--fix</code> running <code>dart fix --apply</code>. %product% also ships a strict
+        <a href="Lint-Preset.md">lint preset</a>. See <a href="Lint-Check.md">Lint check</a>.
+    </def>
     <def title="Security and compliance scans" id="feature-trivy">
         Four scans run by <a href="Trivy-Overview.md">Trivy</a>: a <a href="Trivy-Secret-Scan.md">secret scan</a>
         of your sources and configuration files, a <a href="Trivy-License-Scan.md">license scan</a> of the
@@ -56,6 +67,8 @@ code; they differ in when they run and what they can see.
 | | `dart run build_runner build` | `dart run inspectra …` |
 |:--|:--|:--|
 | When | Every build, and continuously with `watch` | When you or CI call it |
+| Format check | When `run_on_build: true` | `format`, `format --fix` |
+| Lint check | When `run_on_build: true` | `lint`, `lint --fix` |
 | API dump | Written to the package path; `--only-check` verifies it | `api dump` writes it, `api check` verifies it |
 | Secret scan | On by default, over the <tooltip term="build source">build sources</tooltip> | Over the files on disk |
 | License scan | When `run_on_build: true` | Always available |
@@ -82,8 +95,8 @@ These decisions shape how every feature behaves. When something surprises you, i
     <def title="Only the Dart toolchain and Trivy" id="principle-dependencies">
         %product% depends on <code>analyzer</code> for the API dump, <code>build</code> for the builders and
         <code>coverage</code> for the gate. <code>args</code>, <code>glob</code>, <code>path</code> and
-        <code>yaml</code> are already dependencies of those. Everything else is done by Trivy or by
-        <code>dart test</code>.
+        <code>yaml</code> are already dependencies of those. Everything else is done by Trivy or by the SDK's own
+        tools: <code>dart format</code>, <code>dart analyze</code>, <code>dart fix</code> and <code>dart test</code>.
     </def>
     <def title="A typo is an error, not a silent no-op" id="principle-strict">
         Every key of the configuration is validated. An unknown key or a value of the wrong type fails with the full
@@ -108,8 +121,8 @@ These decisions shape how every feature behaves. When something surprises you, i
 
 ## What %product% is not
 
-- **Not a linter.** Style and correctness checks belong in `analysis_options.yaml`; run `dart analyze` next to
-  %product%.
+- **Not a linter of its own.** The lint check enforces the analyzer and the rules in `analysis_options.yaml`; it adds
+  no rules beyond the [preset](Lint-Preset.md) you can choose to include.
 - **Not a replacement for Trivy's own configuration.** `trivy.yaml`, `.trivyignore` and `trivy-secret.yaml` in the
   package root keep working; %product% runs Trivy in the package root so that they apply. See
   [Installing Trivy](Trivy-Installation.md#working-directory).

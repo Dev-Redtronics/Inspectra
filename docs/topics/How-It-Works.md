@@ -16,10 +16,11 @@ flowchart LR
     config["pubspec.yaml (inspectra:)<br/>or inspectra.yaml"]
     subgraph entry["Entry points"]
         builders["build_runner builders<br/>inspectra:api, :secret_scan,<br/>:license_scan, :vulnerability_scan"]
-        cli["dart run inspectra<br/>check, api, trivy, coverage"]
+        cli["dart run inspectra<br/>check, format, lint, api, trivy, coverage"]
         library["package:inspectra<br/>your own tooling"]
     end
     subgraph checks["Checks"]
+        quality["Format and lint<br/>(dart format, dart analyze)"]
         api["API renderer<br/>(analyzer)"]
         scans["Scans<br/>(Trivy)"]
         coverage["Coverage gate<br/>(dart test + package:coverage)"]
@@ -27,11 +28,14 @@ flowchart LR
     config --> builders
     config --> cli
     config --> library
+    builders --> quality
     builders --> api
     builders --> scans
+    cli --> quality
     cli --> api
     cli --> scans
     cli --> coverage
+    library --> quality
     library --> api
     library --> scans
     library --> coverage
@@ -45,17 +49,21 @@ wrong types are errors with the full key path. Where it lives, and why `pubspec.
 
 ## The builders
 
-Adding %product% as a dev dependency applies four builders to your root package. They are declared in %product%'s
+Adding %product% as a dev dependency applies six builders to your root package. They are declared in %product%'s
 `build.yaml` with `auto_apply: root_package`, so dependencies of your package are never scanned or dumped.
 
 | Builder | Input | Output | Written to |
 |:--|:--|:--|:--|
+| `inspectra:format` | `$package$` | `inspectra/format.json` | The artifact tree |
+| `inspectra:lint` | `$package$` | `inspectra/lint.json` | The artifact tree |
 | `inspectra:api` | `$package$` | `api/<package>.api` | The package (`build_to: source`) |
 | `inspectra:secret_scan` | `$package$` | `inspectra/trivy/secret.json` | The <tooltip term="artifact tree">artifact tree</tooltip> |
 | `inspectra:license_scan` | `$package$` | `inspectra/trivy/license.json` | The artifact tree |
 | `inspectra:vulnerability_scan` | `$package$` | `inspectra/trivy/vulnerability.json` | The artifact tree |
 
-Every builder uses the synthetic `$package$` input, which exists once per package, so each runs once per build.
+Every builder uses the synthetic `$package$` input, which exists once per package, so each runs once per build. The
+format and lint builders also declare `.dart` as a required input, which makes `build_runner` run them after every
+builder that generates Dart code - they check the package as the build leaves it.
 
 ### Why reruns are exact
 
@@ -66,7 +74,9 @@ depend on through the build step:
 - for the API dump, every library under `lib/` through the analyzer resolver, including everything those libraries
   import,
 - for the secret scan, each file it scans, plus `trivy-secret.yaml` when that is a build source,
-- for the license and vulnerability scans, `pubspec.lock`.
+- for the license and vulnerability scans, `pubspec.lock`,
+- for the format and lint checks, every Dart file they check, plus `analysis_options.yaml` when that is a build
+  source.
 
 A build that changed none of these is a no-op for %product%: no analyzer run, no Trivy process. Files that are not
 build sources are the exception; [Build sources](Build-Sources.md) explains which those are and how to add them.
@@ -106,6 +116,8 @@ system:
 - It sees every file, not only build sources, so the secret scan covers dotfiles and root-level configuration.
 - It always runs: no caching, which is what a CI job wants.
 - It runs the checks the builders cannot: the filesystem scan and the coverage gate.
+- It applies fixes: `format --fix` and `lint --fix`.
+- `check` runs everything enabled in a fixed order: format, lint, API, Trivy scans, coverage.
 
 The API commands render the API with the analyzer's `AnalysisContextCollection` instead of the build resolver. The
 renderer is the same, so the dump is byte for byte what the builder writes - which is why `api check` from the command

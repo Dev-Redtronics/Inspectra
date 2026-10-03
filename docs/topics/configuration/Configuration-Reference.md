@@ -19,6 +19,19 @@ configuration means.
 
 ```yaml
 inspectra:
+  format:
+    enabled: false
+    run_on_build: false
+    fail_on_findings: true
+    include: ['**.dart']
+    exclude: ['**/.dart_tool/**', '**/build/**', '**.g.dart', '**.freezed.dart', '**.mocks.dart']
+    # page_width: 80               # unset: from analysis_options.yaml
+
+  lint:
+    enabled: false
+    run_on_build: false
+    fail_on: info                  # error, warning, info or none
+
   api:
     enabled: false
     output: api/<package>.api
@@ -73,6 +86,31 @@ inspectra:
     # min_line_coverage: 80        # unset: report only, never fail
     test_arguments: []
 ```
+
+## format {id="format"}
+
+The format check. See [Format check](Format-Check.md).
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `enabled` | boolean | `false` | Whether `check` runs the format check. `dart run %package% format` runs it regardless. |
+| `run_on_build` | boolean | `false` | Whether the `inspectra:format` builder checks on `build_runner build`. |
+| `fail_on_findings` | boolean | `true` | Whether an unformatted file fails the build or the command. |
+| `include` | list of globs | `['**.dart']` | The files that are checked. |
+| `exclude` | list of globs | `['**/.dart_tool/**', '**/build/**', '**.g.dart', '**.freezed.dart', '**.mocks.dart']` | Files never checked. Replaces the default when set. |
+| `page_width` | whole number, 1 to 1000 | unset | The line length passed to `dart format`. Unset: `formatter: page_width` of `analysis_options.yaml`, else 80. |
+
+## lint {id="lint"}
+
+The lint check. See [Lint check](Lint-Check.md).
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `enabled` | boolean | `false` | Whether `check` runs the lint check. `dart run %package% lint` runs it regardless. |
+| `run_on_build` | boolean | `false` | Whether the `inspectra:lint` builder analyzes on `build_runner build`. |
+| `fail_on` | `error`, `warning`, `info` or `none` | `info` | The lowest <tooltip term="diagnostic">diagnostic</tooltip> severity that fails the check. |
+
+The rules themselves live in `analysis_options.yaml`; see [Lint preset](Lint-Preset.md).
 
 ## api {id="api"}
 

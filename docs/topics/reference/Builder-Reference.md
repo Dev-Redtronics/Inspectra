@@ -9,11 +9,13 @@
 
 <card-summary>inspectra:api, :secret_scan, :license_scan and :vulnerability_scan in detail.</card-summary>
 
-%product% declares four builders in its `build.yaml`. All of them have `auto_apply: root_package`: they run for the
+%product% declares six builders in its `build.yaml`. All of them have `auto_apply: root_package`: they run for the
 package you build, never for its dependencies, and need no `build.yaml` of yours.
 
 | Builder | Factory | `build_to` | Output | Runs when |
 |:--|:--|:--|:--|:--|
+| `inspectra:format` | `formatBuilder` | `cache` | `inspectra/format.json` | `format.enabled`, `format.run_on_build` |
+| `inspectra:lint` | `lintBuilder` | `cache` | `inspectra/lint.json` | `lint.enabled`, `lint.run_on_build` |
 | `inspectra:api` | `apiBuilder` | `source` | `api/<package>.api` | `api.enabled` |
 | `inspectra:secret_scan` | `secretScanBuilder` | `cache` | `inspectra/trivy/secret.json` | `trivy.enabled`, `secret.enabled`, `secret.run_on_build` |
 | `inspectra:license_scan` | `licenseScanBuilder` | `cache` | `inspectra/trivy/license.json` | `trivy.enabled`, `license.enabled`, `license.run_on_build` |
@@ -21,6 +23,49 @@ package you build, never for its dependencies, and need no `build.yaml` of yours
 
 Every builder uses the synthetic `$package$` input and runs at most once per build. When its feature is disabled, it
 returns immediately and writes nothing.
+
+## inspectra:format {id="format"}
+
+<deflist type="medium">
+    <def title="Order">
+        <code>required_inputs: [".dart"]</code>: runs after every builder that outputs Dart files.
+    </def>
+    <def title="Reads">
+        The configuration; every Dart file of the package matching <code>format.include</code> and not
+        <code>format.exclude</code>. Outputs that other builders keep in the build cache are skipped.
+    </def>
+    <def title="Runs">
+        <code>dart format --output=none --set-exit-if-changed</code> on those files, in the package root, in batches of
+        100.
+    </def>
+    <def title="Writes">
+        The JSON report to the artifact tree, <code>.dart_tool/build/generated/&lt;package&gt;/inspectra/format.json</code>.
+    </def>
+    <def title="Reruns">
+        When a checked file or the configuration changes.
+    </def>
+</deflist>
+
+## inspectra:lint {id="lint"}
+
+<deflist type="medium">
+    <def title="Order">
+        <code>required_inputs: [".dart"]</code>: runs after every builder that outputs Dart files, so generated code
+        exists when the analyzer looks for it.
+    </def>
+    <def title="Reads">
+        The configuration; every Dart file of the package; <code>analysis_options.yaml</code> when it is a build source.
+    </def>
+    <def title="Runs">
+        <code>dart analyze --format=machine .</code> in the package root.
+    </def>
+    <def title="Writes">
+        <code>.dart_tool/build/generated/&lt;package&gt;/inspectra/lint.json</code>.
+    </def>
+    <def title="Reruns">
+        When a Dart file, the configuration, or - as a build source - <code>analysis_options.yaml</code> changes.
+    </def>
+</deflist>
 
 ## inspectra:api {id="api"}
 
@@ -119,10 +164,10 @@ from what it would write. See [Workflow](API-Workflow.md#checking-in-ci).
 
 | Level | When |
 |:--|:--|
-| `SEVERE` | A scan failed, the configuration is broken, Trivy is missing or failed, the package is not resolved, `api.output` changed during `watch`. The build fails. |
-| `WARNING` | Findings that do not fail, an API change, `%config_file%` that is not a build source. |
+| `SEVERE` | A format or lint check failed, a scan failed, the configuration is broken, Trivy is missing or failed, the package is not resolved, `api.output` changed during `watch`. The build fails. |
+| `WARNING` | Findings or diagnostics that do not fail, an API change, `%config_file%` that is not a build source. |
 | `INFO` | The first API dump. Shown with `--verbose`. |
-| `FINE` | A clean scan. Shown with `--verbose`. |
+| `FINE` | A clean scan or check. Shown with `--verbose`. |
 
 ## Disabling a builder
 

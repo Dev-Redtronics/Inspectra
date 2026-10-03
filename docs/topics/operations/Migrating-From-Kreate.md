@@ -21,6 +21,20 @@ toolchain. This page maps one to the other.
 | `check` lifecycle task | `dart run build_runner build`, `dart run %package% check` | |
 | Opt-in features | Opt-in features | Nothing runs until enabled, in both |
 
+## Static analysis and formatting
+
+| Kreate | %product% |
+|:--|:--|
+| `detekt { enabled = true }` | `lint: { enabled: true }` |
+| Detekt task on `check` | `dart run %package% lint`, `check`, or the `inspectra:lint` builder |
+| `kreateRules` (Kreate's own Detekt rules) | `include: package:inspectra/lints/strict.yaml` |
+| Detekt configuration file | `analysis_options.yaml` |
+| Detekt reports | `.dart_tool/inspectra/lint.json` |
+| ktlint / formatting rules | `format: { enabled: true }`, backed by `dart format` |
+
+Dart has one analyzer and one formatter, both in the SDK, so there is nothing to apply or version: the checks enforce
+what `dart analyze` and `dart format` already do.
+
 ## Security and compliance
 
 | Kreate | %product% |
@@ -85,8 +99,8 @@ builder updates the dump on every build and logs the diff; CI uses `--only-check
 
 ## Not in Inspectra
 
-Kreate's platform, JNI, C-interop, publishing, benchmark, dependency locking and local development features have no
-counterpart: the Dart toolchain covers them itself (`dart pub publish`, `dart pub get` and `pubspec.lock`, FFI) or they
+Kreate's platform, JNI, C-interop, documentation, publishing, benchmark, dependency locking and local development
+features have no counterpart: the Dart toolchain covers them itself (`dart pub publish`, `dart pub get` and `pubspec.lock`, FFI) or they
 are outside %product%'s scope.
 
 <seealso>

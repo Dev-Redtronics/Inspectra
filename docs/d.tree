@@ -16,6 +16,12 @@
         <toc-element topic="Build-Sources.md"/>
     </toc-element>
 
+    <toc-element toc-title="Code quality">
+        <toc-element topic="Format-Check.md"/>
+        <toc-element topic="Lint-Check.md"/>
+        <toc-element topic="Lint-Preset.md"/>
+    </toc-element>
+
     <toc-element toc-title="Security &amp; compliance">
         <toc-element topic="Trivy-Overview.md"/>
         <toc-element topic="Trivy-Installation.md"/>

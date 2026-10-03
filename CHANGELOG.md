@@ -14,3 +14,7 @@
 - An unresolved package reports `run "dart pub get"` instead of a stack trace.
 - Files marked `// coverage:ignore-file` are not listed as untested.
 - Writerside documentation in `docs/`, published to GitHub Pages.
+- Format check (`dart format`) and lint check (`dart analyze`, `fail_on: error|warning|info|none`)
+  from `dart run inspectra format|lint`, with `--fix`, as the first steps of `check`, and as
+  `build_runner` builders that run after every code generator.
+- A strict lint preset, `package:inspectra/lints/strict.yaml`.

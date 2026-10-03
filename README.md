@@ -1,13 +1,15 @@
 # Inspectra
 
-**Inspectra** brings security scanning, public API validation and a coverage gate to Dart packages,
-configured in one YAML file and run by `build_runner`.
+**Inspectra** brings format and lint checks, security scanning, public API validation and a coverage
+gate to Dart packages, configured in one YAML file and run by `build_runner`.
 
-It is the Dart counterpart of the security and API features of
+It is the Dart counterpart of the static analysis, security and API features of
 [Kreate](https://github.com/davils-com/kreate) for Gradle:
 
 | Kreate (Gradle)                          | Inspectra (Dart)                                         |
 |:-----------------------------------------|:---------------------------------------------------------|
+| Detekt with `kreateRules`                | `inspectra lint`, `inspectra:lint` builder, `package:inspectra/lints/strict.yaml` |
+| Formatting rules                         | `inspectra format [--fix]`, `inspectra:format` builder (via `dart format`) |
 | `kreateTrivySecretScan`                  | `inspectra:secret_scan` builder, `inspectra trivy secret` |
 | `kreateTrivyLicenseScan`                 | `inspectra:license_scan` builder, `inspectra trivy license` |
 | `kreateTrivyVulnerabilityScan`           | `inspectra:vulnerability_scan` builder, `inspectra trivy vulnerability` |
@@ -50,6 +52,10 @@ dev_dependencies:
   inspectra: ^1.0.0
 
 inspectra:
+  format:
+    enabled: true
+  lint:
+    enabled: true
   api:
     enabled: true
   trivy:
@@ -57,6 +63,11 @@ inspectra:
   coverage:
     enabled: true
     min_line_coverage: 80
+```
+
+```yaml
+# analysis_options.yaml - optional: Inspectra's strict rule set
+include: package:inspectra/lints/strict.yaml
 ```
 
 ```bash
@@ -69,6 +80,9 @@ dart run inspectra check                  # CI: every enabled check, build_runne
 
 Inspectra's builders apply to the root package automatically.
 
+- **`inspectra:format`** and **`inspectra:lint`** run `dart format` and `dart analyze` when their
+  `run_on_build` is set. They require `.dart` inputs, so `build_runner` runs them after every code
+  generator, on the package as the build leaves it.
 - **`inspectra:api`** writes the public API to `api/<package>.api` (`build_to: source`). The dump is
   committed, so every API change shows up as a diff in review, and the build logs that diff as a
   warning. `build_runner build --only-check` writes nothing and fails when the committed dump differs
@@ -84,6 +98,8 @@ job usually wants:
 
 ```text
 dart run inspectra check                     every enabled check
+dart run inspectra format [--fix]            check or apply dart format
+dart run inspectra lint [--fix]              dart analyze; --fix runs dart fix --apply first
 dart run inspectra api dump | check          record or verify the API dump
 dart run inspectra trivy [secret|license|vulnerability|filesystem ...]
 dart run inspectra coverage [--min 80]
@@ -109,6 +125,19 @@ All options with their defaults:
 
 ```yaml
 inspectra:
+  format:
+    enabled: false
+    run_on_build: false
+    fail_on_findings: true
+    include: ['**.dart']
+    exclude: ['**/.dart_tool/**', '**/build/**', '**.g.dart', '**.freezed.dart', '**.mocks.dart']
+    page_width:                         # unset: formatter.page_width of analysis_options.yaml
+
+  lint:
+    enabled: false
+    run_on_build: false
+    fail_on: info                       # error, warning, info or none
+
   api:
     enabled: false
     output: api/<package>.api           # the committed dump
@@ -165,6 +194,16 @@ inspectra:
 ```
 
 ## Details
+
+### Format and lint
+
+The format check runs `dart format --output=none --set-exit-if-changed` over the selected files in
+the package root, so the language version and the `formatter` settings of `analysis_options.yaml`
+apply; `--fix` formats them instead. The lint check runs `dart analyze` and fails from `fail_on`:
+`info` is `--fatal-infos`, `warning` the analyzer's default, `error` only on errors, `none` never.
+The rules are your `analysis_options.yaml`. `package:inspectra/lints/strict.yaml` is a strict preset
+with strict casts, inference and raw types and about 200 lint rules, which this repository uses
+itself.
 
 ### Public API dump
 

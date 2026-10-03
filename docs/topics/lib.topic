@@ -66,10 +66,12 @@
         <table>
             <tr><td>Exit code</td><td>Meaning</td></tr>
             <tr><td><code>0</code></td><td>Every check that ran passed, or nothing was enabled.</td></tr>
-            <tr><td><code>1</code></td><td>A check failed: findings in a scan that fails on findings, an API that
-                differs from its dump or has none, or coverage below the threshold.</td></tr>
+            <tr><td><code>1</code></td><td>A check failed: unformatted files, diagnostics at or above
+                <code>lint.fail_on</code>, findings in a scan that fails on findings, an API that differs from its dump
+                or has none, or coverage below the threshold.</td></tr>
             <tr><td><code>2</code></td><td>Inspectra could not run a check: a broken configuration, a missing or
-                failing Trivy, failing tests in the coverage run, an unresolved package or another file system
+                failing Trivy, a <code>dart format</code>, <code>dart analyze</code> or <code>dart fix</code> that could not
+                run, failing tests in the coverage run, an unresolved package or another file system
                 error.</td></tr>
             <tr><td><code>64</code></td><td>The command line was used incorrectly: an unknown command, option or scan
                 name, or an invalid <code>--min</code>.</td></tr>

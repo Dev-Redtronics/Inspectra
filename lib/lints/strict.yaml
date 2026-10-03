@@ -5,7 +5,7 @@
 # Inspectra as a dev dependency:
 #
 #   # analysis_options.yaml
-#   include: package:inspectra/analysis_options.yaml
+#   include: package:inspectra/lints/strict.yaml
 #
 # Every setting can be overridden below the include: disable a rule with
 # `rule_name: false` under `linter: rules:`, or change a severity under

@@ -35,6 +35,8 @@ Not among them, and therefore invisible to the builders:
 
 | Builder | Affected by | Effect |
 |:--|:--|:--|
+| `inspectra:format` | Which files it checks | It checks the Dart files among the build sources; with the default sources that is everything under `lib/`, `bin/`, `test/`, `example/`, `tool/` and the other default directories. |
+| `inspectra:lint` | `analysis_options.yaml` | `dart analyze` always applies it, but editing it does not rerun the lint check unless the file is a source. |
 | `inspectra:api` | Nothing | It reads `pubspec.yaml` and `lib/**`, which are always sources. |
 | `inspectra:secret_scan` | Which files it scans | It scans the build sources that match `include` and not `exclude`. A root-level `.env` or `config.yaml` is not scanned by the builder. |
 | `inspectra:secret_scan` | `%secret_config%` | The rules are applied, but editing them does not rerun the scan unless the file is a source. |

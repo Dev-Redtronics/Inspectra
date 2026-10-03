@@ -16,6 +16,12 @@ file below is real and runs on every push.
 ```yaml
 # pubspec.yaml
 inspectra:
+  format:
+    enabled: true
+    run_on_build: true
+  lint:
+    enabled: true
+    run_on_build: true
   api:
     enabled: true
   trivy:
@@ -32,12 +38,16 @@ inspectra:
     min_line_coverage: 85
 ```
 
+- **Format and lint on every build**: an unformatted file or a single lint fails `build_runner build`, with
+  `fail_on: info`.
+- **Lint preset**: the repository's `analysis_options.yaml` is one line,
+  `include: package:inspectra/lints/strict.yaml` - the preset Inspectra ships.
 - **API**: `api/inspectra.api` records the public API of `package:inspectra/inspectra.dart` and
   `package:inspectra/builder.dart`.
 - **All three focused scans on build**: every `build_runner build` runs the secret, license and vulnerability scans.
   The license and vulnerability scans cost nothing unless `pubspec.lock` changed.
 - **Filesystem scan** in CI, for everything the focused scans do not cover.
-- **Coverage gate** at 85%; the suite currently measures above 90%.
+- **Coverage gate** at 85%; the suite currently measures about 88%.
 
 ## Build sources
 
@@ -96,9 +106,9 @@ The `CI` workflow has three jobs:
 
 | Job | Runs |
 |:--|:--|
-| Format and analyze | `dart format --set-exit-if-changed`, `dart analyze --fatal-infos` with the strict lint set of `analysis_options.yaml` |
+| Format and analyze | `dart run inspectra format` and `dart run inspectra lint`, with the strict lint preset |
 | Test | `dart test` on Linux and macOS, with Trivy installed so the integration tests run against the real scanner |
-| Inspectra on itself | `dart run build_runner build --only-check`, then `dart run inspectra check`; uploads `lcov.info` and the Trivy reports |
+| Inspectra on itself | `dart run build_runner build --only-check`, then `dart run inspectra check` - format, lint, API, all four scans, coverage; uploads `lcov.info` and the Trivy reports |
 
 It also runs weekly, so a vulnerability published for one of Inspectra's dependencies is noticed without a push. The
 `Documentation` workflow builds this documentation with Writerside, checks it, and deploys it to GitHub Pages from

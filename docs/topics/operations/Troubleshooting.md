@@ -59,6 +59,33 @@ the dump - after deciding the change is intended. See [Workflow](API-Workflow.md
 The builder only sees build sources. Root-level files such as `.env` or `analysis_options.yaml` are not sources by
 default. Add them to the sources, or rely on the command line in CI.
 
+## Format and lint
+
+### The format check fails on files I never touched {collapsible="true"}
+
+A new SDK can change `dart format`'s output, and a changed `formatter: page_width` reformats everything. Run
+`dart run %package% format --fix` once and commit the result on its own.
+
+### "dart format" failed with exit code 65 {collapsible="true"}
+
+A file does not parse; the formatter's message names the file, line and column. Fix the syntax error - the lint check
+reports it too.
+
+### The format check complains about generated code {collapsible="true"}
+
+The generator writes with its own page width. Add the file pattern to `format.exclude`; the defaults already cover
+`*.g.dart`, `*.freezed.dart` and `*.mocks.dart`.
+
+### The lint check reports errors in generated files that do not exist yet {collapsible="true"}
+
+Run code generation first: `dart run build_runner build`. On build, the `inspectra:lint` builder already runs after
+every code generator.
+
+### A rule I disabled is still reported {collapsible="true"}
+
+Disable a rule of an included file with the map form, `rule_name: false`; listing rules adds them. See
+[Lint preset](Lint-Preset.md#adjusting-it).
+
 ## Trivy
 
 ### Could not start Trivy ("trivy"): No such file or directory {collapsible="true"}

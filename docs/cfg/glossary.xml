@@ -64,4 +64,12 @@
         A temporary directory Inspectra copies the selected files into before it runs Trivy, so that Trivy sees exactly
         those files under their package-relative paths. It is deleted when the scan ends.
     </term>
+    <term name="analysis options">
+        The analysis_options.yaml file in the package root: which lint rules run, which files the analyzer excludes,
+        how severe each diagnostic is, and the formatter's page width.
+    </term>
+    <term name="diagnostic">
+        A finding of the Dart analyzer: a compile-time error, a warning, a hint or a lint, each with a severity of
+        error, warning or info.
+    </term>
 </terms>

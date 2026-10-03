@@ -19,8 +19,10 @@ Global options:
 
 Available commands:
   api        Records or checks the public API dump.
-  check      Runs every enabled check: API, Trivy scans and coverage.
+  check      Runs every enabled check: format, lint, API, Trivy scans and coverage.
   coverage   Runs the tests with coverage, writes lcov.info and checks the threshold.
+  format     Checks that the Dart files are formatted, or formats them with --fix.
+  lint       Analyzes the package with the rules of analysis_options.yaml.
   trivy      Runs Trivy scans: every enabled one, or the ones named.
 ```
 
@@ -49,12 +51,49 @@ dart run inspectra check
 
 Runs every enabled check in this order and fails if any of them fails:
 
-1. The [API check](#api-check), when `api.enabled`.
-2. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
-3. The [coverage gate](#coverage), when `coverage.enabled`.
+1. The [format check](#format), when `format.enabled`.
+2. The [lint check](#lint), when `lint.enabled`.
+3. The [API check](#api-check), when `api.enabled`.
+4. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
+5. The [coverage gate](#coverage), when `coverage.enabled`.
 
 All checks run even when an earlier one fails, so one run reports everything. With nothing enabled it prints
-`Nothing is enabled. Enable "api", "trivy" or "coverage" in the Inspectra configuration.` and exits with `0`.
+`Nothing is enabled. Enable "format", "lint", "api", "trivy" or "coverage" in the Inspectra configuration.` and exits
+with `0`.
+
+## format {id="format"}
+
+```bash
+dart run inspectra format          # check
+dart run inspectra format --fix    # format in place
+```
+
+Checks the files selected by `format.include` and `format.exclude` with `dart format`, or formats them with `--fix`.
+Runs whether or not `format.enabled` is set, and writes `.dart_tool/inspectra/format.json`.
+
+| Option | Description |
+|:--|:--|
+| `--fix` | Format the files instead of checking them. Lists the files it changed and never fails on formatting. |
+
+| Result | Exit code |
+|:--|:--|
+| Everything formatted, or `--fix` | `0` |
+| Unformatted files, with `fail_on_findings: true` | `1` |
+| A file that does not parse | `2` |
+
+## lint {id="lint"}
+
+```bash
+dart run inspectra lint            # analyze
+dart run inspectra lint --fix      # dart fix --apply, then analyze
+```
+
+Runs `dart analyze` in the package root and fails when a diagnostic at or above `lint.fail_on` is found. Runs whether
+or not `lint.enabled` is set, and writes `.dart_tool/inspectra/lint.json`.
+
+| Option | Description |
+|:--|:--|
+| `--fix` | Run `dart fix --apply` before analyzing. |
 
 ## api dump {id="api-dump"}
 
@@ -119,6 +158,8 @@ Exit code `2` always comes with a message on standard error naming the cause:
 ```text
 Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Known options here: …
 Could not start Trivy ("trivy"): No such file or directory
+"dart format" failed with exit code 65.
+"dart analyze" failed with exit code 64.
 Trivy did not finish scanning /tmp/…: it exited with 1. This is a failure of Trivy itself, not a finding.
 "dart test --coverage=…" failed with exit code 1; see its output above.
 FileSystemException: No pubspec.lock found; run "dart pub get" first., path = '…'

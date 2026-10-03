@@ -7,7 +7,7 @@
 
 <link-summary>Add the dev dependency, enable the features, run the first build and wire up CI.</link-summary>
 
-<card-summary>From an empty pubspec section to a package that checks itself, in five steps.</card-summary>
+<card-summary>From an empty pubspec section to a package that checks itself, in six steps.</card-summary>
 
 <tldr>
 <p><b>Install</b>: <code>dart pub add dev:%package% dev:build_runner</code></p>
@@ -41,7 +41,40 @@ step works on its own: stop after any of them and you have a working setup for t
 
 <include from="lib.topic" element-id="opt-in-note"/>
 
-## Step 2: Record the public API
+## Step 2: Check formatting and lints
+
+<procedure title="Enable the format and lint checks" id="enable-quality">
+    <step>
+        <p>Optionally adopt %product%'s strict rule set in <code>analysis_options.yaml</code> - see
+            <a href="Lint-Preset.md">Lint preset</a>:</p>
+        <code-block lang="yaml"><![CDATA[
+include: package:inspectra/lints/strict.yaml
+]]></code-block>
+    </step>
+    <step>
+        <p>Enable both checks:</p>
+        <code-block lang="yaml"><![CDATA[
+inspectra:
+  format:
+    enabled: true
+  lint:
+    enabled: true
+]]></code-block>
+    </step>
+    <step>
+        <p>Run them, and let the tools fix what they can:</p>
+        <code-block lang="bash"><![CDATA[
+dart run inspectra format --fix
+dart run inspectra lint --fix
+dart run inspectra lint
+]]></code-block>
+    </step>
+    <step>
+        <p>Optionally run both on every build with <code>run_on_build: true</code>.</p>
+    </step>
+</procedure>
+
+## Step 3: Record the public API
 
 <procedure title="Enable the API dump" id="enable-api">
     <step>
@@ -69,7 +102,7 @@ step works on its own: stop after any of them and you have a working setup for t
     </step>
 </procedure>
 
-## Step 3: Turn on the scans
+## Step 4: Turn on the scans
 
 <procedure title="Enable the Trivy scans" id="enable-trivy">
     <step>
@@ -109,7 +142,7 @@ step works on its own: stop after any of them and you have a working setup for t
     </step>
 </procedure>
 
-## Step 4: Add the coverage gate
+## Step 5: Add the coverage gate
 
 <procedure title="Measure, then gate" id="enable-coverage">
     <step>
@@ -142,13 +175,13 @@ There is no default threshold on purpose. A threshold picked before measuring is
 high it fails on day one and gets switched off.
 </tip>
 
-## Step 5: Check everything in CI
+## Step 6: Check everything in CI
 
 Two commands cover every feature:
 
 ```bash
 dart run build_runner build --only-check   # the API dump is up to date; scans enabled on build
-dart run inspectra check                   # API check, all enabled scans, coverage gate
+dart run inspectra check                   # format, lint, API, all enabled scans, coverage
 ```
 
 [CI integration](CI-Integration.md) has complete GitHub Actions and GitLab CI pipelines, including Trivy installation
@@ -165,6 +198,10 @@ dev_dependencies:
   %package%: ^%version%
 
 %pubspec_key%:
+  format:
+    enabled: true
+  lint:
+    enabled: true
   api:
     enabled: true
   trivy:
@@ -172,6 +209,11 @@ dev_dependencies:
   coverage:
     enabled: true
     min_line_coverage: 80
+```
+
+```yaml
+# analysis_options.yaml
+include: package:inspectra/lints/strict.yaml
 ```
 
 Every option not listed keeps its default. The [configuration reference](Configuration-Reference.md) lists all of

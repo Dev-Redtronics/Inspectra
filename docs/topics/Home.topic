@@ -8,8 +8,9 @@
     <section-starting-page>
         <title>Inspectra</title>
         <description>
-            Trivy security scans, public API dumps and a coverage gate for Dart and Flutter packages - run by
-            build_runner, configured in one YAML file, and built on nothing but the Dart toolchain and Trivy.
+            Format and lint checks, Trivy security scans, public API dumps and a coverage gate for Dart and Flutter
+            packages - run by build_runner, configured in one YAML file, and built on nothing but the Dart toolchain
+            and Trivy.
         </description>
 
         <spotlight>
@@ -27,6 +28,14 @@
 
         <primary>
             <title>Features</title>
+            <a href="Format-Check.md"
+               summary="dart format as a gate, on build or in CI, with --fix to apply.">
+                Format check
+            </a>
+            <a href="Lint-Check.md"
+               summary="dart analyze with your rules, failing from the level you choose.">
+                Lint check
+            </a>
             <a href="Trivy-Secret-Scan.md"
                summary="Catch hard-coded credentials on every build, before they reach a push.">
                 Secret scanning
@@ -62,6 +71,10 @@
             <a href="Build-Sources.md"
                summary="Which files build_runner sees, and how to make it see more.">
                 Build sources
+            </a>
+            <a href="Lint-Preset.md"
+               summary="A strict analysis_options.yaml to include with one line.">
+                Lint preset
             </a>
         </secondary>
 
