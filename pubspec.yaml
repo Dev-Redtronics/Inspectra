@@ -1,7 +1,14 @@
 name: inspectra
-description: A starting point for Dart libraries or applications.
+description: Inspectra is a software assurance toolkit for Dart and Flutter, combining linting, formatting, testing, coverage, dependency auditing, vulnerability and secret scanning, license checks, and public API surface snapshots.
 version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+repository: https://github.com/Dev-Redtronics/Inspectra
+topics: 
+  - security
+  - coverage
+  - secret-scanning
+  - license-checks
+  - api-surface
+
 
 environment:
   sdk: ^3.13.4
