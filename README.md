@@ -18,6 +18,20 @@ It is the Dart counterpart of the security and API features of
 
 Everything is opt-in. Adding Inspectra as a dev dependency changes nothing until a feature is enabled.
 
+## Documentation
+
+The full documentation lives in [`docs/`](docs/) as a [Writerside](https://www.jetbrains.com/writerside/) project and
+is published to GitHub Pages from `main`: every option, every builder and command, the dump format, the secret rules,
+CI pipelines and troubleshooting. To build it locally, open `docs/` with the Writerside plugin, or run the builder
+image the `Documentation` workflow uses:
+
+```bash
+docker run --rm -v "$PWD:/github/workspace" -w /github/workspace \
+  jetbrains/writerside-builder:2026.04.8711 /bin/bash -c \
+  "Xvfb :99 & DISPLAY=:99 /opt/builder/bin/idea.sh helpbuilderinspect \
+   --source-dir /github/workspace --product docs/d --runner github --output-dir artifacts/"
+```
+
 ## Requirements
 
 - Dart SDK 3.13 or later
@@ -170,11 +184,14 @@ abstract base class Shape<T extends num> with Named implements Comparable<Shape<
   bool operator ==(Object other);
 }
 
+const String defaultLabel = 'shape';
+
 @Deprecated int plus(int a, int b);
 ```
 
 Moving a declaration between files under `lib/src` does not change the dump; changing a signature,
-a modifier or a default value does. Declarations annotated with `@internal` or `@visibleForTesting`
+a modifier, a default value or the value of a constant does. When it changes, the build logs a
+unified diff of exactly the lines that changed. Declarations annotated with `@internal` or `@visibleForTesting`
 (from `package:meta`), or any annotation listed in `non_public_annotations`, are left out.
 
 ### Secret scan
@@ -184,8 +201,9 @@ secret` run, so Trivy sees exactly the configured selection. Trivy reads `trivy-
 `trivy.yaml` and `.trivyignore` from the package root. This repository's
 [`trivy-secret.yaml`](trivy-secret.yaml) shows a custom rule for credentials in Dart sources.
 
-Trivy's built-in allow rules skip some paths, such as `test/` directories; turn them off with
-`disable-allow-rules` in `trivy-secret.yaml`.
+Trivy's built-in allow rules skip `test/`, `tests/`, `testdata/`, `integration_test/`, `example/`,
+`examples/` and Markdown files. `example/` is published with your package, so consider turning them
+off with `disable-allow-rules` in `trivy-secret.yaml` and allowing your real fixtures explicitly.
 
 ### License scan
 
@@ -226,7 +244,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dart-lang/setup-dart@v1
-      - uses: aquasecurity/setup-trivy@v0.2.3
+      - uses: aquasecurity/setup-trivy@v0.3.1
       - run: dart pub get
       - run: dart run build_runner build --only-check
       - run: dart run inspectra check

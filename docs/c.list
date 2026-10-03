@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE categories SYSTEM "https://resources.jetbrains.com/writerside/1.0/categories.dtd">
+<categories>
+    <category id="start" name="Getting oriented" order="1"/>
+    <category id="config" name="Configuration" order="2"/>
+    <category id="security" name="Security &amp; compliance" order="3"/>
+    <category id="api" name="Public API validation" order="4"/>
+    <category id="coverage" name="Coverage" order="5"/>
+    <category id="reference" name="Reference" order="6"/>
+    <category id="operations" name="Operations" order="7"/>
+    <category id="external" name="External documentation" order="8"/>
+</categories>

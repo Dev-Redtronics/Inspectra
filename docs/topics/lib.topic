@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic SYSTEM "https://resources.jetbrains.com/writerside/1.0/xhtml-entities.dtd">
+<topic xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="https://resources.jetbrains.com/writerside/1.0/topic.v2.xsd"
+       title="Library" id="lib">
+
+    <snippet id="install">
+        <tabs group="install">
+            <tab title="Command line" group-key="cli">
+                <code-block lang="bash">
+                    dart pub add dev:%package% dev:build_runner
+                </code-block>
+            </tab>
+            <tab title="pubspec.yaml" group-key="pubspec">
+                <code-block lang="yaml">
+                    dev_dependencies:
+                      build_runner: ^%min_build_runner%
+                      %package%: ^%version%
+                </code-block>
+            </tab>
+            <tab title="Flutter" group-key="flutter">
+                <code-block lang="bash">
+                    flutter pub add dev:%package% dev:build_runner
+                </code-block>
+            </tab>
+        </tabs>
+    </snippet>
+
+    <snippet id="opt-in-note">
+        <note>
+            Every feature of %product% is opt-in. Adding the dev dependency on its own changes nothing: the builders
+            are applied to your package, but they return immediately until a feature is enabled, and
+            <code>dart run %package% check</code> reports that nothing is enabled.
+        </note>
+    </snippet>
+
+    <snippet id="config-location">
+        <tip>
+            The configuration lives in the <code>%pubspec_key%:</code> section of <code>pubspec.yaml</code>, or in an
+            <code>%config_file%</code> next to it with the same keys one level up. See
+            <a href="Configuration-Overview.md">Where the configuration lives</a>.
+        </tip>
+    </snippet>
+
+    <snippet id="trivy-required">
+        <note>
+            This scan runs the Trivy executable. Install it first - see
+            <a href="Trivy-Installation.md">Installing Trivy</a>. Without it, the scan fails with an explanation and
+            exit code 2 rather than passing silently.
+        </note>
+    </snippet>
+
+    <snippet id="severity-values">
+        <deflist type="narrow">
+            <def title="CRITICAL">Requires immediate attention.</def>
+            <def title="HIGH">Should be addressed as soon as possible.</def>
+            <def title="MEDIUM">Important, but not urgent.</def>
+            <def title="LOW">Minimal impact.</def>
+            <def title="UNKNOWN">Could not be rated. Used for licenses Trivy cannot classify.</def>
+        </deflist>
+        <p>Severities are case-insensitive in the configuration: <code>high</code>, <code>High</code> and
+            <code>HIGH</code> are the same.</p>
+    </snippet>
+
+    <snippet id="exit-codes">
+        <table>
+            <tr><td>Exit code</td><td>Meaning</td></tr>
+            <tr><td><code>0</code></td><td>Every check that ran passed, or nothing was enabled.</td></tr>
+            <tr><td><code>1</code></td><td>A check failed: findings in a scan that fails on findings, an API that
+                differs from its dump or has none, or coverage below the threshold.</td></tr>
+            <tr><td><code>2</code></td><td>Inspectra could not run a check: a broken configuration, a missing or
+                failing Trivy, failing tests in the coverage run, an unresolved package or another file system
+                error.</td></tr>
+            <tr><td><code>64</code></td><td>The command line was used incorrectly: an unknown command, option or scan
+                name, or an invalid <code>--min</code>.</td></tr>
+        </table>
+    </snippet>
+
+</topic>

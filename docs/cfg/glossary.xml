@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE terms SYSTEM "https://resources.jetbrains.com/writerside/1.0/glossary.dtd">
+<terms>
+    <term name="public library">
+        A Dart file under lib/ but outside lib/src/ that is a library rather than a part. Other packages may import it,
+        so its export namespace is the package's public API.
+    </term>
+    <term name="export namespace">
+        Everything a library makes visible to its importers: its own public declarations plus everything it re-exports
+        with export directives, after show and hide combinators are applied.
+    </term>
+    <term name="build source">
+        A file build_runner tracks. Builders can only read build sources through the build step, and a build step reruns
+        only when one of the sources it read changes. The default sources are lib/, bin/, test/, example/, tool/, web/,
+        pubspec.yaml, pubspec.lock, README, CHANGELOG and LICENSE.
+    </term>
+    <term name="artifact tree">
+        The directory .dart_tool/build/generated where build_runner keeps the outputs of builders with build_to: cache.
+    </term>
+    <term name="package path">
+        The location of an output that a builder with build_to: source writes into the package itself, next to your
+        sources. The committed API dump is such an output.
+    </term>
+    <term name="only-check">
+        dart run build_runner build --only-check: builds everything, writes nothing, and fails when an output in the
+        package path differs from the file on disk. Available since build_runner 2.16.0.
+    </term>
+    <term name="hit map">
+        The per-file line execution counts the Dart VM reports for a test run. package:coverage merges and formats them.
+    </term>
+    <term name="lcov">
+        A plain-text coverage format (lcov.info) that IDEs, Codecov, Coveralls, SonarQube and genhtml read.
+    </term>
+    <term name="CVE">
+        Common Vulnerabilities and Exposures: the public identifier of a known vulnerability, such as CVE-2020-35669.
+    </term>
+    <term name="GHSA">
+        A GitHub Security Advisory identifier, such as GHSA-4rgh-jx4f-qfcq. Advisories for pub packages are the data
+        source Trivy uses for Dart.
+    </term>
+    <term name="SPDX identifier">
+        The standard short name of a license, such as MIT, BSD-3-Clause or GPL-3.0.
+    </term>
+    <term name="license category">
+        Trivy's classification of a license by obligation: forbidden, restricted, reciprocal, notice, permissive or
+        unencumbered. Each category maps to a severity.
+    </term>
+    <term name="shipped dependency">
+        A package reachable from the dependencies section of the root pubspec.yaml - code that consumers of your package
+        or users of your app actually receive. Packages reachable only through dev_dependencies are not shipped.
+    </term>
+    <term name="pub workspace">
+        A monorepo of Dart packages resolved together, with one pubspec.lock and one .dart_tool directory in the
+        workspace root.
+    </term>
+    <term name="Trivy database">
+        The vulnerability database Trivy downloads from mirror.gcr.io/aquasec/trivy-db and caches, by default in
+        ~/.cache/trivy. Only the vulnerability scans need it.
+    </term>
+    <term name="allow rule">
+        A Trivy secret scanning rule that suppresses findings, for example in paths that commonly hold test fixtures.
+    </term>
+    <term name="staging directory">
+        A temporary directory Inspectra copies the selected files into before it runs Trivy, so that Trivy sees exactly
+        those files under their package-relative paths. It is deleted when the scan ends.
+    </term>
+</terms>

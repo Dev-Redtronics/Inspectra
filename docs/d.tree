@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE instance-profile SYSTEM "https://resources.jetbrains.com/writerside/1.0/product-profile.dtd">
+
+<instance-profile id="d"
+                  name="Inspectra"
+                  start-page="Home.topic">
+
+    <toc-element topic="Home.topic"/>
+    <toc-element topic="Overview.md"/>
+    <toc-element topic="Getting-Started.md"/>
+    <toc-element topic="How-It-Works.md"/>
+
+    <toc-element toc-title="Configuration">
+        <toc-element topic="Configuration-Overview.md"/>
+        <toc-element topic="Configuration-Reference.md"/>
+        <toc-element topic="Build-Sources.md"/>
+    </toc-element>
+
+    <toc-element toc-title="Security &amp; compliance">
+        <toc-element topic="Trivy-Overview.md"/>
+        <toc-element topic="Trivy-Installation.md"/>
+        <toc-element topic="Trivy-Secret-Scan.md"/>
+        <toc-element topic="Trivy-Secret-Rules.md"/>
+        <toc-element topic="Trivy-License-Scan.md"/>
+        <toc-element topic="Trivy-Vulnerability-Scan.md"/>
+        <toc-element topic="Trivy-Filesystem-Scan.md"/>
+        <toc-element topic="Trivy-Severities.md"/>
+        <toc-element topic="Trivy-Reports.md"/>
+        <toc-element topic="Trivy-Configuration-Reference.md"/>
+    </toc-element>
+
+    <toc-element toc-title="Public API validation">
+        <toc-element topic="API-Overview.md"/>
+        <toc-element topic="API-Workflow.md"/>
+        <toc-element topic="API-Dump-Format.md"/>
+        <toc-element topic="API-Diff.md"/>
+        <toc-element topic="API-Configuration.md"/>
+    </toc-element>
+
+    <toc-element toc-title="Coverage">
+        <toc-element topic="Coverage-Overview.md"/>
+        <toc-element topic="Coverage-Configuration.md"/>
+        <toc-element topic="Coverage-Reports.md"/>
+        <toc-element topic="Coverage-Ignoring-Code.md"/>
+        <toc-element topic="Coverage-Flutter.md"/>
+    </toc-element>
+
+    <toc-element toc-title="Reference">
+        <toc-element topic="Builder-Reference.md"/>
+        <toc-element topic="CLI-Reference.md"/>
+        <toc-element topic="Library-API.md"/>
+        <toc-element topic="Compatibility.md"/>
+    </toc-element>
+
+    <toc-element toc-title="Operations">
+        <toc-element topic="CI-Integration.md"/>
+        <toc-element topic="Troubleshooting.md"/>
+        <toc-element topic="Migrating-From-Kreate.md"/>
+        <toc-element topic="Inspectra-On-Itself.md"/>
+    </toc-element>
+
+</instance-profile>

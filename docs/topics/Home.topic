@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic SYSTEM "https://resources.jetbrains.com/writerside/1.0/xhtml-entities.dtd">
+<topic xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="https://resources.jetbrains.com/writerside/1.0/topic.v2.xsd"
+       id="Home"
+       title="Inspectra">
+
+    <section-starting-page>
+        <title>Inspectra</title>
+        <description>
+            Trivy security scans, public API dumps and a coverage gate for Dart and Flutter packages - run by
+            build_runner, configured in one YAML file, and built on nothing but the Dart toolchain and Trivy.
+        </description>
+
+        <spotlight>
+            <a href="Getting-Started.md"
+               type="start"
+               summary="Add the dev dependency, enable a feature, and run your first build.">
+                Getting started
+            </a>
+            <a href="How-It-Works.md"
+               type="library"
+               summary="How the builders, the command line and the configuration fit together.">
+                How it works
+            </a>
+        </spotlight>
+
+        <primary>
+            <title>Features</title>
+            <a href="Trivy-Secret-Scan.md"
+               summary="Catch hard-coded credentials on every build, before they reach a push.">
+                Secret scanning
+            </a>
+            <a href="Trivy-License-Scan.md"
+               summary="Check the licenses of the dependencies you actually ship.">
+                License compliance
+            </a>
+            <a href="Trivy-Vulnerability-Scan.md"
+               summary="Match pubspec.lock against the GitHub Security Advisories for pub.">
+                Vulnerability scanning
+            </a>
+            <a href="API-Overview.md"
+               summary="A committed dump of your public API, and a check that fails when it changes unreviewed.">
+                Public API validation
+            </a>
+            <a href="Coverage-Overview.md"
+               summary="Run the tests with coverage, write lcov.info and fail below a threshold.">
+                Coverage gate
+            </a>
+        </primary>
+
+        <secondary>
+            <title>Configuration</title>
+            <a href="Configuration-Overview.md"
+               summary="pubspec.yaml or inspectra.yaml, strict validation, and what is opt-in.">
+                Where the configuration lives
+            </a>
+            <a href="Configuration-Reference.md"
+               summary="Every option, its type, its default and what it does.">
+                Configuration reference
+            </a>
+            <a href="Build-Sources.md"
+               summary="Which files build_runner sees, and how to make it see more.">
+                Build sources
+            </a>
+        </secondary>
+
+        <misc>
+            <cards narrow="true">
+                <title>Reference</title>
+                <a href="Builder-Reference.md" summary="Every builder, its inputs, its outputs and when it reruns.">
+                    Builder reference
+                </a>
+                <a href="CLI-Reference.md" summary="Every command and option of dart run inspectra, and the exit codes.">
+                    Command line reference
+                </a>
+                <a href="Compatibility.md" summary="Supported Dart, build_runner and Trivy versions.">
+                    Compatibility
+                </a>
+            </cards>
+
+            <cards>
+                <title>Operations</title>
+                <a href="CI-Integration.md" summary="GitHub Actions and GitLab CI pipelines that run every check.">
+                    CI integration
+                </a>
+                <a href="Troubleshooting.md" summary="The errors you are most likely to see, and what each one means.">
+                    Troubleshooting
+                </a>
+                <a href="Migrating-From-Kreate.md" summary="Coming from Kreate's Gradle tasks? The same features, the Dart way.">
+                    Coming from Kreate
+                </a>
+            </cards>
+
+            <links narrow="true">
+                <group>
+                    <title>Project</title>
+                    <a href="%repo%" summary="The Inspectra repository on GitHub.">Source code</a>
+                    <a href="%issues%" summary="Report a bug or request a feature.">Issue tracker</a>
+                    <a href="%repo%/blob/main/CHANGELOG.md" summary="What changed in each release.">Changelog</a>
+                </group>
+                <group>
+                    <title>Tools</title>
+                    <a href="%trivy_docs%" summary="The documentation of the scanner behind every scan.">Trivy</a>
+                    <a href="https://pub.dev/packages/build_runner" summary="The build system the builders run in.">build_runner</a>
+                    <a href="https://pub.dev/packages/coverage" summary="The library behind the coverage gate.">package:coverage</a>
+                </group>
+            </links>
+        </misc>
+    </section-starting-page>
+
+</topic>
