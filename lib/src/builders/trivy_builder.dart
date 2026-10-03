@@ -21,14 +21,20 @@ import 'package:path/path.dart' as p;
 /// scan reruns exactly when one of them changes. The JSON report is written
 /// to the build cache; findings are logged, and fail the build when the scan
 /// is configured to.
-class TrivyBuilder implements Builder {
-  /// Creates a builder for [scan], which is one of [TrivyScan.secret],
-  /// [TrivyScan.license] or [TrivyScan.vulnerability].
-  TrivyBuilder(this.scan)
-    : assert(
-        scan != TrivyScan.filesystem,
-        'The filesystem scan only runs from the command line.',
-      );
+///
+/// The filesystem scan has no builder: it reads the whole package, most of
+/// which build_runner cannot see.
+sealed class TrivyBuilder implements Builder {
+  const TrivyBuilder._(this.scan);
+
+  /// The builder of the secret scan.
+  const factory TrivyBuilder.secret() = _SecretScanBuilder;
+
+  /// The builder of the license scan.
+  const factory TrivyBuilder.license() = _LicenseScanBuilder;
+
+  /// The builder of the vulnerability scan.
+  const factory TrivyBuilder.vulnerability() = _VulnerabilityScanBuilder;
 
   /// The scan this builder runs.
   final TrivyScan scan;
@@ -40,23 +46,38 @@ class TrivyBuilder implements Builder {
     r'$package$': [_report],
   };
 
+  /// The settings of [scan] in [config].
+  BuildScanConfig _select(TrivyConfig config);
+
+  /// Runs [scan], reading its inputs through [buildStep].
+  Future<ScanResult> _run(
+    BuildStep buildStep,
+    InspectraConfig config,
+    Trivy trivy,
+    String packageRoot,
+  );
+
   @override
   Future<void> build(BuildStep buildStep) async {
     try {
       final InspectraConfig config = await readConfig(buildStep);
-      final ScanConfig scanConfig = switch (scan) {
-        TrivyScan.secret => config.trivy.secret,
-        TrivyScan.license => config.trivy.license,
-        TrivyScan.vulnerability => config.trivy.vulnerability,
-        TrivyScan.filesystem => config.trivy.filesystem,
-      };
+      final BuildScanConfig scanConfig = _select(config.trivy);
       if (!config.trivy.enabled ||
           !scanConfig.enabled ||
           !scanConfig.runOnBuild) {
         return;
       }
 
-      final ScanResult result = await _run(buildStep, config);
+      final String packageRoot = Directory.current.path;
+      final ScanResult result = await _run(
+        buildStep,
+        config,
+        Trivy(
+          executable: config.trivy.executable,
+          workingDirectory: packageRoot,
+        ),
+        packageRoot,
+      );
       await buildStep.writeAsString(
         AssetId(buildStep.inputId.package, _report),
         const JsonEncoder.withIndent('  ').convert(result.toJson()),
@@ -72,73 +93,63 @@ class TrivyBuilder implements Builder {
       log.severe('$error');
     } on TrivyException catch (error) {
       log.severe('$error');
+    } on FileSystemException catch (error) {
+      log.severe('$error');
     }
   }
 
-  Future<ScanResult> _run(BuildStep buildStep, InspectraConfig config) async {
-    final String package = buildStep.inputId.package;
-    final String packageRoot = Directory.current.path;
-    final trivy = Trivy(
-      executable: config.trivy.executable,
-      workingDirectory: packageRoot,
-    );
-
-    switch (scan) {
-      case TrivyScan.secret:
-        final SecretScanConfig secret = config.trivy.secret;
-        final String? secretConfig = resolveSecretConfig(
-          packageRoot,
-          secret.config,
-        );
-        if (secretConfig != null) {
-          // Read through the build step so that editing the rules reruns
-          // the scan.
-          final id = AssetId(
-            package,
-            p.posix.joinAll(
-              p.split(p.relative(secretConfig, from: packageRoot)),
-            ),
-          );
-          if (await buildStep.canRead(id)) {
-            await buildStep.readAsBytes(id);
-          }
-        }
-        return scanSecrets(
-          trivy: trivy,
-          config: secret,
-          files: await _collect(buildStep, secret.include, secret.exclude),
-          secretConfig: secretConfig,
-        );
-      case TrivyScan.license:
-        final String? lock = await _readLock(buildStep);
-        if (lock == null) {
-          return _noLock(scan);
-        }
-        return scanLicenses(
-          trivy: trivy,
-          config: config.trivy.license,
-          graph: await PackageGraph.load(packageRoot, lockContent: lock),
-        );
-      case TrivyScan.vulnerability:
-        final String? lock = await _readLock(buildStep);
-        if (lock == null) {
-          return _noLock(scan);
-        }
-        final VulnerabilityScanConfig vulnerability =
-            config.trivy.vulnerability;
-        return scanVulnerabilities(
-          trivy: trivy,
-          config: vulnerability,
-          lockContent: lock,
-          graph: vulnerability.includeDevDependencies
-              ? null
-              : await PackageGraph.load(packageRoot, lockContent: lock),
-        );
-      case TrivyScan.filesystem:
-        throw StateError(
-          'The filesystem scan only runs from the command line.',
-        );
+  /// The root package's `pubspec.lock`, read through the build step, or
+  /// `null` when the package has not been resolved.
+  static Future<String?> _readLock(BuildStep buildStep) async {
+    final id = AssetId(buildStep.inputId.package, 'pubspec.lock');
+    if (await buildStep.canRead(id)) {
+      return buildStep.readAsString(id);
     }
+    // In a pub workspace the lock file lives in the workspace root.
+    return findUpwards(Directory.current.path, 'pubspec.lock')?.readAsString();
+  }
+
+  ScanResult _noLock() => ScanResult.skipped(
+    scan: scan.name,
+    reason: 'no pubspec.lock found; run "dart pub get".',
+  );
+}
+
+final class _SecretScanBuilder extends TrivyBuilder {
+  const _SecretScanBuilder() : super._(TrivyScan.secret);
+
+  @override
+  BuildScanConfig _select(TrivyConfig config) => config.secret;
+
+  @override
+  Future<ScanResult> _run(
+    BuildStep buildStep,
+    InspectraConfig config,
+    Trivy trivy,
+    String packageRoot,
+  ) async {
+    final SecretScanConfig secret = config.trivy.secret;
+    final String? secretConfig = resolveSecretConfig(
+      packageRoot,
+      secret.config,
+    );
+    if (secretConfig != null) {
+      // Read through the build step so that editing the rules reruns the
+      // scan - provided the file is one of the package's build sources.
+      final id = AssetId(
+        buildStep.inputId.package,
+        posixRelative(secretConfig, from: packageRoot),
+      );
+      if (await buildStep.canRead(id)) {
+        await buildStep.readAsBytes(id);
+      }
+    }
+    return scanSecrets(
+      trivy: trivy,
+      config: secret,
+      files: await _collect(buildStep, secret.include, secret.exclude),
+      secretConfig: secretConfig,
+    );
   }
 
   static Future<Map<String, List<int>>> _collect(
@@ -163,18 +174,58 @@ class TrivyBuilder implements Builder {
     }
     return files;
   }
+}
 
-  static Future<String?> _readLock(BuildStep buildStep) async {
-    final id = AssetId(buildStep.inputId.package, 'pubspec.lock');
-    if (await buildStep.canRead(id)) {
-      return buildStep.readAsString(id);
+final class _LicenseScanBuilder extends TrivyBuilder {
+  const _LicenseScanBuilder() : super._(TrivyScan.license);
+
+  @override
+  BuildScanConfig _select(TrivyConfig config) => config.license;
+
+  @override
+  Future<ScanResult> _run(
+    BuildStep buildStep,
+    InspectraConfig config,
+    Trivy trivy,
+    String packageRoot,
+  ) async {
+    final String? lock = await TrivyBuilder._readLock(buildStep);
+    if (lock == null) {
+      return _noLock();
     }
-    // In a pub workspace the lock file lives in the workspace root.
-    return findUpwards(Directory.current.path, 'pubspec.lock')?.readAsString();
+    return scanLicenses(
+      trivy: trivy,
+      config: config.trivy.license,
+      graph: await PackageGraph.load(packageRoot, lockContent: lock),
+    );
   }
+}
 
-  static ScanResult _noLock(TrivyScan scan) => ScanResult.skipped(
-    scan: scan.name,
-    reason: 'no pubspec.lock found; run "dart pub get".',
-  );
+final class _VulnerabilityScanBuilder extends TrivyBuilder {
+  const _VulnerabilityScanBuilder() : super._(TrivyScan.vulnerability);
+
+  @override
+  BuildScanConfig _select(TrivyConfig config) => config.vulnerability;
+
+  @override
+  Future<ScanResult> _run(
+    BuildStep buildStep,
+    InspectraConfig config,
+    Trivy trivy,
+    String packageRoot,
+  ) async {
+    final String? lock = await TrivyBuilder._readLock(buildStep);
+    if (lock == null) {
+      return _noLock();
+    }
+    final VulnerabilityScanConfig vulnerability = config.trivy.vulnerability;
+    return scanVulnerabilities(
+      trivy: trivy,
+      config: vulnerability,
+      lockContent: lock,
+      graph: vulnerability.includeDevDependencies
+          ? null
+          : await PackageGraph.load(packageRoot, lockContent: lock),
+    );
+  }
 }

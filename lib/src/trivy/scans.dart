@@ -57,13 +57,7 @@ Future<ScanResult> scanSecrets({
       findings: [
         for (final result in report.results)
           for (final secret in result.secrets)
-            Finding(
-              severity: trivySeverity(secret),
-              target: p.posix.normalize(result.target),
-              id: trivyString(secret, 'RuleID'),
-              title: trivyString(secret, 'Title'),
-              detail: 'line ${trivyString(secret, 'StartLine')}',
-            ),
+            _secretFinding(secret, p.posix.normalize(result.target)),
       ],
     );
   });
@@ -106,8 +100,9 @@ Future<ScanResult> scanLicenses({
     final staged = <String, LockedPackage>{};
     for (final package in packages) {
       final String? directory = graph.directoryOf(package.name);
-      final List<File> licenseFiles =
-          directory == null || !Directory(directory).existsSync()
+      final bool resolved =
+          directory != null && Directory(directory).existsSync();
+      final List<File> licenseFiles = !resolved
           ? const <File>[]
           : Directory(directory)
                 .listSync()
@@ -123,7 +118,7 @@ Future<ScanResult> scanLicenses({
             severity: Severity.unknown,
             target: label,
             id: 'no-license-file',
-            title: directory == null || !Directory(directory).existsSync()
+            title: !resolved
                 ? 'package is not resolved locally; run "dart pub get"'
                 : 'package ships no license file',
           ),
@@ -131,13 +126,10 @@ Future<ScanResult> scanLicenses({
         continue;
       }
       staged[package.name] = package;
+      final Directory target = await Directory(p.join(staging, package.name))
+          .create();
       for (final file in licenseFiles) {
-        await file.copy(
-          p.join(
-            (await Directory(p.join(staging, package.name)).create()).path,
-            p.basename(file.path),
-          ),
-        );
+        await file.copy(p.join(target.path, p.basename(file.path)));
       }
     }
 
@@ -276,13 +268,7 @@ Future<ScanResult> scanFilesystem({
         for (final vulnerability in result.vulnerabilities)
           _vulnerabilityFinding(vulnerability, file: result.target),
         for (final secret in result.secrets)
-          Finding(
-            severity: trivySeverity(secret),
-            target: result.target,
-            id: trivyString(secret, 'RuleID'),
-            title: trivyString(secret, 'Title'),
-            detail: 'line ${trivyString(secret, 'StartLine')}',
-          ),
+          _secretFinding(secret, result.target),
         for (final misconfiguration in result.misconfigurations)
           if (trivyString(misconfiguration, 'Status') != 'PASS')
             Finding(
@@ -310,6 +296,14 @@ Future<ScanResult> scanFilesystem({
     ],
   );
 }
+
+Finding _secretFinding(Map<String, Object?> secret, String file) => Finding(
+  severity: trivySeverity(secret),
+  target: file,
+  id: trivyString(secret, 'RuleID'),
+  title: trivyString(secret, 'Title'),
+  detail: 'line ${trivyString(secret, 'StartLine')}',
+);
 
 Finding _vulnerabilityFinding(
   Map<String, Object?> vulnerability, {

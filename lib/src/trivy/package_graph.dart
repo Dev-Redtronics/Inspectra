@@ -12,7 +12,6 @@ class LockedPackage {
     required this.name,
     required this.version,
     required this.source,
-    required this.dependency,
     required this.json,
   });
 
@@ -24,10 +23,6 @@ class LockedPackage {
 
   /// Where it comes from: `hosted`, `git`, `path` or `sdk`.
   final String source;
-
-  /// How the root depends on it: `direct main`, `direct dev`,
-  /// `direct overridden` or `transitive`.
-  final String dependency;
 
   /// The entry as it appears in the lock file.
   final Map<String, Object?> json;
@@ -57,7 +52,6 @@ class PubspecLock {
           name: key,
           version: '${value['version'] ?? ''}',
           source: '${value['source'] ?? ''}',
-          dependency: '${value['dependency'] ?? ''}',
           json: json,
         );
       }
@@ -102,7 +96,8 @@ class PackageGraph {
   ///
   /// The lock file and package configuration are looked up in [packageRoot]
   /// and then in its parent directories, which is where a pub workspace keeps
-  /// them.
+  /// them. Throws a [FileSystemException] when the package has not been
+  /// resolved with `dart pub get`.
   static Future<PackageGraph> load(
     String packageRoot, {
     String? lockContent,
@@ -118,8 +113,9 @@ class PackageGraph {
         lockContent ??
         await findUpwards(packageRoot, 'pubspec.lock')?.readAsString();
     if (lockText == null) {
-      throw StateError(
-        'No pubspec.lock found for $packageRoot. Run "dart pub get" first.',
+      throw FileSystemException(
+        'No pubspec.lock found; run "dart pub get" first.',
+        packageRoot,
       );
     }
     final File? configFile = findUpwards(
@@ -127,8 +123,9 @@ class PackageGraph {
       p.join('.dart_tool', 'package_config.json'),
     );
     if (configFile == null) {
-      throw StateError(
-        'No .dart_tool/package_config.json found for $packageRoot. Run "dart pub get" first.',
+      throw FileSystemException(
+        'No .dart_tool/package_config.json found; run "dart pub get" first.',
+        packageRoot,
       );
     }
 

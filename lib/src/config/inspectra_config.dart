@@ -164,21 +164,12 @@ abstract class ScanConfig {
   /// Creates the shared settings.
   const ScanConfig({
     required this.enabled,
-    required this.runOnBuild,
     required this.failOnFindings,
     required this.severity,
   });
 
   /// Whether this scan runs when Trivy is enabled.
   final bool enabled;
-
-  /// Whether `dart run build_runner build` runs this scan too.
-  ///
-  /// Only the secret scan does by default: it reads files that are already
-  /// on disk, needs no database download and costs a second. The license and
-  /// vulnerability scans need downloaded data and run from the command line or
-  /// in CI instead.
-  final bool runOnBuild;
 
   /// Whether findings fail the build or the command.
   final bool failOnFindings;
@@ -195,8 +186,28 @@ List<Severity> _severities(YamlReader yaml, List<Severity> fallback) =>
       expected: Severity.expected,
     );
 
+/// Settings of a scan that `build_runner` can run as well.
+abstract class BuildScanConfig extends ScanConfig {
+  /// Creates the settings.
+  const BuildScanConfig({
+    required super.enabled,
+    required this.runOnBuild,
+    required super.failOnFindings,
+    required super.severity,
+  });
+
+  /// Whether `dart run build_runner build` runs this scan too.
+  ///
+  /// Only the secret scan does by default: it reads files that are already
+  /// on disk and costs a second. The vulnerability scan downloads Trivy's
+  /// database, and the license scan reads the license file of every
+  /// dependency, so both run from the command line or in CI unless enabled
+  /// here.
+  final bool runOnBuild;
+}
+
 /// The secret scan.
-class SecretScanConfig extends ScanConfig {
+class SecretScanConfig extends BuildScanConfig {
   /// Creates the secret scan settings.
   const SecretScanConfig({
     required super.enabled,
@@ -260,7 +271,7 @@ class SecretScanConfig extends ScanConfig {
 }
 
 /// The license scan.
-class LicenseScanConfig extends ScanConfig {
+class LicenseScanConfig extends BuildScanConfig {
   /// Creates the license scan settings.
   const LicenseScanConfig({
     required super.enabled,
@@ -307,7 +318,7 @@ class LicenseScanConfig extends ScanConfig {
 }
 
 /// The vulnerability scan.
-class VulnerabilityScanConfig extends ScanConfig {
+class VulnerabilityScanConfig extends BuildScanConfig {
   /// Creates the vulnerability scan settings.
   const VulnerabilityScanConfig({
     required super.enabled,
@@ -366,7 +377,7 @@ class FilesystemScanConfig extends ScanConfig {
     required super.severity,
     required this.scanners,
     required this.skipDirectories,
-  }) : super(runOnBuild: false);
+  });
 
   factory FilesystemScanConfig._parse(YamlReader yaml) {
     final config = FilesystemScanConfig(

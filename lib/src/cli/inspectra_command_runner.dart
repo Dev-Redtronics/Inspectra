@@ -100,10 +100,14 @@ abstract class _InspectraCommand extends Command<int> {
   }
 
   /// Runs the coverage gate and reports whether it passed.
-  Future<bool> runCoverageGate(InspectraConfig config) async {
+  Future<bool> runCoverageGate(
+    InspectraConfig config, {
+    double? minLineCoverage,
+  }) async {
     final CoverageReport report = await runCoverage(
       config.coverage,
       packageRoot,
+      minLineCoverage: minLineCoverage,
     );
     out.writeln(report.render());
     return !report.failed;
@@ -246,28 +250,16 @@ class _CoverageCommand extends _InspectraCommand {
 
   @override
   Future<int> run() async {
-    final InspectraConfig loaded = loadPackageConfig();
     final String? min = argResults!.option('min');
     final double? threshold = min == null ? null : double.tryParse(min);
     if (min != null &&
         (threshold == null || threshold < 0 || threshold > 100)) {
       usageException('--min must be a number between 0 and 100.');
     }
-    final CoverageConfig coverage = loaded.coverage;
-    final config = InspectraConfig(
-      packageName: loaded.packageName,
-      trivy: loaded.trivy,
-      api: loaded.api,
-      coverage: CoverageConfig(
-        enabled: true,
-        runner: coverage.runner,
-        outputDirectory: coverage.outputDirectory,
-        reportOn: coverage.reportOn,
-        exclude: coverage.exclude,
-        minLineCoverage: threshold ?? coverage.minLineCoverage,
-        testArguments: coverage.testArguments,
-      ),
+    final bool passed = await runCoverageGate(
+      loadPackageConfig(),
+      minLineCoverage: threshold,
     );
-    return exitCodeFor(passed: await runCoverageGate(config));
+    return exitCodeFor(passed: passed);
   }
 }

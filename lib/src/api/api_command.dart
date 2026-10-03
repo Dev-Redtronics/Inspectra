@@ -8,6 +8,7 @@ import 'package:glob/glob.dart';
 import 'package:inspectra/src/api/api_diff.dart';
 import 'package:inspectra/src/api/api_renderer.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/util/files.dart';
 import 'package:path/path.dart' as p;
 
 /// Renders the public API of the package in [packageRoot] with the analyzer
@@ -29,7 +30,7 @@ Future<String> renderPackageApi(
     if (Directory(lib).existsSync())
       for (final entity in Directory(lib).listSync(recursive: true))
         if (entity is File && entity.path.endsWith('.dart'))
-          p.posix.joinAll(p.split(p.relative(entity.path, from: root))),
+          posixRelative(entity.path, from: root),
   ]..sort();
 
   final collection = AnalysisContextCollection(includedPaths: [lib]);

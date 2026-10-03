@@ -21,3 +21,8 @@ File? findUpwards(String start, String relative) {
     directory = parent;
   }
 }
+
+/// [path] relative to [from], with `/` as separator on every platform - the
+/// form globs, asset ids and reports use.
+String posixRelative(String path, {required String from}) =>
+    p.posix.joinAll(p.split(p.relative(path, from: from)));

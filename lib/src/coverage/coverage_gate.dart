@@ -5,6 +5,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:coverage/coverage.dart';
 import 'package:glob/glob.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/util/files.dart';
 import 'package:path/path.dart' as p;
 
 /// Thrown when coverage could not be collected, as opposed to being too low.
@@ -117,10 +118,13 @@ class CoverageReport {
 
 /// Runs the tests of the package in [packageRoot] with coverage, writes
 /// `lcov.info` and checks the configured threshold.
+///
+/// [minLineCoverage] overrides the configured threshold.
 Future<CoverageReport> runCoverage(
   CoverageConfig config,
-  String packageRoot,
-) async {
+  String packageRoot, {
+  double? minLineCoverage,
+}) async {
   // Resolved like the coverage package resolves the paths it reports.
   final String root = Directory(packageRoot).absolute
       .resolveSymbolicLinksSync();
@@ -145,7 +149,7 @@ Future<CoverageReport> runCoverage(
   ];
   bool isReported(String path) =>
       reportOn.any((directory) => p.isWithin(directory, path)) &&
-      !excluded.any((glob) => glob.matches(_relative(path, root)));
+      !excluded.any((glob) => glob.matches(posixRelative(path, from: root)));
 
   final reported = <String, HitMap>{};
   final files = <FileCoverage>[];
@@ -158,7 +162,7 @@ Future<CoverageReport> runCoverage(
     final Map<int, int> lines = hitMap.lineHits;
     files.add(
       FileCoverage(
-        _relative(path, root),
+        posixRelative(path, from: root),
         lines.length,
         lines.values.where((hits) => hits > 0).length,
       ),
@@ -173,7 +177,7 @@ Future<CoverageReport> runCoverage(
           if (entity is File &&
               entity.path.endsWith('.dart') &&
               isReported(entity.path))
-            if (_relative(entity.path, root) case final path
+            if (posixRelative(entity.path, from: root) case final path
                 when !covered.contains(path) && _hasOwnCode(entity))
               path,
   ]..sort();
@@ -184,8 +188,8 @@ Future<CoverageReport> runCoverage(
   return CoverageReport(
     files: files,
     untested: untested,
-    lcovPath: _relative(lcov.path, root),
-    minLineCoverage: config.minLineCoverage,
+    lcovPath: posixRelative(lcov.path, from: root),
+    minLineCoverage: minLineCoverage ?? config.minLineCoverage,
   );
 }
 
@@ -196,7 +200,7 @@ Future<Map<String, HitMap>> _collectWithDart(
   String root,
   Directory raw,
 ) async {
-  await _runTests(Platform.resolvedExecutable, [
+  await _runTests(_dartExecutable(), [
     'test',
     '--coverage=${raw.path}',
     ...config.testArguments,
@@ -286,5 +290,9 @@ bool _hasOwnCode(File file) {
   return !isPart && unit.declarations.isNotEmpty;
 }
 
-String _relative(String path, String root) =>
-    p.posix.joinAll(p.split(p.relative(path, from: root)));
+/// The `dart` executable: the one running Inspectra under `dart run`, or the
+/// one on the `PATH` when Inspectra was compiled to an executable.
+String _dartExecutable() {
+  final String running = Platform.resolvedExecutable;
+  return p.basenameWithoutExtension(running) == 'dart' ? running : 'dart';
+}

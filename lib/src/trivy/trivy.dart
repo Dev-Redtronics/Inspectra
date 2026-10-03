@@ -132,7 +132,7 @@ class TrivyResult {
   final Map<String, Object?> _json;
 
   /// The scanned file, relative to the scan target.
-  String get target => _string(_json, 'Target');
+  String get target => trivyString(_json, 'Target');
 
   /// The secrets found in [target].
   List<Map<String, Object?>> get secrets => _entries('Secrets');
@@ -160,13 +160,11 @@ class TrivyResult {
 }
 
 /// The string at [key] of a Trivy JSON object, or the empty string.
-String trivyString(Map<String, Object?> json, String key) => _string(json, key);
-
-/// The severity at `Severity` of a Trivy JSON object.
-Severity trivySeverity(Map<String, Object?> json) =>
-    Severity.tryParse(_string(json, 'Severity')) ?? Severity.unknown;
-
-String _string(Map<String, Object?> json, String key) {
+String trivyString(Map<String, Object?> json, String key) {
   final Object? value = json[key];
   return value == null ? '' : '$value';
 }
+
+/// The severity at `Severity` of a Trivy JSON object.
+Severity trivySeverity(Map<String, Object?> json) =>
+    Severity.tryParse(trivyString(json, 'Severity')) ?? Severity.unknown;

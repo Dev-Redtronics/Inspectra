@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:inspectra/inspectra.dart';
 import 'package:path/path.dart' as p;
@@ -67,6 +68,22 @@ void main() {
 
     expect(lock.packages['http']!.isExternal, isTrue);
     expect(lock.packages['local']!.isExternal, isFalse);
-    expect(lock.packages['test']!.dependency, 'direct dev');
+    expect(lock.packages['test']!.version, '1.0.0');
+  });
+
+  test('asks for "dart pub get" when the package is not resolved', () async {
+    final String unresolved = temporaryDirectory();
+    writeFile(unresolved, 'pubspec.yaml', 'name: unresolved\n');
+
+    await expectLater(
+      PackageGraph.load(unresolved),
+      throwsA(
+        isA<FileSystemException>().having(
+          (error) => error.message,
+          'message',
+          contains('dart pub get'),
+        ),
+      ),
+    );
   });
 }

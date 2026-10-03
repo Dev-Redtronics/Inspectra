@@ -152,9 +152,7 @@ Map<String, List<int>> collectFiles(
       followLinks: false,
     )..sort((a, b) => a.path.compareTo(b.path));
     for (final entry in entries) {
-      final String relative = p.posix.joinAll(
-        p.split(p.relative(entry.path, from: root)),
-      );
+      final String relative = posixRelative(entry.path, from: root);
       if (entry is Directory) {
         // A directory is skipped when everything below it would be excluded.
         if (!excluded('$relative/.inspectra')) {
