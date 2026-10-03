@@ -8,4 +8,4 @@ pubspec.lock
 .idea
 
 # Inspectra coverage output
-coverage/
+/coverage/
