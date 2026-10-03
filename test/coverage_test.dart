@@ -1,4 +1,4 @@
-import 'package:coverage/src/hitmap.dart';
+import 'package:coverage/coverage.dart';
 import 'package:inspectra/inspectra.dart';
 import 'package:test/test.dart';
 
