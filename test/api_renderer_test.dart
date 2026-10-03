@@ -47,7 +47,7 @@ typedef Callback = void Function(int value);
         body(rendered),
         'typedef Callback = void Function(int);\n\n'
         'final int alpha;\n\n'
-        'const String beta;\n\n'
+        "const String beta = 'b';\n\n"
         'set delta(int value);\n\n'
         'int get gamma;\n\n'
         'int zeta();',
@@ -137,6 +137,7 @@ extension type Meters(double value) { Meters operator +(Meters other) => Meters(
       body(rendered),
       contains(
         'extension type Meters(double value) {\n'
+        '  Meters(double value);\n'
         '  Meters operator +(Meters other);\n'
         '}',
       ),
@@ -189,5 +190,38 @@ class Visible {
     );
 
     expect(body(rendered), '@Deprecated void a();\n\nvoid b();');
+  });
+
+  test('records whether a primary constructor is const', () async {
+    final String rendered = await render(
+      'extension type const Id(int value) {}',
+    );
+
+    expect(
+      body(rendered),
+      'extension type Id(int value) {\n  const Id(int value);\n}',
+    );
+  });
+
+  test('records the values of constants', () async {
+    final String rendered = await render('''
+const limit = 10;
+class Config {
+  static const String name = 'config';
+  static final DateTime started = DateTime.now();
+}
+''');
+
+    expect(body(rendered), contains('const int limit = 10;'));
+    expect(body(rendered), contains("static const String name = 'config';"));
+    expect(body(rendered), contains('static final DateTime started;'));
+  });
+
+  test('leaves out unnamed extensions, which are library-private', () async {
+    final String rendered = await render(
+      'extension on int { int get doubled => this * 2; }',
+    );
+
+    expect(body(rendered), isEmpty);
   });
 }

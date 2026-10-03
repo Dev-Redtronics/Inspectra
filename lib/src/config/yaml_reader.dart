@@ -118,9 +118,9 @@ class YamlReader {
     return List.unmodifiable(result);
   }
 
-  /// The list at [key] with each element mapped through [parse], which returns
-  /// `null` for values it does not accept; [expected] describes the accepted
-  /// values for the error message.
+  /// The non-empty list at [key] with each element mapped through [parse],
+  /// which returns `null` for values it does not accept; [expected] describes
+  /// the accepted values for the error message.
   List<T> enums<T>(
     String key, {
     required List<T> fallback,
@@ -130,6 +130,12 @@ class YamlReader {
     final List<String> raw = strings(key, fallback: const []);
     if (_map[key] == null) {
       return List.unmodifiable(fallback);
+    }
+    if (raw.isEmpty) {
+      throw InspectraConfigException(
+        _child(key),
+        'expected at least one of $expected.',
+      );
     }
     final result = <T>[];
     for (var i = 0; i < raw.length; i++) {

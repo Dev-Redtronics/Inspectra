@@ -109,6 +109,23 @@ inspectra:
       );
     });
 
+    test('rejects an empty list of severities', () {
+      expect(
+        () => InspectraConfig.parse({
+          'trivy': {
+            'secret': {'severity': <String>[]},
+          },
+        }, packageName: 'demo'),
+        throwsA(
+          isA<InspectraConfigException>().having(
+            (error) => error.message,
+            'message',
+            startsWith('expected at least one of'),
+          ),
+        ),
+      );
+    });
+
     test('rejects a threshold outside 0 to 100', () {
       expect(
         () => InspectraConfig.parse({
@@ -140,11 +157,13 @@ inspectra:
           configFile: 'api: [unclosed',
         ),
         throwsA(
-          isA<InspectraConfigException>().having(
-            (error) => error.path,
-            'path',
-            'inspectra.yaml',
-          ),
+          isA<InspectraConfigException>()
+              .having((error) => error.path, 'path', 'inspectra.yaml')
+              .having(
+                (error) => error.message,
+                'message',
+                startsWith('line 1,'),
+              ),
         ),
       );
     });

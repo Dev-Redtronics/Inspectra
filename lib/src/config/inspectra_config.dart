@@ -85,7 +85,12 @@ class InspectraConfig {
     try {
       return loadYaml(text, sourceUrl: Uri.file(source));
     } on YamlException catch (error) {
-      throw InspectraConfigException(source, error.message);
+      final int? line = error.span?.start.line;
+      final int? column = error.span?.start.column;
+      final location = line == null || column == null
+          ? ''
+          : 'line ${line + 1}, column ${column + 1}: ';
+      throw InspectraConfigException(source, '$location${error.message}');
     }
   }
 

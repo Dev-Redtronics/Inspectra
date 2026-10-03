@@ -1,3 +1,4 @@
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/element.dart';
 
 /// The first lines of every API dump.
@@ -123,9 +124,7 @@ class _ApiRenderer {
     }
     if (element is InterfaceElement && element is! EnumElement) {
       for (final ConstructorElement constructor in element.constructors) {
-        if (constructor.isOriginDeclaration &&
-            _isPublic(constructor) &&
-            !constructor.isPrimary) {
+        if (constructor.isOriginDeclaration && _isPublic(constructor)) {
           constructors.add(
             '${_deprecated(constructor)}${_constructor(constructor)};',
           );
@@ -178,7 +177,16 @@ class _ApiRenderer {
       if (variable.isLate) 'late',
       if (variable.isConst) 'const' else if (variable.isFinal) 'final',
     ];
-    return [...modifiers, variable.displayString()].join(' ');
+    final String declaration = [
+      ...modifiers,
+      variable.displayString(),
+    ].join(' ');
+    // The value of a constant is part of the API: consumers can use it in
+    // constant expressions and patterns, which break when it changes.
+    final Expression? value = variable.isConst
+        ? variable.constantInitializer
+        : null;
+    return value == null ? declaration : '$declaration = ${value.toSource()}';
   }
 
   String _executable(Element element) {
