@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-import '../config/trust_thresholds.dart';
-import '../io/clock.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/inspectra_exception.dart';
-import '../model/severity.dart';
-import '../pub/pub_package.dart';
-import '../pub/pub_repository_client.dart';
-import 'trust_info.dart';
+import 'package:inspectra/src/config/trust_thresholds.dart';
+import 'package:inspectra/src/io/clock.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/pub/pub_package.dart';
+import 'package:inspectra/src/pub/pub_package_options.dart';
+import 'package:inspectra/src/pub/pub_repository_client.dart';
+import 'package:inspectra/src/pub/pub_score.dart';
+import 'package:inspectra/src/pub/pub_version.dart';
+import 'package:inspectra/src/trust/trust_info.dart';
 
 /// Assesses how much a published package version can be trusted.
 ///
@@ -66,7 +69,7 @@ final class TrustAssessor {
   /// Throws an [InvalidUsageException] when the version was never published
   /// and an [UnavailableException] when the repository cannot be queried.
   Future<TrustInfo?> assessByName(String name, {String? version}) async {
-    final listing = await repository.package(name);
+    final PubPackage? listing = await repository.package(name);
     if (listing == null) {
       return null;
     }
@@ -80,18 +83,18 @@ final class TrustAssessor {
   /// Throws an [InvalidUsageException] when the version was never published
   /// and an [UnavailableException] when the repository cannot be queried.
   Future<TrustInfo> assess(PubPackage listing, String version) async {
-    final record = listing.find(version);
+    final PubVersion? record = listing.find(version);
     if (record == null) {
       throw InvalidUsageException(
         'Version $version of "${listing.name}" was never published.',
       );
     }
-    final name = listing.name;
-    final score = await repository.score(name);
-    final publisher = await repository.publisher(name);
-    final options = await repository.options(name);
-    final now = clock.now();
-    final createdAt = listing.firstPublished;
+    final String name = listing.name;
+    final PubScore? score = await repository.score(name);
+    final String? publisher = await repository.publisher(name);
+    final PubPackageOptions options = await repository.options(name);
+    final DateTime now = clock.now();
+    final DateTime? createdAt = listing.firstPublished;
     final findings = <Finding>[
       ..._ageFindings(name, version, createdAt, record.published, now),
       if (record.retracted)
@@ -158,7 +161,7 @@ final class TrustAssessor {
   ) {
     final findings = <Finding>[];
     if (createdAt != null) {
-      final days = now.difference(createdAt).inDays;
+      final int days = now.difference(createdAt).inDays;
       if (days < thresholds.freshPackageDays) {
         findings.add(
           _finding(
@@ -171,7 +174,7 @@ final class TrustAssessor {
           ),
         );
       }
-      final young =
+      final bool young =
           days >= thresholds.freshPackageDays &&
           days < thresholds.youngPackageDays;
       if (young) {
@@ -188,7 +191,7 @@ final class TrustAssessor {
       }
     }
     if (publishedAt != null) {
-      final hours = now.difference(publishedAt).inHours;
+      final int hours = now.difference(publishedAt).inHours;
       if (hours < thresholds.freshReleaseHours) {
         findings.add(
           _finding(
@@ -214,27 +217,25 @@ final class TrustAssessor {
     String version,
     int? likes,
     int? downloads,
-  ) {
-    return <Finding>[
-      if (likes != null && likes < thresholds.minLikes)
-        _finding(
-          name,
-          version,
-          'LOW_LIKES',
-          Severity.medium,
-          'Package has only $likes like(s) — low community endorsement',
-        ),
-      if (downloads != null && downloads < thresholds.minDownloads)
-        _finding(
-          name,
-          version,
-          'LOW_DOWNLOADS',
-          Severity.medium,
-          'Package has only $downloads download(s) in 30 days — very low '
-              'usage increases the risk of typosquatting',
-        ),
-    ];
-  }
+  ) => <Finding>[
+    if (likes != null && likes < thresholds.minLikes)
+      _finding(
+        name,
+        version,
+        'LOW_LIKES',
+        Severity.medium,
+        'Package has only $likes like(s) — low community endorsement',
+      ),
+    if (downloads != null && downloads < thresholds.minDownloads)
+      _finding(
+        name,
+        version,
+        'LOW_DOWNLOADS',
+        Severity.medium,
+        'Package has only $downloads download(s) in 30 days — very low '
+            'usage increases the risk of typosquatting',
+      ),
+  ];
 
   /// Evaluates the pub points ratio.
   ///
@@ -248,11 +249,11 @@ final class TrustAssessor {
     if (granted == null || max == null || max == 0) {
       return null;
     }
-    final ratio = granted / max;
+    final double ratio = granted / max;
     if (ratio >= thresholds.minPointsRatio) {
       return null;
     }
-    final percent = (ratio * 100).round();
+    final int percent = (ratio * 100).round();
     return _finding(
       name,
       version,
@@ -272,15 +273,13 @@ final class TrustAssessor {
     String rule,
     Severity severity,
     String description,
-  ) {
-    return Finding(
-      ruleId: rule,
-      source: FindingSource.trust,
-      severity: severity,
-      title: description,
-      packageName: name,
-      packageVersion: version,
-      url: 'https://pub.dev/packages/$name/versions/$version',
-    );
-  }
+  ) => Finding(
+    ruleId: rule,
+    source: FindingSource.trust,
+    severity: severity,
+    title: description,
+    packageName: name,
+    packageVersion: version,
+    url: 'https://pub.dev/packages/$name/versions/$version',
+  );
 }

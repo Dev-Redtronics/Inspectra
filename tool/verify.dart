@@ -18,7 +18,7 @@ import 'dart:io';
 
 /// The steps of `dart run tool/verify.dart`, in order: a label and the
 /// `dart` arguments that run it.
-const List<(String, List<String>)> steps = <(String, List<String>)>[
+const steps = <(String, List<String>)>[
   ('Format', <String>['format', '--output=none', '--set-exit-if-changed', '.']),
   ('Analyze', <String>['analyze', '--fatal-infos']),
   ('Style', <String>['run', 'tool/style_check.dart']),
@@ -31,15 +31,15 @@ const List<(String, List<String>)> steps = <(String, List<String>)>[
 /// This is the single command to run before every push; CI runs exactly the
 /// same.
 Future<void> main() async {
-  final dart = Platform.resolvedExecutable;
+  final String dart = Platform.resolvedExecutable;
   for (final (label, arguments) in steps) {
     stdout.writeln('==> $label: dart ${arguments.join(' ')}');
-    final process = await Process.start(
+    final Process process = await Process.start(
       dart,
       arguments,
       mode: ProcessStartMode.inheritStdio,
     );
-    final code = await process.exitCode;
+    final int code = await process.exitCode;
     if (code != 0) {
       stderr.writeln('==> $label failed with exit code $code.');
       exitCode = code;

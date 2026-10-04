@@ -17,9 +17,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:inspectra/src/osv/osv_vulnerability.dart';
 import 'package:path/path.dart' as p;
-
-import 'osv_vulnerability.dart';
 
 /// A disk cache of full OSV records.
 ///
@@ -40,12 +39,12 @@ final class OsvCache {
   ///
   /// Returns the cached record, or `null` on a miss or a corrupt entry.
   OsvVulnerability? read(String id, String modified) {
-    final file = _file(id);
+    final File? file = _file(id);
     if (file == null || !file.existsSync()) {
       return null;
     }
     try {
-      final decoded = jsonDecode(file.readAsStringSync());
+      final Object? decoded = jsonDecode(file.readAsStringSync());
       if (decoded is! Map<String, Object?>) {
         return null;
       }
@@ -62,7 +61,7 @@ final class OsvCache {
   ///
   /// Write failures are ignored: the cache is an optimisation only.
   void write(String id, Map<String, Object?> json) {
-    final file = _file(id);
+    final File? file = _file(id);
     if (file == null) {
       return;
     }
@@ -79,11 +78,11 @@ final class OsvCache {
   ///
   /// Returns the file, or `null` when caching is disabled.
   File? _file(String id) {
-    final root = directory;
+    final String? root = directory;
     if (root == null) {
       return null;
     }
-    final safeName = id.replaceAll(RegExp('[^A-Za-z0-9._-]'), '_');
+    final String safeName = id.replaceAll(RegExp('[^A-Za-z0-9._-]'), '_');
     return File(p.join(root, '$safeName.json'));
   }
 }

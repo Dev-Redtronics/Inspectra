@@ -33,7 +33,10 @@ final class FakeHttpServer {
   ///
   /// Returns the running server.
   static Future<FakeHttpServer> start() async {
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final HttpServer server = await HttpServer.bind(
+      InternetAddress.loopbackIPv4,
+      0,
+    );
     final fake = FakeHttpServer._(server);
     server.listen((request) => unawaited(fake._handle(request)));
     return fake;
@@ -44,11 +47,10 @@ final class FakeHttpServer {
 
   /// Handlers keyed by `METHOD path`; each call may return a different
   /// response, which allows scripting retries.
-  final Map<String, FakeResponse Function(String body)> _routes =
-      <String, FakeResponse Function(String body)>{};
+  final _routes = <String, FakeResponse Function(String body)>{};
 
   /// Every received request as `METHOD path`, in order.
-  final List<String> requests = <String>[];
+  final requests = <String>[];
 
   /// The base URL, for example `http://127.0.0.1:54321`.
   String get baseUrl => 'http://127.0.0.1:${_server.port}';
@@ -70,12 +72,14 @@ final class FakeHttpServer {
 
   /// Answers one [request] from the routes, or with `404`.
   Future<void> _handle(HttpRequest request) async {
-    final body = await utf8.decoder.bind(request).join();
+    final String body = await utf8.decoder.bind(request).join();
     final key = '${request.method} ${request.uri.path}';
     requests.add(key);
-    final handler = _routes[key] ?? _routes['GET ${request.uri.path}'];
+    final FakeResponse Function(String body)? handler =
+        _routes[key] ?? _routes['GET ${request.uri.path}'];
     final isHead = request.method == 'HEAD';
-    final response = handler == null || (isHead && !_routes.containsKey(key))
+    final FakeResponse response =
+        handler == null || (isHead && !_routes.containsKey(key))
         ? const FakeResponse(404)
         : handler(body);
     request.response.statusCode = response.status;

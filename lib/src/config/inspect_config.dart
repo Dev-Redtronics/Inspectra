@@ -1,5 +1,3 @@
-import 'package:inspectra/src/config/yaml_reader.dart';
-
 /*
  * Copyright 2026 Redtronics
  *
@@ -15,6 +13,8 @@ import 'package:inspectra/src/config/yaml_reader.dart';
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import 'package:inspectra/src/config/yaml_reader.dart';
 
 /// Settings of the package source inspector, the `inspect:` section of
 /// `inspectra.yaml`.
@@ -38,7 +38,7 @@ final class InspectConfig {
   /// values.
   factory InspectConfig.fromYaml(YamlReader yaml) {
     const defaults = InspectConfig();
-    const maxBytes = 1 << 40;
+    const int maxBytes = 1 << 40;
     final config = InspectConfig(
       failScore:
           yaml.optionalInt('fail_score', min: 1, max: 100) ??
@@ -73,7 +73,7 @@ final class InspectConfig {
   /// project and is therefore not scanned for code patterns: tests,
   /// examples, benchmarks, documentation, maintainer tooling and prebuilt
   /// DevTools extensions. `lib/`, `bin/` and `hook/` are always scanned.
-  static const List<String> defaultExcludeDirectories = <String>[
+  static const defaultExcludeDirectories = <String>[
     'test',
     'integration_test',
     'example',
@@ -85,7 +85,7 @@ final class InspectConfig {
   ];
 
   /// File name suffixes of generated code that the entropy scanner skips.
-  static const List<String> defaultEntropyExcludes = <String>[
+  static const defaultEntropyExcludes = <String>[
     '.g.dart',
     '.freezed.dart',
     '.mocks.dart',

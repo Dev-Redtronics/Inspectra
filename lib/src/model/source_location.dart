@@ -36,7 +36,7 @@ final class SourceLocation {
   /// Returns the human readable location.
   @override
   String toString() {
-    final currentLine = line;
+    final int? currentLine = line;
     if (currentLine == null) {
       return path;
     }

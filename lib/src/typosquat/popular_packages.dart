@@ -26,7 +26,7 @@ final class PopularPackages {
   const PopularPackages._();
 
   /// The built-in list of popular package names.
-  static const Set<String> names = <String>{
+  static const names = <String>{
     'analyzer',
     'animations',
     'archive',

@@ -46,15 +46,7 @@ final class RetryPolicy {
   final Random _random;
 
   /// The HTTP status codes that indicate a transient server side problem.
-  static const Set<int> _retryableStatusCodes = <int>{
-    408,
-    425,
-    429,
-    500,
-    502,
-    503,
-    504,
-  };
+  static const _retryableStatusCodes = <int>{408, 425, 429, 500, 502, 503, 504};
 
   /// Whether a response with [statusCode] should be retried.
   ///
@@ -74,11 +66,11 @@ final class RetryPolicy {
     if (retryAfter != null) {
       return retryAfter > maxDelay ? maxDelay : retryAfter;
     }
-    final exponent = attempt - 1 < 0 ? 0 : attempt - 1;
-    final backOff = baseDelay.inMilliseconds * pow(2, exponent);
-    final capped = min(backOff.toInt(), maxDelay.inMilliseconds);
-    final half = capped ~/ 2;
-    final jitter = half == 0 ? 0 : _random.nextInt(half + 1);
+    final int exponent = attempt - 1 < 0 ? 0 : attempt - 1;
+    final num backOff = baseDelay.inMilliseconds * pow(2, exponent);
+    final int capped = min(backOff.toInt(), maxDelay.inMilliseconds);
+    final int half = capped ~/ 2;
+    final int jitter = half == 0 ? 0 : _random.nextInt(half + 1);
     return Duration(milliseconds: half + jitter);
   }
 }

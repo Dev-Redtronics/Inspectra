@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import '../config/ignore_rule.dart';
-import '../model/finding.dart';
+import 'package:inspectra/src/config/ignore_rule.dart';
+import 'package:inspectra/src/model/finding.dart';
 
 /// The result of applying ignore rules and severity filters to findings.
 final class FilterOutcome {

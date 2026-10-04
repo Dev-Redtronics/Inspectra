@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'dependency_spec.dart';
+import 'package:inspectra/src/pub/dependency_spec.dart';
 
 /// The parts of a `pubspec.yaml` file that Inspectra analyses.
 final class Pubspec {
@@ -63,7 +63,7 @@ final class Pubspec {
   /// either dependency section or declares an `environment.flutter`
   /// constraint.
   bool get isFlutterProject {
-    final flutterSdk = <DependencySpec?>[
+    final bool flutterSdk = <DependencySpec?>[
       dependencies['flutter'],
       devDependencies['flutter'],
     ].any((spec) => spec?.sdk == 'flutter');

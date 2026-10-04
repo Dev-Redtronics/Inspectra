@@ -23,14 +23,13 @@ import 'package:inspectra/src/archive/archive_entry_kind.dart';
 /// Creates an in-memory regular file entry at [path] with text [content].
 ///
 /// Returns the entry.
-ArchiveEntry textEntry(String path, String content, {int mode = 0x1A4}) {
-  return ArchiveEntry(
-    name: path,
-    kind: ArchiveEntryKind.file,
-    mode: mode,
-    bytes: Uint8List.fromList(utf8.encode(content)),
-  );
-}
+ArchiveEntry textEntry(String path, String content, {int mode = 0x1A4}) =>
+    ArchiveEntry(
+      name: path,
+      kind: ArchiveEntryKind.file,
+      mode: mode,
+      bytes: Uint8List.fromList(utf8.encode(content)),
+    );
 
 /// Creates an in-memory entry of [kind] at [path] with raw [bytes].
 ///
@@ -41,12 +40,10 @@ ArchiveEntry rawEntry(
   List<int> bytes = const <int>[],
   String? linkTarget,
   int mode = 0x1A4,
-}) {
-  return ArchiveEntry(
-    name: path,
-    kind: kind,
-    mode: mode,
-    linkTarget: linkTarget,
-    bytes: Uint8List.fromList(bytes),
-  );
-}
+}) => ArchiveEntry(
+  name: path,
+  kind: kind,
+  mode: mode,
+  linkTarget: linkTarget,
+  bytes: Uint8List.fromList(bytes),
+);

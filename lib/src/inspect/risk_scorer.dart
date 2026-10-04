@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
 
 /// Turns inspection findings into a 0–100 risk score and label.
 ///
@@ -29,39 +29,38 @@ final class RiskScorer {
   const RiskScorer();
 
   /// Points per source and severity.
-  static const Map<FindingSource, Map<Severity, int>> _weights =
-      <FindingSource, Map<Severity, int>>{
-        FindingSource.regex: <Severity, int>{
-          Severity.critical: 40,
-          Severity.high: 20,
-          Severity.medium: 10,
-          Severity.low: 5,
-          Severity.unknown: 5,
-        },
-        FindingSource.entropy: <Severity, int>{
-          Severity.high: 15,
-          Severity.medium: 5,
-        },
-        FindingSource.unicode: <Severity, int>{
-          Severity.critical: 35,
-          Severity.high: 15,
-        },
-        FindingSource.archive: <Severity, int>{
-          Severity.critical: 30,
-          Severity.high: 10,
-          Severity.medium: 5,
-        },
-        FindingSource.trust: <Severity, int>{
-          Severity.critical: 25,
-          Severity.high: 10,
-          Severity.medium: 3,
-        },
-        FindingSource.pubspec: <Severity, int>{
-          Severity.critical: 30,
-          Severity.high: 10,
-          Severity.medium: 3,
-        },
-      };
+  static const _weights = <FindingSource, Map<Severity, int>>{
+    FindingSource.regex: <Severity, int>{
+      Severity.critical: 40,
+      Severity.high: 20,
+      Severity.medium: 10,
+      Severity.low: 5,
+      Severity.unknown: 5,
+    },
+    FindingSource.entropy: <Severity, int>{
+      Severity.high: 15,
+      Severity.medium: 5,
+    },
+    FindingSource.unicode: <Severity, int>{
+      Severity.critical: 35,
+      Severity.high: 15,
+    },
+    FindingSource.archive: <Severity, int>{
+      Severity.critical: 30,
+      Severity.high: 10,
+      Severity.medium: 5,
+    },
+    FindingSource.trust: <Severity, int>{
+      Severity.critical: 25,
+      Severity.high: 10,
+      Severity.medium: 3,
+    },
+    FindingSource.pubspec: <Severity, int>{
+      Severity.critical: 30,
+      Severity.high: 10,
+      Severity.medium: 3,
+    },
+  };
 
   /// Computes the score of [findings].
   ///

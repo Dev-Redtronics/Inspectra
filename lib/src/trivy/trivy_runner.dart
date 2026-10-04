@@ -17,11 +17,13 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../config/trivy_config.dart';
-import '../io/process_runner.dart';
-import '../model/finding.dart';
-import '../model/inspectra_exception.dart';
-import 'trivy_report_mapper.dart';
+import 'package:inspectra/src/config/filesystem_scan_config.dart';
+import 'package:inspectra/src/config/trivy_config.dart';
+import 'package:inspectra/src/io/process_outcome.dart';
+import 'package:inspectra/src/io/process_runner.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/trivy/trivy_report_mapper.dart';
 
 /// Runs `trivy fs` on a project directory and maps its JSON report.
 ///
@@ -42,9 +44,9 @@ final class TrivyRunner {
   ///
   /// Returns the arguments.
   List<String> arguments(String directory) {
-    final filesystem = config.filesystem;
-    final dbRepository = config.dbRepository;
-    final cacheDirectory = config.cacheDirectory;
+    final FilesystemScanConfig filesystem = config.filesystem;
+    final String? dbRepository = config.dbRepository;
+    final String? cacheDirectory = config.cacheDirectory;
     return <String>[
       'fs',
       '--format',
@@ -82,8 +84,12 @@ final class TrivyRunner {
     String directory, {
     required String displayPrefix,
   }) async {
-    final processTimeout = config.timeout + const Duration(minutes: 1);
-    final outcome = await _run(executable, directory, processTimeout);
+    final Duration processTimeout = config.timeout + const Duration(minutes: 1);
+    final (bool, String) outcome = await _run(
+      executable,
+      directory,
+      processTimeout,
+    );
     if (!outcome.$1) {
       throw UnavailableException(
         'Trivy did not finish scanning $directory: ${outcome.$2}',
@@ -117,7 +123,7 @@ final class TrivyRunner {
     Duration timeout,
   ) async {
     try {
-      final outcome = await processRunner.run(
+      final ProcessOutcome outcome = await processRunner.run(
         executable,
         arguments(directory),
         timeout: timeout,
@@ -125,8 +131,10 @@ final class TrivyRunner {
       if (outcome.succeeded) {
         return (true, outcome.stdout);
       }
-      final lines = outcome.stderr.trim().split('\n');
-      final tail = lines.skip(lines.length > 10 ? lines.length - 10 : 0);
+      final List<String> lines = outcome.stderr.trim().split('\n');
+      final Iterable<String> tail = lines.skip(
+        lines.length > 10 ? lines.length - 10 : 0,
+      );
       return (false, 'exit code ${outcome.exitCode}\n${tail.join('\n')}');
     } on ProcessException catch (error) {
       return (false, error.message);

@@ -52,7 +52,7 @@ void main() {
       const JsonReportWriter().render(report, DateTime.utc(2026)),
     ) as Map<String, Object?>;
     expect(json['schemaVersion'], 1);
-    expect((json['tool'] as Map)['version'], inspectraVersion);
+    expect((json['tool']! as Map)['version'], inspectraVersion);
     expect(json['command'], 'sample');
     expect(json['custom'], isTrue);
     expect(json['findings'], hasLength(2));
@@ -81,7 +81,7 @@ void main() {
   });
 
   test('Markdown tables escape pipes', () {
-    final markdown = const MarkdownReportWriter().render(report);
+    final String markdown = const MarkdownReportWriter().render(report);
     expect(markdown, contains(r'Bad \| thing'));
     expect(markdown, contains('1 critical \u00B7 1 medium'));
     expect(

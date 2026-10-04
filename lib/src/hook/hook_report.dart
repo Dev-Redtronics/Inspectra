@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import '../io/ansi_styler.dart';
-import '../model/finding.dart';
-import '../model/severity.dart';
-import '../report/command_report.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/report/command_report.dart';
 
 /// The report of the `hook` command.
 final class HookReport implements CommandReport {

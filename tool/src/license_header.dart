@@ -15,7 +15,7 @@
  */
 
 /// The Apache-2.0 header every Dart file of this repository starts with.
-const String licenseHeader = '''
+const licenseHeader = '''
 /*
  * Copyright 2026 Redtronics
  *

@@ -24,9 +24,9 @@ import 'package:path/path.dart' as p;
 ///
 /// Returns the display path; `.` for [from] itself.
 String displayPath(String path, String from) {
-  final absolute = p.normalize(p.absolute(path));
-  final base = p.normalize(p.absolute(from));
-  final isInside = absolute == base || p.isWithin(base, absolute);
+  final String absolute = p.normalize(p.absolute(path));
+  final String base = p.normalize(p.absolute(from));
+  final bool isInside = absolute == base || p.isWithin(base, absolute);
   if (!isInside) {
     return absolute.replaceAll(r'\', '/');
   }

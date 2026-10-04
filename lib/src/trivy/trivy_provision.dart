@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'trivy_origin.dart';
+import 'package:inspectra/src/trivy/trivy_origin.dart';
 
 /// The outcome of making Trivy available for a scan.
 ///

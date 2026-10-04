@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/osv/osv_affected.dart';
+import 'package:inspectra/src/osv/osv_range.dart';
 import 'package:pub_semver/pub_semver.dart';
-
-import 'osv_affected.dart';
 
 /// Determines the version that fixes a vulnerability for an installed
 /// version.
@@ -39,17 +39,19 @@ final class FixedVersionResolver {
     String packageName,
     String installed,
   ) {
-    final relevant = affected.where(
+    final Iterable<OsvAffected> relevant = affected.where(
       (entry) => entry.packageName == packageName,
     );
-    final ranges = relevant.expand((entry) => entry.ranges);
-    final semverRanges = ranges.where((range) => range.type != 'GIT').toList();
-    final version = _tryParse(installed);
+    final Iterable<OsvRange> ranges = relevant.expand((entry) => entry.ranges);
+    final List<OsvRange> semverRanges = ranges
+        .where((range) => range.type != 'GIT')
+        .toList();
+    final Version? version = _tryParse(installed);
     if (version == null) {
       return _firstFix(semverRanges.expand((range) => range.events));
     }
     for (final range in semverRanges) {
-      final (contains, fix) = _match(range.events, version);
+      final (bool contains, String? fix) = _match(range.events, version);
       if (contains) {
         return fix;
       }
@@ -64,7 +66,7 @@ final class FixedVersionResolver {
   (bool, String?) _match(List<Map<String, String>> events, Version version) {
     Version? start;
     for (final event in events) {
-      final introduced = event['introduced'];
+      final String? introduced = event['introduced'];
       if (introduced != null) {
         start = introduced == '0' ? Version.none : _tryParse(introduced);
         continue;
@@ -73,19 +75,21 @@ final class FixedVersionResolver {
       if (lower == null) {
         continue;
       }
-      final fixed = event['fixed'];
-      final fixedVersion = fixed == null ? null : _tryParse(fixed);
+      final String? fixed = event['fixed'];
+      final Version? fixedVersion = fixed == null ? null : _tryParse(fixed);
       if (fixedVersion != null && version >= lower && version < fixedVersion) {
         return (true, fixed);
       }
-      final lastAffected = event['last_affected'];
-      final lastVersion = lastAffected == null ? null : _tryParse(lastAffected);
+      final String? lastAffected = event['last_affected'];
+      final Version? lastVersion = lastAffected == null
+          ? null
+          : _tryParse(lastAffected);
       if (lastVersion != null && version >= lower && version <= lastVersion) {
         return (true, null);
       }
       start = null;
     }
-    final openEnded = start != null && version >= start;
+    final bool openEnded = start != null && version >= start;
     return (openEnded, null);
   }
 
@@ -96,7 +100,7 @@ final class FixedVersionResolver {
     Iterable<Map<String, String>> events,
     Version version,
   ) {
-    final fixes =
+    final List<(String, Version?)> fixes =
         events
             .map((event) => event['fixed'])
             .nonNulls

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import '../archive/archive_entry.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../model/source_location.dart';
-import '../report/snippet_sanitizer.dart';
+import 'package:inspectra/src/archive/archive_entry.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/report/snippet_sanitizer.dart';
 
 /// Detects invisible and confusable Unicode characters used to hide code.
 ///
@@ -45,7 +45,7 @@ final class UnicodeScanner {
   const UnicodeScanner();
 
   /// The names of bidirectional control characters.
-  static const Map<int, String> _bidi = <int, String>{
+  static const _bidi = <int, String>{
     0x061C: 'ARABIC LETTER MARK',
     0x200E: 'LEFT-TO-RIGHT MARK',
     0x200F: 'RIGHT-TO-LEFT MARK',
@@ -61,7 +61,7 @@ final class UnicodeScanner {
   };
 
   /// The names of invisible characters.
-  static const Map<int, String> _invisible = <int, String>{
+  static const _invisible = <int, String>{
     0x00AD: 'SOFT HYPHEN',
     0x034F: 'COMBINING GRAPHEME JOINER',
     0x180E: 'MONGOLIAN VOWEL SEPARATOR',
@@ -79,13 +79,13 @@ final class UnicodeScanner {
   };
 
   /// The emoji presentation and text presentation selectors.
-  static const Set<int> _presentationSelectors = <int>{0xFE0E, 0xFE0F};
+  static const _presentationSelectors = <int>{0xFE0E, 0xFE0F};
 
   /// The waving black flag that starts emoji tag sequences.
-  static const int _blackFlag = 0x1F3F4;
+  static const _blackFlag = 0x1F3F4;
 
   /// Cyrillic and Greek letters that are visually identical to Latin ones.
-  static const Set<int> _confusables = <int>{
+  static const _confusables = <int>{
     0x0391,
     0x0392,
     0x0395,
@@ -140,15 +140,15 @@ final class UnicodeScanner {
   };
 
   /// The pattern of identifier-like tokens.
-  static final RegExp _token = RegExp(r'[\p{L}\p{N}_]+', unicode: true);
+  static final _token = RegExp(r'[\p{L}\p{N}_]+', unicode: true);
 
   /// Scans every text file of [entries]; binary files are skipped.
   ///
   /// Returns the findings, CRITICAL before HIGH.
   List<Finding> scan(List<ArchiveEntry> entries) {
     final findings = <Finding>[];
-    for (final entry in entries.where((entry) => entry.isText)) {
-      final lines = entry.text.split('\n');
+    for (final ArchiveEntry entry in entries.where((entry) => entry.isText)) {
+      final List<String> lines = entry.text.split('\n');
       for (var index = 0; index < lines.length; index++) {
         findings.addAll(_scanLine(entry, lines[index], index + 1));
       }
@@ -161,16 +161,22 @@ final class UnicodeScanner {
   /// Returns the findings of that line, at most one per rule.
   List<Finding> _scanLine(ArchiveEntry entry, String line, int lineNumber) {
     final found = <String, Finding>{};
-    final runes = line.runes.toList();
+    final List<int> runes = line.runes.toList();
     for (var position = 0; position < runes.length; position++) {
-      final rune = runes[position];
-      final previous = position == 0 ? 0 : runes[position - 1];
-      final isFileStart = lineNumber == 1 && position == 0;
-      final match = _classify(rune, previous, isFileStart, runes, position);
+      final int rune = runes[position];
+      final int previous = position == 0 ? 0 : runes[position - 1];
+      final bool isFileStart = lineNumber == 1 && position == 0;
+      final (String, Severity, String)? match = _classify(
+        rune,
+        previous,
+        isFileStart,
+        runes,
+        position,
+      );
       if (match == null) {
         continue;
       }
-      final (rule, severity, description) = match;
+      final (String rule, Severity severity, String description) = match;
       found.putIfAbsent(
         rule,
         () => _finding(
@@ -184,8 +190,10 @@ final class UnicodeScanner {
         ),
       );
     }
-    final isComment = entry.path.endsWith('.dart') && _isComment(line);
-    final homoglyph = isComment ? null : _homoglyph(entry, line, lineNumber);
+    final bool isComment = entry.path.endsWith('.dart') && _isComment(line);
+    final Finding? homoglyph = isComment
+        ? null
+        : _homoglyph(entry, line, lineNumber);
     if (homoglyph != null) {
       found[homoglyph.ruleId] = homoglyph;
     }
@@ -203,7 +211,7 @@ final class UnicodeScanner {
     List<int> runes,
     int position,
   ) {
-    final bidiName = _bidi[rune];
+    final String? bidiName = _bidi[rune];
     if (bidiName != null) {
       return (
         'BIDI_OVERRIDE',
@@ -211,7 +219,7 @@ final class UnicodeScanner {
         'Invisible bidi control character: $bidiName',
       );
     }
-    final invisibleName = _invisible[rune];
+    final String? invisibleName = _invisible[rune];
     if (invisibleName != null && !(rune == 0xFEFF && isFileStart)) {
       return (
         'ZERO_WIDTH',
@@ -242,11 +250,11 @@ final class UnicodeScanner {
   ///
   /// Returns `true` for potential payload carriers.
   bool _isCarrier(int rune, int previous) {
-    final isSelector = rune >= 0xFE00 && rune <= 0xFE0F;
-    final isSupplementSelector = rune >= 0xE0100 && rune <= 0xE01EF;
-    final isPrivateUse =
+    final bool isSelector = rune >= 0xFE00 && rune <= 0xFE0F;
+    final bool isSupplementSelector = rune >= 0xE0100 && rune <= 0xE01EF;
+    final bool isPrivateUse =
         rune >= 0xE000 && rune <= 0xF8FF || rune >= 0xF0000 && rune <= 0x10FFFF;
-    final isEmojiPresentation =
+    final bool isEmojiPresentation =
         _presentationSelectors.contains(rune) && previous >= 0x2000;
     if (isEmojiPresentation) {
       return false;
@@ -259,8 +267,8 @@ final class UnicodeScanner {
   ///
   /// Returns `true` inside a flag sequence.
   bool _inFlag(List<int> runes, int position) {
-    for (var index = position - 1; index >= 0; index--) {
-      final rune = runes[index];
+    for (int index = position - 1; index >= 0; index--) {
+      final int rune = runes[index];
       if (rune >= 0xE0000 && rune <= 0xE007F) {
         continue;
       }
@@ -274,7 +282,7 @@ final class UnicodeScanner {
   ///
   /// Returns `true` for comment lines.
   bool _isComment(String line) {
-    final trimmed = line.trimLeft();
+    final String trimmed = line.trimLeft();
     return trimmed.startsWith('//') ||
         trimmed.startsWith('*') ||
         trimmed.startsWith('/*');
@@ -285,13 +293,13 @@ final class UnicodeScanner {
   ///
   /// Returns the finding, or `null`.
   Finding? _homoglyph(ArchiveEntry entry, String line, int lineNumber) {
-    for (final match in _token.allMatches(line)) {
-      final token = match[0] ?? '';
-      final runes = token.runes;
-      final hasLatin = runes.any(
+    for (final RegExpMatch match in _token.allMatches(line)) {
+      final String token = match[0] ?? '';
+      final Runes runes = token.runes;
+      final bool hasLatin = runes.any(
         (r) => r >= 0x41 && r <= 0x5A || r >= 0x61 && r <= 0x7A,
       );
-      final foreign = runes.where(_isConfusableScript).firstOrNull;
+      final int? foreign = runes.where(_isConfusableScript).firstOrNull;
       if (hasLatin && foreign != null) {
         return _finding(
           entry,
@@ -316,7 +324,7 @@ final class UnicodeScanner {
   ///
   /// Returns `true` for confusable letters.
   bool _isConfusableScript(int rune) {
-    final fullWidth = rune >= 0xFF21 && rune <= 0xFF5A;
+    final bool fullWidth = rune >= 0xFF21 && rune <= 0xFF5A;
     return fullWidth || _confusables.contains(rune);
   }
 
@@ -332,7 +340,7 @@ final class UnicodeScanner {
     String description,
     int rune,
   ) {
-    final hex = rune.toRadixString(16).toUpperCase().padLeft(4, '0');
+    final String hex = rune.toRadixString(16).toUpperCase().padLeft(4, '0');
     return Finding(
       ruleId: rule,
       source: FindingSource.unicode,

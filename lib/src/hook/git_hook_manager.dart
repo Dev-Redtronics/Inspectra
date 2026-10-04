@@ -16,12 +16,12 @@
 
 import 'dart:io';
 
+import 'package:inspectra/src/hook/pre_commit_script.dart';
+import 'package:inspectra/src/host/host_platform.dart';
+import 'package:inspectra/src/io/process_outcome.dart';
+import 'package:inspectra/src/io/process_runner.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:path/path.dart' as p;
-
-import '../host/host_platform.dart';
-import '../io/process_runner.dart';
-import '../model/inspectra_exception.dart';
-import 'pre_commit_script.dart';
 
 /// Installs and removes the Inspectra pre-commit hook.
 ///
@@ -54,11 +54,11 @@ final class GitHookManager {
   Future<String> hookPath() async {
     final (int, String) outcome;
     try {
-      final result = await processRunner.run('git', const <String>[
-        'rev-parse',
-        '--git-path',
-        'hooks/pre-commit',
-      ], workingDirectory: workingDirectory);
+      final ProcessOutcome result = await processRunner.run(
+        'git',
+        const <String>['rev-parse', '--git-path', 'hooks/pre-commit'],
+        workingDirectory: workingDirectory,
+      );
       outcome = (result.exitCode, result.stdout.trim());
     } on ProcessException {
       throw const UnavailableException(
@@ -80,10 +80,10 @@ final class GitHookManager {
   ///
   /// Throws an [InvalidUsageException] when a foreign hook exists.
   Future<(String, bool)> install() async {
-    final path = await hookPath();
+    final String path = await hookPath();
     final file = File(path);
     if (file.existsSync()) {
-      final existing = file.readAsStringSync();
+      final String existing = file.readAsStringSync();
       if (existing.contains(PreCommitScript.marker)) {
         file.writeAsStringSync(PreCommitScript.content);
         return (path, true);
@@ -104,7 +104,7 @@ final class GitHookManager {
   ///
   /// Returns the removed path, or `null` when there was nothing to remove.
   Future<String?> remove() async {
-    final path = await hookPath();
+    final String path = await hookPath();
     final file = File(path);
     if (!file.existsSync()) {
       return null;
@@ -123,7 +123,10 @@ final class GitHookManager {
     if (host.isWindows) {
       return;
     }
-    final result = await processRunner.run('chmod', <String>['755', path]);
+    final ProcessOutcome result = await processRunner.run('chmod', <String>[
+      '755',
+      path,
+    ]);
     if (!result.succeeded) {
       throw UnavailableException(
         'Could not make $path executable: '

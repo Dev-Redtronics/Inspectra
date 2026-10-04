@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import 'dart:typed_data';
+
 import 'package:inspectra/inspectra.dart';
 import 'package:inspectra/src/net/http_transport.dart';
 import 'package:inspectra/src/pub/package_archive_downloader.dart';
@@ -69,7 +71,7 @@ void main() {
 
   test('accepts archives without a published checksum', () async {
     server.on('GET', '/a.tar.gz', FakeResponse.text('bytes'));
-    final bytes = await downloader().download(
+    final Uint8List bytes = await downloader().download(
       'x',
       PubVersion(version: '1.0.0', archiveUrl: '${server.baseUrl}/a.tar.gz'),
     );

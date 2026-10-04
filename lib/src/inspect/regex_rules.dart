@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import '../model/severity.dart';
-import 'regex_rule.dart';
+import 'package:inspectra/src/inspect/regex_rule.dart';
+import 'package:inspectra/src/model/severity.dart';
 
 /// The built-in pattern rules of the source inspector.
 ///
@@ -33,10 +33,10 @@ final class RegexRules {
   const RegexRules._();
 
   /// Dart source files.
-  static const Set<String> _dart = <String>{'.dart'};
+  static const _dart = <String>{'.dart'};
 
   /// Script files that can be executed on a developer machine.
-  static const Set<String> _scripts = <String>{
+  static const _scripts = <String>{
     '.sh',
     '.bash',
     '.zsh',
@@ -49,10 +49,10 @@ final class RegexRules {
   };
 
   /// Dart sources and scripts.
-  static const Set<String> _all = <String>{..._dart, ..._scripts};
+  static const _all = <String>{..._dart, ..._scripts};
 
   /// The rules in evaluation order.
-  static final List<RegexRule> all = <RegexRule>[
+  static final all = <RegexRule>[
     RegexRule(
       id: 'HARDCODED_URL',
       pattern: r'''https?://[^\s'"`<>)\]]{10,}''',

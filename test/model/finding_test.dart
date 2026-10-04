@@ -49,7 +49,7 @@ void main() {
   });
 
   test('toJson omits absent optional values', () {
-    final json = finding.toJson();
+    final Map<String, Object?> json = finding.toJson();
     expect(json['severity'], 'high');
     expect(json.containsKey('fixedVersion'), isFalse);
     expect(json['file'], 'pubspec.lock');

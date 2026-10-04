@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -13,6 +29,8 @@ import 'package:inspectra/src/coverage/coverage_gate.dart';
 import 'package:inspectra/src/io/ansi_styler.dart';
 import 'package:inspectra/src/io/console.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/quality/format_check.dart';
+import 'package:inspectra/src/quality/lint.dart';
 import 'package:inspectra/src/quality/quality_command.dart';
 import 'package:inspectra/src/trivy/finding.dart';
 import 'package:inspectra/src/trivy/trivy.dart';
@@ -61,7 +79,7 @@ abstract class PackageCheckCommand extends Command<int> {
   @override
   Future<int> run() async {
     try {
-      final passed = await runChecks();
+      final bool passed = await runChecks();
       return passed ? ExitCode.success.code : ExitCode.findings.code;
     } on InspectraConfigException catch (error) {
       context.err.writeln('error: $error');
@@ -100,7 +118,7 @@ abstract class PackageCheckCommand extends Command<int> {
   ///
   /// Returns `true` when the public API matches its dump.
   Future<bool> runApiCheck(InspectraConfig config) async {
-    final result = await checkApi(config, packageRoot);
+    final ApiCheckResult result = await checkApi(config, packageRoot);
     out.writeln(result.render());
     return !result.failed;
   }
@@ -112,14 +130,14 @@ abstract class PackageCheckCommand extends Command<int> {
   ///
   /// Throws a [TrivyException] when Trivy is not available.
   Future<bool> runScans(InspectraConfig config, {Set<TrivyScan>? scans}) async {
-    final executable = await provisionTrivy(config);
-    final results = await runTrivyScans(
+    final String executable = await provisionTrivy(config);
+    final List<ScanResult> results = await runTrivyScans(
       config,
       packageRoot,
       only: scans,
       executable: executable,
     );
-    for (final ScanResult result in results) {
+    for (final result in results) {
       out.writeln(result.render());
     }
     return results.every((result) => !result.failed);
@@ -145,9 +163,9 @@ abstract class PackageCheckCommand extends Command<int> {
       workingDirectory: packageRoot,
     );
     try {
-      final provision = await session.trivyProvisioner().provision(
-        onStatus: console.info,
-      );
+      final TrivyProvision provision = await session
+          .trivyProvisioner()
+          .provision(onStatus: console.info);
       return switch (provision) {
         TrivyAvailable(:final executable) => executable,
         TrivyUnavailable(:final reason) => throw TrivyException(reason),
@@ -162,7 +180,11 @@ abstract class PackageCheckCommand extends Command<int> {
   ///
   /// Returns `true` when the check passed.
   Future<bool> runFormat(InspectraConfig config, {bool fix = false}) async {
-    final result = await runFormatCheck(config, packageRoot, fix: fix);
+    final FormatResult result = await runFormatCheck(
+      config,
+      packageRoot,
+      fix: fix,
+    );
     out.writeln(result.render());
     return !result.failed;
   }
@@ -172,7 +194,7 @@ abstract class PackageCheckCommand extends Command<int> {
   ///
   /// Returns `true` when the check passed.
   Future<bool> runLintGate(InspectraConfig config, {bool fix = false}) async {
-    final result = await runLintCheck(config, packageRoot, fix: fix);
+    final LintResult result = await runLintCheck(config, packageRoot, fix: fix);
     out.writeln(result.render());
     return !result.failed;
   }
@@ -185,7 +207,7 @@ abstract class PackageCheckCommand extends Command<int> {
     InspectraConfig config, {
     double? minLineCoverage,
   }) async {
-    final report = await runCoverage(
+    final CoverageReport report = await runCoverage(
       config.coverage,
       packageRoot,
       minLineCoverage: minLineCoverage,

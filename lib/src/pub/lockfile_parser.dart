@@ -16,12 +16,11 @@
 
 import 'dart:io';
 
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/pub/lockfile.dart';
+import 'package:inspectra/src/pub/lockfile_entry.dart';
+import 'package:inspectra/src/util/yaml_plain.dart';
 import 'package:yaml/yaml.dart';
-
-import '../util/yaml_plain.dart';
-import '../model/inspectra_exception.dart';
-import 'lockfile_entry.dart';
-import 'lockfile.dart';
 
 /// Parses `pubspec.lock` files.
 ///
@@ -64,7 +63,7 @@ final class LockfileParser {
     if (document is! Map<String, Object?>) {
       throw InvalidInputException('$path is not a pubspec.lock file.');
     }
-    final packages = document['packages'];
+    final Object? packages = document['packages'];
     if (packages == null) {
       return Lockfile(path: path, packages: const <LockfileEntry>[]);
     }
@@ -99,9 +98,11 @@ final class LockfileParser {
         'The entry of package "$name" in $path must be a mapping.',
       );
     }
-    final description = value['description'];
-    final url = description is Map<String, Object?> ? description['url'] : null;
-    final hostedUrl = url is String ? url : null;
+    final Object? description = value['description'];
+    final Object? url = description is Map<String, Object?>
+        ? description['url']
+        : null;
+    final String? hostedUrl = url is String ? url : null;
     return LockfileEntry(
       name: name,
       version: '${value['version'] ?? ''}',

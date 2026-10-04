@@ -22,7 +22,7 @@ import 'package:inspectra/inspectra.dart';
 /// with the code it returns, after flushing standard output and error.
 Future<void> main(List<String> arguments) async {
   final runner = InspectraCommandRunner(CommandContext.system());
-  final code = await runner.run(arguments);
+  final int code = await runner.run(arguments);
   await stdout.flush();
   await stderr.flush();
   exit(code);

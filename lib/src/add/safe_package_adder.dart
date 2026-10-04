@@ -16,24 +16,28 @@
 
 import 'dart:io';
 
+import 'package:inspectra/src/add/add_report.dart';
+import 'package:inspectra/src/config/inspect_config.dart';
+import 'package:inspectra/src/host/host_platform.dart';
+import 'package:inspectra/src/inspect/inspection_report.dart';
+import 'package:inspectra/src/inspect/inspection_result.dart';
+import 'package:inspectra/src/inspect/package_inspector.dart';
+import 'package:inspectra/src/io/process_outcome.dart';
+import 'package:inspectra/src/io/process_runner.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
+import 'package:inspectra/src/policy/finding_filter.dart';
+import 'package:inspectra/src/pub/package_name.dart';
+import 'package:inspectra/src/pub/pub_package.dart';
+import 'package:inspectra/src/pub/pub_repository_client.dart';
+import 'package:inspectra/src/pub/pubspec.dart';
+import 'package:inspectra/src/pub/pubspec_parser.dart';
+import 'package:inspectra/src/typosquat/typosquat_detector.dart';
 import 'package:path/path.dart' as p;
-
-import '../config/inspect_config.dart';
-import '../host/host_platform.dart';
-import '../inspect/inspection_report.dart';
-import '../inspect/package_inspector.dart';
-import '../io/process_runner.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/inspectra_exception.dart';
-import '../model/severity.dart';
-import '../model/source_location.dart';
-import '../policy/finding_filter.dart';
-import '../pub/package_name.dart';
-import '../pub/pub_repository_client.dart';
-import '../pub/pubspec_parser.dart';
-import '../typosquat/typosquat_detector.dart';
-import 'add_report.dart';
 
 /// Audits a package and adds exactly the audited version to a project.
 ///
@@ -101,27 +105,27 @@ final class SafePackageAdder {
     if (version != null) {
       PackageName.validateExactVersion(version);
     }
-    final pubspecPath = p.join(projectDirectory, 'pubspec.yaml');
-    final pubspec = const PubspecParser().parseFile(pubspecPath);
+    final String pubspecPath = p.join(projectDirectory, 'pubspec.yaml');
+    final Pubspec pubspec = const PubspecParser().parseFile(pubspecPath);
     onStatus('Checking typosquatting indicators...');
-    final typosquat = typosquatDetector.analyze(<String>[
+    final List<Finding> typosquat = typosquatDetector.analyze(<String>[
       name,
     ], locate: (_) => const SourceLocation('pubspec.yaml'));
     onStatus('Fetching package metadata...');
-    final listing = await repository.package(name);
+    final PubPackage? listing = await repository.package(name);
     if (listing == null) {
       throw InvalidUsageException(
         'Package "$name" was not found on ${repository.baseUrl}.',
       );
     }
-    final target = version ?? listing.latestVersion;
-    final inspection = await inspector.inspect(
+    final String target = version ?? listing.latestVersion;
+    final InspectionResult inspection = await inspector.inspect(
       name,
       target,
       onStatus: onStatus,
       knownListing: listing,
     );
-    final outcome = filter.apply(<Finding>[
+    final FilterOutcome outcome = filter.apply(<Finding>[
       ...typosquat,
       ...inspection.findings,
     ]);
@@ -131,9 +135,9 @@ final class SafePackageAdder {
       failScore: config.failScore,
       suppressedCount: outcome.suppressed.length,
     );
-    final reasons = _blockReasons(report);
-    final blocked = reasons.isNotEmpty;
-    final mayInstall = !dryRun && (!blocked || force);
+    final List<String> reasons = _blockReasons(report);
+    final bool blocked = reasons.isNotEmpty;
+    final bool mayInstall = !dryRun && (!blocked || force);
     if (!mayInstall) {
       return AddReport(
         package: name,
@@ -147,7 +151,7 @@ final class SafePackageAdder {
       );
     }
     onStatus('Running pub add $name:$target...');
-    final output = await _pubAdd(
+    final String output = await _pubAdd(
       pubspec.isFlutterProject ? 'flutter' : 'dart',
       name,
       target,
@@ -171,16 +175,17 @@ final class SafePackageAdder {
   ///
   /// Returns the reasons; empty when the package passed.
   List<String> _blockReasons(InspectionReport report) {
-    final findings = report.findings;
-    final typosquat = findings.where(
+    final List<Finding> findings = report.findings;
+    final Iterable<Finding> typosquat = findings.where(
       (f) =>
           f.source == FindingSource.typosquat &&
           f.severity.isAtLeast(Severity.high),
     );
-    final untrusted = findings.where(
+    final Iterable<Finding> untrusted = findings.where(
       (f) => f.source == FindingSource.trust && f.severity == Severity.critical,
     );
-    final matched = typosquat.firstOrNull?.attributes['matchedPublicPackage'];
+    final Object? matched =
+        typosquat.firstOrNull?.attributes['matchedPublicPackage'];
     final typosquatReason =
         'The package name looks like a typosquat of '
         '"$matched".';
@@ -216,13 +221,13 @@ final class SafePackageAdder {
       '$name:$version',
     ];
     try {
-      final outcome = await processRunner.run(
+      final ProcessOutcome outcome = await processRunner.run(
         executable,
         arguments,
         workingDirectory: projectDirectory,
         runInShell: host.isWindows,
       );
-      final output = '${outcome.stdout}\n${outcome.stderr}'.trim();
+      final String output = '${outcome.stdout}\n${outcome.stderr}'.trim();
       if (!outcome.succeeded) {
         throw UnavailableException(
           '"$executable ${arguments.join(' ')}" failed with exit code '

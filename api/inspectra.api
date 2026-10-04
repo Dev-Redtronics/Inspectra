@@ -26,20 +26,52 @@ class ApiCheckResult {
   String render();
 }
 
-class ApiConfig {
+final class ApiConfig {
   final bool enabled;
   final List<String> ignoredLibraries;
   final List<String> nonPublicAnnotations;
   final String output;
   const ApiConfig({required bool enabled, required String output, required List<String> ignoredLibraries, required List<String> nonPublicAnnotations});
+  factory ApiConfig.fromYaml(YamlReader yaml, String packageName);
 }
 
-abstract class BuildScanConfig extends ScanConfig {
+abstract base class BuildScanConfig extends ScanConfig {
   final bool runOnBuild;
   const BuildScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity});
 }
 
-class CoverageConfig {
+final class Clock {
+  const Clock(DateTime Function() _now);
+  const Clock.system();
+  DateTime now();
+}
+
+final class CommandContext {
+  final Future<void> Function(Duration) sleep;
+  final Clock clock;
+  final Environment environment;
+  final StringSink err;
+  final HostPlatform host;
+  final StringSink out;
+  final bool outIsTerminal;
+  final ProcessRunner processRunner;
+  final bool supportsAnsi;
+  final String workingDirectory;
+  CommandContext({required Environment environment, required Clock clock, required ProcessRunner processRunner, required HostPlatform host, required String workingDirectory, required StringSink out, required StringSink err, bool outIsTerminal = false, bool supportsAnsi = false, Future<void> Function(Duration) sleep = Future.delayed});
+  factory CommandContext.system();
+}
+
+final class ConfigOverrides {
+  final Map<String, String> cli;
+  final Environment environment;
+  ConfigOverrides({Map<String, String> cli = const <String, String>{}, Environment environment = const Environment(<String, String>{})});
+  factory ConfigOverrides.none();
+  (String, String)? lookup(String path);
+  void ensureAllConsumed();
+  static String environmentName(String path);
+}
+
+final class CoverageConfig {
   final bool enabled;
   final List<String> exclude;
   final double? minLineCoverage;
@@ -48,6 +80,7 @@ class CoverageConfig {
   final CoverageRunner runner;
   final List<String> testArguments;
   const CoverageConfig({required bool enabled, required CoverageRunner runner, required String outputDirectory, required List<String> reportOn, required List<String> exclude, required double? minLineCoverage, required List<String> testArguments});
+  factory CoverageConfig.fromYaml(YamlReader yaml);
 }
 
 class CoverageException implements Exception {
@@ -79,6 +112,21 @@ class DartToolException implements Exception {
   String toString();
 }
 
+final class Environment {
+  final Map<String, String> variables;
+  const Environment(Map<String, String> variables);
+  factory Environment.current();
+  String? get homeDirectory;
+  String? operator [](String name);
+  List<String> pathEntries(String separator);
+}
+
+enum ExitCode {
+  success, findings, usage, dataError, unavailable, software;
+  final int code;
+  static ExitCode of(InspectraException error);
+}
+
 class FileCoverage {
   final int linesFound;
   final int linesHit;
@@ -87,24 +135,45 @@ class FileCoverage {
   double get percent;
 }
 
-class FilesystemScanConfig extends ScanConfig {
+final class FilesystemScanConfig extends ScanConfig {
+  static const List<String> defaultSkipDirectories = <String>['.dart_tool', 'build', '.git'];
+  static const List<String> supportedScanners = <String>['vuln', 'secret', 'misconfig', 'license'];
+  static const List<String> defaultScanners = <String>['vuln', 'secret', 'misconfig'];
+  static const FilesystemScanConfig defaults = FilesystemScanConfig(enabled: false, failOnFindings: true, severity: defaultSeverity, scanners: defaultScanners, skipDirectories: defaultSkipDirectories);
+  static const List<Severity> defaultSeverity = <Severity>[Severity.critical, Severity.high, Severity.medium, Severity.low];
   final List<String> scanners;
   final List<String> skipDirectories;
   const FilesystemScanConfig({required bool enabled, required bool failOnFindings, required List<Severity> severity, required List<String> scanners, required List<String> skipDirectories});
+  factory FilesystemScanConfig.fromYaml(YamlReader yaml);
 }
 
-class Finding {
-  final String? detail;
-  final String id;
+final class Finding {
+  final List<String> aliases;
+  final Map<String, Object?> attributes;
+  final String description;
+  final String? fixedVersion;
+  final SourceLocation? location;
+  final String? packageName;
+  final String? packageVersion;
+  final String ruleId;
   final Severity severity;
-  final String target;
+  final String? snippet;
+  final FindingSource source;
   final String title;
-  const Finding({required Severity severity, required String target, required String id, required String title, String? detail});
+  final String? url;
+  const Finding({required String ruleId, required FindingSource source, required Severity severity, required String title, String description = '', SourceLocation? location, String? packageName, String? packageVersion, String? fixedVersion, List<String> aliases = const <String>[], String? url, String? snippet, Map<String, Object?> attributes = const <String, Object?>{}});
+  String get fingerprint;
+  Set<String> get identifiers;
   Map<String, Object?> toJson();
 }
 
-class FormatConfig {
-  static const List<String> defaultExclude = ['**/.dart_tool/**', '**/build/**', ..._generatedFiles];
+enum FindingSource {
+  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion;
+  final String id;
+}
+
+final class FormatConfig {
+  static const List<String> defaultExclude = <String>['**/.dart_tool/**', '**/build/**', ...generatedFiles];
   static const List<String> defaultInclude = <String>['**.dart'];
   final bool enabled;
   final List<String> exclude;
@@ -113,6 +182,7 @@ class FormatConfig {
   final int? pageWidth;
   final bool runOnBuild;
   const FormatConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<String> include, required List<String> exclude, required int? pageWidth});
+  factory FormatConfig.fromYaml(YamlReader yaml);
 }
 
 class FormatResult {
@@ -126,38 +196,106 @@ class FormatResult {
   Map<String, Object?> toJson();
 }
 
-class InspectraConfig {
-  final ApiConfig api;
-  final CoverageConfig coverage;
-  final FormatConfig format;
-  final LintConfig lint;
-  final String packageName;
-  final TrivyConfig trivy;
-  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage});
-  factory InspectraConfig.defaults(String packageName);
-  factory InspectraConfig.fromSources({required String pubspec, String? configFile});
-  factory InspectraConfig.parse(Object? node, {required String packageName, String path = ''});
+final class HostPlatform {
+  final CpuArchitecture architecture;
+  final OperatingSystem operatingSystem;
+  const HostPlatform(OperatingSystem operatingSystem, CpuArchitecture architecture);
+  factory HostPlatform.current();
+  factory HostPlatform.fromAbi(Abi abi);
+  bool get isWindows;
+  String get pathListSeparator;
+  String toString();
 }
 
-class InspectraConfigException implements Exception {
+final class IgnoreRule {
+  final DateTime? expires;
+  final String id;
+  final String? package;
+  final String reason;
+  const IgnoreRule({required String id, required String reason, String? package, DateTime? expires});
+  bool isExpired(DateTime now);
+  static List<IgnoreRule> listFromYaml(YamlReader yaml);
+  bool matches(Finding finding);
+}
+
+final class InspectConfig {
+  static const List<String> defaultEntropyExcludes = <String>['.g.dart', '.freezed.dart', '.mocks.dart', '.pb.dart', '.gr.dart'];
+  static const List<String> defaultExcludeDirectories = <String>['test', 'integration_test', 'example', 'benchmark', 'doc', 'docs', 'tool', 'extension'];
+  final List<String> entropyExcludes;
+  final List<String> excludeDirectories;
+  final int failScore;
+  final int maxArchiveBytes;
+  final int maxEntries;
+  final int maxExtractedBytes;
+  final List<String> trustedHosts;
+  const InspectConfig({int failScore = 30, int maxArchiveBytes = 64 * 1024 * 1024, int maxExtractedBytes = 256 * 1024 * 1024, int maxEntries = 20000, List<String> entropyExcludes = defaultEntropyExcludes, List<String> excludeDirectories = defaultExcludeDirectories, List<String> trustedHosts = const <String>[]});
+  factory InspectConfig.fromYaml(YamlReader yaml);
+}
+
+final class InspectraCommandRunner extends CommandRunner<int> {
+  final CommandContext context;
+  InspectraCommandRunner(CommandContext context);
+  void printUsage();
+  Future<int> run(Iterable<String> args);
+}
+
+final class InspectraConfig {
+  final ApiConfig api;
+  final CoverageConfig coverage;
+  final Severity? failOn;
+  final FormatConfig format;
+  final List<IgnoreRule> ignore;
+  final InspectConfig inspect;
+  final LintConfig lint;
+  final Severity minSeverity;
+  final NetworkConfig network;
+  final String packageName;
+  final TrivyConfig trivy;
+  final TrustThresholds trust;
+  final TyposquatConfig typosquat;
+  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig()});
+  factory InspectraConfig.defaults(String packageName);
+  factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides});
+  factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides});
+}
+
+final class InspectraConfigException implements Exception {
   final String message;
   final String path;
   const InspectraConfigException(String path, String message);
   String toString();
 }
 
-class LicenseScanConfig extends BuildScanConfig {
+sealed class InspectraException implements Exception {
+  final String message;
+  const InspectraException(String message);
+  String toString();
+}
+
+final class InvalidInputException extends InspectraException {
+  const InvalidInputException(String message);
+}
+
+final class InvalidUsageException extends InspectraException {
+  const InvalidUsageException(String message);
+}
+
+final class LicenseScanConfig extends BuildScanConfig {
+  static const LicenseScanConfig defaults = LicenseScanConfig(enabled: true, runOnBuild: false, failOnFindings: true, severity: defaultSeverity, ignoredLicenses: <String>[], ignoredPackages: <String>[], includeDevDependencies: false);
+  static const List<Severity> defaultSeverity = <Severity>[Severity.critical, Severity.high, Severity.unknown];
   final List<String> ignoredLicenses;
   final List<String> ignoredPackages;
   final bool includeDevDependencies;
   const LicenseScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity, required List<String> ignoredLicenses, required List<String> ignoredPackages, required bool includeDevDependencies});
+  factory LicenseScanConfig.fromYaml(YamlReader yaml);
 }
 
-class LintConfig {
+final class LintConfig {
   final bool enabled;
   final LintLevel failOn;
   final bool runOnBuild;
   const LintConfig({required bool enabled, required bool runOnBuild, required LintLevel failOn});
+  factory LintConfig.fromYaml(YamlReader yaml);
 }
 
 class LintIssue {
@@ -195,12 +333,40 @@ class LockedPackage {
   bool get isExternal;
 }
 
+final class NetworkConfig {
+  static const String defaultOsvUrl = 'https://api.osv.dev';
+  static const String defaultPubHostedUrl = 'https://pub.dev';
+  final String? caCertificates;
+  final int concurrency;
+  final int maxAttempts;
+  final bool offline;
+  final String osvUrl;
+  final String? proxy;
+  final String pubHostedUrl;
+  final Duration retryBaseDelay;
+  final Duration timeout;
+  const NetworkConfig({bool offline = false, Duration timeout = const Duration(seconds: 30), int maxAttempts = 3, Duration retryBaseDelay = const Duration(seconds: 1), int concurrency = 8, String? proxy, String? caCertificates, String osvUrl = defaultOsvUrl, String pubHostedUrl = defaultPubHostedUrl});
+  factory NetworkConfig.fromYaml(YamlReader yaml);
+}
+
 class PackageGraph {
   final PubspecLock lock;
   final String rootName;
   String? directoryOf(String name);
   static Future<PackageGraph> load(String packageRoot, {String? lockContent});
   Set<String> reachable({required bool includeDev});
+}
+
+final class ProcessOutcome {
+  final int exitCode;
+  final String stderr;
+  final String stdout;
+  const ProcessOutcome({required int exitCode, required String stdout, required String stderr});
+  bool get succeeded;
+}
+
+abstract interface class ProcessRunner {
+  abstract Future<ProcessOutcome> run(String executable, List<String> arguments, {String? workingDirectory, bool runInShell = false, Duration? timeout});
 }
 
 class PubspecLock {
@@ -210,39 +376,71 @@ class PubspecLock {
   String retain(Iterable<String> names);
 }
 
-abstract class ScanConfig {
+abstract base class ScanConfig {
   final bool enabled;
   final bool failOnFindings;
   final List<Severity> severity;
   const ScanConfig({required bool enabled, required bool failOnFindings, required List<Severity> severity});
+  static List<Severity> readSeverities(YamlReader yaml, List<Severity> fallback);
+}
+
+class ScanFinding {
+  final String? detail;
+  final String id;
+  final Severity severity;
+  final String target;
+  final String title;
+  const ScanFinding({required Severity severity, required String target, required String id, required String title, String? detail});
+  Map<String, Object?> toJson();
 }
 
 class ScanResult {
   final bool failOnFindings;
-  final List<Finding> findings;
+  final List<ScanFinding> findings;
   final String scan;
   final String? skipped;
-  ScanResult({required String scan, required List<Finding> findings, required bool failOnFindings, String? skipped});
+  ScanResult({required String scan, required List<ScanFinding> findings, required bool failOnFindings, String? skipped});
   ScanResult.skipped({required String scan, required String reason});
   bool get failed;
   String render();
   Map<String, Object?> toJson();
 }
 
-class SecretScanConfig extends BuildScanConfig {
+final class SecretScanConfig extends BuildScanConfig {
   static const List<String> defaultInclude = <String>['**.dart', '**.yaml', '**.yml', '**.json', '**.env', '**.properties'];
   static const List<String> defaultExclude = <String>['**/.dart_tool/**', '**/build/**', '**/.git/**'];
+  static const SecretScanConfig defaults = SecretScanConfig(enabled: true, runOnBuild: true, failOnFindings: true, severity: defaultSeverity, config: null, include: defaultInclude, exclude: defaultExclude);
+  static const List<Severity> defaultSeverity = <Severity>[Severity.critical, Severity.high, Severity.medium, Severity.low];
   final String? config;
   final List<String> exclude;
   final List<String> include;
   const SecretScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity, required String? config, required List<String> include, required List<String> exclude});
+  factory SecretScanConfig.fromYaml(YamlReader yaml);
 }
 
 enum Severity {
   critical, high, medium, low, unknown;
+  final String label;
   static String get expected;
+  int get rank;
   String get trivyName;
+  static Severity fromCvssScore(double score);
+  bool isAtLeast(Severity threshold);
+  static Severity parse(String? value);
   static Severity? tryParse(String value);
+}
+
+final class SourceLocation {
+  final int? line;
+  final String path;
+  const SourceLocation(String path, {int? line});
+  String toString();
+}
+
+final class SystemProcessRunner implements ProcessRunner {
+  static const int timedOutExitCode = -1;
+  const SystemProcessRunner();
+  Future<ProcessOutcome> run(String executable, List<String> arguments, {String? workingDirectory, bool runInShell = false, Duration? timeout});
 }
 
 class Trivy {
@@ -252,21 +450,47 @@ class Trivy {
   Future<TrivyReport> scanFilesystem({required String target, required List<String> scanners, required List<Severity> severity, List<String> arguments = const []});
 }
 
-class TrivyConfig {
+final class TrivyConfig {
+  static const String defaultReportDirectory = '.dart_tool/inspectra/trivy';
+  static const String pinnedVersion = '0.75.0';
+  static const String legacyExecutableVariable = 'INSPECTRA_TRIVY';
+  static const String defaultDownloadBaseUrl = 'https://github.com/aquasecurity/trivy/releases/download';
+  static const String defaultLatestReleaseUrl = 'https://github.com/aquasecurity/trivy/releases/latest';
+  static const String latestVersion = 'latest';
+  final String? cacheDirectory;
+  final Duration connectivityTimeout;
+  final String? dbRepository;
+  final bool download;
+  final String downloadBaseUrl;
   final bool enabled;
   final String? executable;
+  final List<String> extraArgs;
   final FilesystemScanConfig filesystem;
+  final String? installDirectory;
+  final String latestReleaseUrl;
   final LicenseScanConfig license;
+  final TrivyMode mode;
   final String reportDirectory;
   final SecretScanConfig secret;
+  final bool skipDbUpdate;
+  final Duration timeout;
+  final bool useInstalled;
+  final String version;
   final VulnerabilityScanConfig vulnerability;
-  const TrivyConfig({required bool enabled, required String? executable, required String reportDirectory, required SecretScanConfig secret, required LicenseScanConfig license, required VulnerabilityScanConfig vulnerability, required FilesystemScanConfig filesystem});
+  const TrivyConfig({bool enabled = false, TrivyMode mode = TrivyMode.auto, String version = pinnedVersion, bool useInstalled = true, bool download = true, String? executable, String? installDirectory, String downloadBaseUrl = defaultDownloadBaseUrl, String latestReleaseUrl = defaultLatestReleaseUrl, String reportDirectory = defaultReportDirectory, bool skipDbUpdate = false, String? dbRepository, String? cacheDirectory, Duration timeout = const Duration(minutes: 10), Duration connectivityTimeout = const Duration(seconds: 3), List<String> extraArgs = const <String>[], SecretScanConfig secret = SecretScanConfig.defaults, LicenseScanConfig license = LicenseScanConfig.defaults, VulnerabilityScanConfig vulnerability = VulnerabilityScanConfig.defaults, FilesystemScanConfig filesystem = FilesystemScanConfig.defaults});
+  factory TrivyConfig.fromYaml(YamlReader yaml);
+  TrivyConfig withResolvedPaths(String Function(String) resolve);
 }
 
 class TrivyException implements Exception {
   final String message;
   const TrivyException(String message);
   String toString();
+}
+
+enum TrivyMode {
+  auto, required, disabled;
+  final String id;
 }
 
 class TrivyReport {
@@ -289,11 +513,36 @@ enum TrivyScan {
   bool isEnabled(TrivyConfig config);
 }
 
-class VulnerabilityScanConfig extends BuildScanConfig {
+final class TrustThresholds {
+  final int freshPackageDays;
+  final int freshReleaseHours;
+  final int minDownloads;
+  final int minLikes;
+  final double minPointsRatio;
+  final int youngPackageDays;
+  const TrustThresholds({int freshPackageDays = 7, int youngPackageDays = 30, int freshReleaseHours = 24, int minLikes = 5, int minDownloads = 100, double minPointsRatio = 0.5});
+  factory TrustThresholds.fromYaml(YamlReader yaml);
+}
+
+final class TyposquatConfig {
+  final List<String> allow;
+  final List<String> popular;
+  const TyposquatConfig({List<String> allow = const <String>[], List<String> popular = const <String>[]});
+  factory TyposquatConfig.fromYaml(YamlReader yaml);
+}
+
+final class UnavailableException extends InspectraException {
+  const UnavailableException(String message);
+}
+
+final class VulnerabilityScanConfig extends BuildScanConfig {
+  static const List<Severity> defaultSeverity = <Severity>[Severity.critical, Severity.high, Severity.medium, Severity.low];
+  static const VulnerabilityScanConfig defaults = VulnerabilityScanConfig(enabled: true, runOnBuild: false, failOnFindings: true, severity: defaultSeverity, includeDevDependencies: true, ignoreUnfixed: false, ignoredVulnerabilities: <String>[]);
   final bool ignoreUnfixed;
   final List<String> ignoredVulnerabilities;
   final bool includeDevDependencies;
   const VulnerabilityScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity, required bool includeDevDependencies, required bool ignoreUnfixed, required List<String> ignoredVulnerabilities});
+  factory VulnerabilityScanConfig.fromYaml(YamlReader yaml);
 }
 
 const String apiDumpHeader = '// Public API of this package, generated by Inspectra. Do not edit by hand.\n' '// Regenerate it with "dart run build_runner build" or "dart run inspectra api dump".\n';
@@ -304,6 +553,8 @@ Future<FormatResult> checkFormat({required FormatConfig config, required String 
 
 Map<String, List<int>> collectFiles(String root, List<String> include, List<String> exclude);
 
+const String configEnvironmentVariable = 'INSPECTRA_CONFIG';
+
 const String configFileName = 'inspectra.yaml';
 
 const String defaultSecretConfig = 'trivy-secret.yaml';
@@ -312,7 +563,9 @@ String? diffApi({required String expected, required String actual});
 
 Future<String> dumpApi(InspectraConfig config, String packageRoot);
 
-InspectraConfig loadConfig(String packageRoot);
+const String inspectraVersion = '1.0.0';
+
+InspectraConfig loadConfig(String packageRoot, {ConfigOverrides? overrides, String? configFile, bool requirePubspec = true});
 
 List<LintIssue> parseAnalyzerOutput(String output, String packageRoot);
 
@@ -336,7 +589,7 @@ Future<LintResult> runLint({required LintConfig config, required String packageR
 
 Future<LintResult> runLintCheck(InspectraConfig config, String packageRoot, {bool fix = false});
 
-Future<List<ScanResult>> runTrivyScans(InspectraConfig config, String packageRoot, {Set<TrivyScan>? only});
+Future<List<ScanResult>> runTrivyScans(InspectraConfig config, String packageRoot, {Set<TrivyScan>? only, String? executable});
 
 Future<ScanResult> scanFilesystem({required Trivy trivy, required FilesystemScanConfig config, required String packageRoot, String? secretConfig});
 

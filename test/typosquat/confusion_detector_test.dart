@@ -60,7 +60,7 @@ void main() {
       concurrency: 2,
       mirrorUrl: server.baseUrl,
     );
-    final findings = await detector.analyze(
+    final List<Finding> findings = await detector.analyze(
       dependencies,
       locate: (_) => const SourceLocation('pubspec.yaml'),
     );

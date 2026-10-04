@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
+import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
-
-import '../version.dart';
-import 'command/add_command.dart';
-import 'command/api_command.dart';
-import 'command/check_command.dart';
-import 'command/coverage_command.dart';
-import 'command/format_command.dart';
-import 'command/lint_command.dart';
-import 'command/audit_command.dart';
-import 'command/hook_command.dart';
-import 'command/inspect_command.dart';
-import 'command/scan_command.dart';
-import 'command/trivy_command.dart';
-import 'command/trust_command.dart';
-import 'command/typosquat_command.dart';
-import 'command_context.dart';
-import 'exit_code.dart';
+import 'package:inspectra/src/cli/command/add_command.dart';
+import 'package:inspectra/src/cli/command/api_command.dart';
+import 'package:inspectra/src/cli/command/audit_command.dart';
+import 'package:inspectra/src/cli/command/check_command.dart';
+import 'package:inspectra/src/cli/command/coverage_command.dart';
+import 'package:inspectra/src/cli/command/format_command.dart';
+import 'package:inspectra/src/cli/command/hook_command.dart';
+import 'package:inspectra/src/cli/command/inspect_command.dart';
+import 'package:inspectra/src/cli/command/lint_command.dart';
+import 'package:inspectra/src/cli/command/scan_command.dart';
+import 'package:inspectra/src/cli/command/trivy_command.dart';
+import 'package:inspectra/src/cli/command/trust_command.dart';
+import 'package:inspectra/src/cli/command/typosquat_command.dart';
+import 'package:inspectra/src/cli/command_context.dart';
+import 'package:inspectra/src/cli/exit_code.dart';
+import 'package:inspectra/src/version.dart';
 
 /// The `inspectra` command line.
 ///
@@ -39,9 +39,10 @@ import 'exit_code.dart';
 /// `scan`. The supply-chain commands are `scan`, `audit`, `inspect`,
 /// `trust`, `typosquat`, `add`, `hook` and `trivy`; the package checks are
 /// `check`, `format`, `lint`, `api` and `coverage`. The global
-/// `--directory` option selects the package to work on. Usage errors exit with `64`; unexpected internal errors are
-/// caught, reported and exit with `70` instead of crashing with a stack
-/// trace (set `INSPECTRA_DEBUG=1` to print it).
+/// `--directory` option selects the package to work on. Usage errors exit
+/// with `64`; unexpected internal errors are caught, reported and exit with
+/// `70` instead of crashing with a stack trace (set `INSPECTRA_DEBUG=1` to
+/// print it).
 final class InspectraCommandRunner extends CommandRunner<int> {
   /// Creates the command line for [context].
   InspectraCommandRunner(this.context)
@@ -80,7 +81,7 @@ final class InspectraCommandRunner extends CommandRunner<int> {
   final CommandContext context;
 
   /// The arguments that are handled by the runner itself.
-  static const Set<String> _runnerFlags = <String>{
+  static const _runnerFlags = <String>{
     '-h',
     '--help',
     '--version',
@@ -97,9 +98,9 @@ final class InspectraCommandRunner extends CommandRunner<int> {
   /// Returns the process exit code.
   @override
   Future<int> run(Iterable<String> args) async {
-    final arguments = _withDefaultCommand(args.toList());
+    final List<String> arguments = _withDefaultCommand(args.toList());
     try {
-      final results = parse(arguments);
+      final ArgResults results = parse(arguments);
       if (results['version'] == true) {
         context.out.writeln('inspectra $inspectraVersion');
         return ExitCode.success.code;
@@ -129,7 +130,7 @@ final class InspectraCommandRunner extends CommandRunner<int> {
   List<String> _withDefaultCommand(List<String> args) {
     var index = 0;
     while (index < args.length) {
-      final argument = args[index];
+      final String argument = args[index];
       if (_runnerFlags.contains(argument) && !_takesValue(argument)) {
         return args;
       }

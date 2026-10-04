@@ -27,7 +27,7 @@ final class FakeProcessRunner implements ProcessRunner {
   handler;
 
   /// Every call as `executable arguments...`, in order.
-  final List<String> calls = <String>[];
+  final calls = <String>[];
 
   /// Records the call and answers it from [handler].
   ///

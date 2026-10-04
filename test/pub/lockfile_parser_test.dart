@@ -15,6 +15,8 @@
  */
 
 import 'package:inspectra/inspectra.dart';
+import 'package:inspectra/src/pub/lockfile.dart';
+import 'package:inspectra/src/pub/lockfile_entry.dart';
 import 'package:inspectra/src/pub/lockfile_parser.dart';
 import 'package:test/test.dart';
 
@@ -45,21 +47,27 @@ packages:
 ''';
 
   test('sorts direct dependencies first and classifies sources', () {
-    final lockfile = const LockfileParser().parse(content, path: 'p.lock');
+    final Lockfile lockfile = const LockfileParser().parse(
+      content,
+      path: 'p.lock',
+    );
     expect(lockfile.packages.map((entry) => entry.name), <String>[
       'alpha',
       'internal',
       'local',
       'zeta',
     ]);
-    final auditable = lockfile.auditable('https://pub.dev');
+    final List<LockfileEntry> auditable = lockfile.auditable('https://pub.dev');
     expect(auditable.map((entry) => entry.name), <String>['alpha', 'zeta']);
     expect(lockfile.privatelyHosted('https://pub.dev').single.name, 'internal');
     expect(lockfile.unhosted.single.name, 'local');
   });
 
   test('treats the configured mirror as public', () {
-    final lockfile = const LockfileParser().parse(content, path: 'p.lock');
+    final Lockfile lockfile = const LockfileParser().parse(
+      content,
+      path: 'p.lock',
+    );
     expect(lockfile.auditable('https://pub.corp.example'), hasLength(3));
   });
 

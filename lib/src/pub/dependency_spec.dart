@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'dependency_kind.dart';
+import 'package:inspectra/src/pub/dependency_kind.dart';
 
 /// One dependency declaration of a `pubspec.yaml` file.
 final class DependencySpec {

@@ -41,11 +41,11 @@ void main() {
   });
 
   test('rates links by where they point', () {
-    final escaping = const ArchiveScanner().scan([
+    final List<Finding> escaping = const ArchiveScanner().scan([
       rawEntry('lib/x', ArchiveEntryKind.symlink, linkTarget: '../../etc'),
     ]);
     expect(escaping.single.severity, Severity.critical);
-    final internal = const ArchiveScanner().scan([
+    final List<Finding> internal = const ArchiveScanner().scan([
       rawEntry('lib/x', ArchiveEntryKind.symlink, linkTarget: 'lib/y.dart'),
     ]);
     expect(internal.single.severity, Severity.high);

@@ -43,10 +43,11 @@ void main() {
     (OperatingSystem.other, CpuArchitecture.x64): null,
   };
 
-  for (final entry in expectations.entries) {
-    final (system, cpu) = entry.key;
+  for (final MapEntry<(OperatingSystem, CpuArchitecture), String?> entry
+      in expectations.entries) {
+    final (OperatingSystem system, CpuArchitecture cpu) = entry.key;
     test('${system.abiName}-${cpu.abiName}', () {
-      final asset = TrivyReleaseAsset.forHost(
+      final TrivyReleaseAsset? asset = TrivyReleaseAsset.forHost(
         HostPlatform(system, cpu),
         'v0.75.0',
       );
@@ -55,7 +56,7 @@ void main() {
   }
 
   test('builds release URLs below the configured base', () {
-    final asset = TrivyReleaseAsset.forHost(
+    final TrivyReleaseAsset asset = TrivyReleaseAsset.forHost(
       const HostPlatform(OperatingSystem.windows, CpuArchitecture.x64),
       '0.75.0',
     )!;

@@ -15,12 +15,13 @@
  */
 
 import 'package:args/args.dart';
-
-import '../../report/command_report.dart';
-import '../../scan/scan_report.dart';
-import '../../scan/scan_service.dart';
-import '../command_session.dart';
-import '../inspectra_command.dart';
+import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/inspectra_command.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/scan/scan_report.dart';
+import 'package:inspectra/src/scan/scan_result.dart';
+import 'package:inspectra/src/scan/scan_service.dart';
 
 /// `inspectra scan [directory]`, the default command: the complete project
 /// scan with OSV.dev, the supply chain checks and Trivy.
@@ -57,7 +58,7 @@ final class ScanCommand extends InspectraCommand {
     CommandSession session,
     ArgResults results,
   ) async {
-    final root = session.resolve(results.rest.firstOrNull ?? '.');
+    final String root = session.resolve(results.rest.firstOrNull ?? '.');
     final service = ScanService(
       auditService: session.auditService(),
       typosquatDetector: session.typosquatDetector(),
@@ -65,7 +66,7 @@ final class ScanCommand extends InspectraCommand {
       trivyService: session.trivyService(),
       workingDirectory: session.workingDirectory,
     );
-    final result = await service.scan(
+    final ScanResult result = await service.scan(
       root,
       recursive: results['recursive'] == true,
       onStatus: session.console.info,
@@ -76,7 +77,7 @@ final class ScanCommand extends InspectraCommand {
         'mode.',
       );
     }
-    final outcome = session.filter().apply(result.findings);
+    final FilterOutcome outcome = session.filter().apply(result.findings);
     return ScanReport(
       result: result,
       findings: outcome.kept,

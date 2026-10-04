@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../model/source_location.dart';
-import 'levenshtein.dart';
-import 'popular_packages.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/typosquat/levenshtein.dart';
+import 'package:inspectra/src/typosquat/popular_packages.dart';
 
 /// Detects dependency names that imitate popular packages.
 ///
@@ -55,7 +55,7 @@ final class TyposquatDetector {
   final Set<String> _allow;
 
   /// Suffixes that legitimately extend popular package names.
-  static const Set<String> _commonSuffixes = <String>{
+  static const _commonSuffixes = <String>{
     'core',
     'lite',
     'plus',
@@ -88,24 +88,23 @@ final class TyposquatDetector {
   };
 
   /// The affix rules: pattern, rule id and description.
-  static final List<(RegExp, String, String)> _affixes =
-      <(RegExp, String, String)>[
-        (
-          RegExp(r'^flutter[_-]'),
-          'PREFIX_FLUTTER',
-          'Adds "flutter_" prefix — common confusion attack',
-        ),
-        (
-          RegExp(r'[_-]flutter$'),
-          'SUFFIX_FLUTTER',
-          'Adds "_flutter" suffix — common confusion attack',
-        ),
-        (
-          RegExp(r'^(?:dart|pub)[_-]'),
-          'PREFIX_DART_PUB',
-          'Adds "dart_" or "pub_" prefix — confusion with official packages',
-        ),
-      ];
+  static final _affixes = <(RegExp, String, String)>[
+    (
+      RegExp('^flutter[_-]'),
+      'PREFIX_FLUTTER',
+      'Adds "flutter_" prefix — common confusion attack',
+    ),
+    (
+      RegExp(r'[_-]flutter$'),
+      'SUFFIX_FLUTTER',
+      'Adds "_flutter" suffix — common confusion attack',
+    ),
+    (
+      RegExp('^(?:dart|pub)[_-]'),
+      'PREFIX_DART_PUB',
+      'Adds "dart_" or "pub_" prefix — confusion with official packages',
+    ),
+  ];
 
   /// Normalises [name] for comparison: lower case without separators.
   ///
@@ -120,17 +119,17 @@ final class TyposquatDetector {
     List<String> names, {
     required SourceLocation Function(String name) locate,
   }) {
-    final normalisedPopular = _popular.map(_normalise).toSet();
+    final Set<String> normalisedPopular = _popular.map(_normalise).toSet();
     final findings = <Finding>[];
     for (final name in names) {
-      final skip =
+      final bool skip =
           _popular.contains(name) ||
           _allow.contains(name) ||
           normalisedPopular.contains(_normalise(name));
       if (skip) {
         continue;
       }
-      final finding =
+      final Finding? finding =
           _affixMatch(name, locate) ??
           _suffixMatch(name, locate) ??
           _closestMatch(name, locate);
@@ -149,12 +148,12 @@ final class TyposquatDetector {
     String name,
     SourceLocation Function(String name) locate,
   ) {
-    final normalised = _normalise(name);
+    final String normalised = _normalise(name);
     String? best;
     var bestDistance = 3;
-    final sorted = _popular.toList()..sort();
+    final List<String> sorted = _popular.toList()..sort();
     for (final candidate in sorted) {
-      final distance = levenshteinDistance(
+      final int distance = levenshteinDistance(
         normalised,
         _normalise(candidate),
         limit: 2,
@@ -203,7 +202,7 @@ final class TyposquatDetector {
       if (!pattern.hasMatch(name)) {
         continue;
       }
-      final stripped = name.replaceFirst(pattern, '');
+      final String stripped = name.replaceFirst(pattern, '');
       if (_popular.contains(stripped)) {
         return _finding(
           name,
@@ -226,18 +225,18 @@ final class TyposquatDetector {
     String name,
     SourceLocation Function(String name) locate,
   ) {
-    final candidates =
+    final List<String> candidates =
         _popular
             .where((popular) => name.length > popular.length + 1)
             .where((popular) => name.startsWith(popular))
             .where((popular) => '_-'.contains(name[popular.length]))
             .toList()
           ..sort((a, b) => b.length.compareTo(a.length));
-    final popular = candidates.firstOrNull;
+    final String? popular = candidates.firstOrNull;
     if (popular == null) {
       return null;
     }
-    final suffix = name.substring(popular.length + 1);
+    final String suffix = name.substring(popular.length + 1);
     if (suffix.length > 4 || _commonSuffixes.contains(suffix)) {
       return null;
     }
@@ -262,16 +261,14 @@ final class TyposquatDetector {
     String description,
     String matched,
     SourceLocation Function(String name) locate,
-  ) {
-    return Finding(
-      ruleId: rule,
-      source: FindingSource.typosquat,
-      severity: severity,
-      title: description,
-      location: locate(name),
-      packageName: name,
-      url: 'https://pub.dev/packages/$matched',
-      attributes: <String, Object?>{'matchedPublicPackage': matched},
-    );
-  }
+  ) => Finding(
+    ruleId: rule,
+    source: FindingSource.typosquat,
+    severity: severity,
+    title: description,
+    location: locate(name),
+    packageName: name,
+    url: 'https://pub.dev/packages/$matched',
+    attributes: <String, Object?>{'matchedPublicPackage': matched},
+  );
 }

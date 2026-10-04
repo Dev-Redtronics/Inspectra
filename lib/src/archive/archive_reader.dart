@@ -18,18 +18,18 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
-
-import '../model/inspectra_exception.dart';
-import 'archive_entry.dart';
-import 'archive_entry_kind.dart';
-import 'archive_limits.dart';
+import 'package:inspectra/src/archive/archive_entry.dart';
+import 'package:inspectra/src/archive/archive_entry_kind.dart';
+import 'package:inspectra/src/archive/archive_limits.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
 
 /// Reads `.tar.gz` and `.zip` archives into memory within strict limits.
 ///
 /// Decompression is streamed through a bounded inflater, so a small archive
-/// that expands to gigabytes is rejected after [ArchiveLimits.maxExtractedBytes]
-/// instead of exhausting memory. Every entry, including duplicates that a
-/// plain archive library would silently merge, is returned.
+/// that expands to gigabytes is rejected after
+/// [ArchiveLimits.maxExtractedBytes] instead of exhausting memory. Every
+/// entry, including duplicates that a plain archive library would silently
+/// merge, is returned.
 final class ArchiveReader {
   /// Creates a reader enforcing [limits].
   const ArchiveReader(this.limits);
@@ -38,13 +38,13 @@ final class ArchiveReader {
   final ArchiveLimits limits;
 
   /// The two magic bytes every gzip stream starts with.
-  static const List<int> _gzipMagic = <int>[0x1F, 0x8B];
+  static const _gzipMagic = <int>[0x1F, 0x8B];
 
   /// The two magic bytes every zip file starts with, `PK`.
-  static const List<int> _zipMagic = <int>[0x50, 0x4B];
+  static const _zipMagic = <int>[0x50, 0x4B];
 
   /// The tar type flags of regular files.
-  static const Set<String> _fileFlags = <String>{'0', '7', '', '\x00'};
+  static const _fileFlags = <String>{'0', '7', '', '\x00'};
 
   /// Reads a gzip compressed tar archive.
   ///
@@ -54,7 +54,7 @@ final class ArchiveReader {
   /// exceeds a limit.
   List<ArchiveEntry> readTarGz(Uint8List compressed) {
     _checkCompressedSize(compressed);
-    final tarBytes = _gunzip(compressed);
+    final Uint8List tarBytes = _gunzip(compressed);
     final decoder = TarDecoder();
     try {
       decoder.decodeBytes(tarBytes);
@@ -80,7 +80,7 @@ final class ArchiveReader {
   /// exceeds a limit.
   List<ArchiveEntry> readZip(Uint8List compressed) {
     _checkCompressedSize(compressed);
-    final hasMagic =
+    final bool hasMagic =
         compressed.length > 4 &&
         compressed[0] == _zipMagic.first &&
         compressed[1] == _zipMagic.last;
@@ -99,7 +99,7 @@ final class ArchiveReader {
       throw const InvalidInputException('The zip archive is malformed.');
     }
     _checkEntryCount(archive.files.length);
-    final declared = archive.files.fold<int>(0, (sum, f) => sum + f.size);
+    final int declared = archive.files.fold<int>(0, (sum, f) => sum + f.size);
     _checkExtractedSize(declared);
     return archive.files.map(_zipEntry).toList();
   }
@@ -108,8 +108,10 @@ final class ArchiveReader {
   ///
   /// Returns the entry.
   ArchiveEntry _tarEntry(TarFile file) {
-    final kind = _tarKind(file.typeFlag, file.filename);
-    final content = kind == ArchiveEntryKind.file ? file.contentBytes : null;
+    final ArchiveEntryKind kind = _tarKind(file.typeFlag, file.filename);
+    final Uint8List? content = kind == ArchiveEntryKind.file
+        ? file.contentBytes
+        : null;
     return ArchiveEntry(
       name: file.filename,
       kind: kind,
@@ -159,7 +161,7 @@ final class ArchiveReader {
         bytes: Uint8List(0),
       );
     }
-    final content = file.readBytes() ?? Uint8List(0);
+    final Uint8List content = file.readBytes() ?? Uint8List(0);
     _checkExtractedSize(content.length);
     return ArchiveEntry(
       name: file.name,
@@ -176,7 +178,7 @@ final class ArchiveReader {
   ///
   /// Throws an [InvalidInputException] for corrupt data or oversized output.
   Uint8List _gunzip(Uint8List compressed) {
-    final hasMagic =
+    final bool hasMagic =
         compressed.length > 2 &&
         compressed[0] == _gzipMagic.first &&
         compressed[1] == _gzipMagic.last;
@@ -188,14 +190,14 @@ final class ArchiveReader {
     try {
       filter.process(compressed, 0, compressed.length);
       for (
-        var chunk = filter.processed(flush: false);
+        List<int>? chunk = filter.processed(flush: false);
         chunk != null;
         chunk = filter.processed(flush: false)
       ) {
         output.add(chunk);
         _checkExtractedSize(output.length);
       }
-      final tail = filter.processed(end: true);
+      final List<int>? tail = filter.processed(end: true);
       if (tail != null) {
         output.add(tail);
         _checkExtractedSize(output.length);

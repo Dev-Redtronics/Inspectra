@@ -37,7 +37,7 @@ final class Environment {
   /// not set. Blank values are treated as not set so that `FOO=` behaves like
   /// an absent variable, which is what most users expect.
   String? operator [](String name) {
-    final value = variables[name];
+    final String? value = variables[name];
     if (value == null || value.trim().isEmpty) {
       return null;
     }
@@ -56,8 +56,8 @@ final class Environment {
   ///
   /// Returns the directories in search order.
   List<String> pathEntries(String separator) {
-    final raw = this['PATH'] ?? this['Path'] ?? '';
-    final entries = raw.split(separator);
+    final String raw = this['PATH'] ?? this['Path'] ?? '';
+    final List<String> entries = raw.split(separator);
     return entries.where((entry) => entry.trim().isNotEmpty).toList();
   }
 }

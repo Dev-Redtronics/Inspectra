@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import '../io/ansi_styler.dart';
-import 'command_report.dart';
-import 'json_report_writer.dart';
-import 'markdown_report_writer.dart';
-import 'output_format.dart';
-import 'sarif_report_writer.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/report/json_report_writer.dart';
+import 'package:inspectra/src/report/markdown_report_writer.dart';
+import 'package:inspectra/src/report/output_format.dart';
+import 'package:inspectra/src/report/sarif_report_writer.dart';
 
 /// Renders a [CommandReport] in the requested [OutputFormat].
 final class ReportRenderer {
@@ -35,14 +35,12 @@ final class ReportRenderer {
     OutputFormat format, {
     required AnsiStyler style,
     required DateTime generatedAt,
-  }) {
-    return switch (format) {
-      OutputFormat.text => _text(report, style),
-      OutputFormat.json => const JsonReportWriter().render(report, generatedAt),
-      OutputFormat.sarif => const SarifReportWriter().render(report),
-      OutputFormat.markdown => const MarkdownReportWriter().render(report),
-    };
-  }
+  }) => switch (format) {
+    OutputFormat.text => _text(report, style),
+    OutputFormat.json => const JsonReportWriter().render(report, generatedAt),
+    OutputFormat.sarif => const SarifReportWriter().render(report),
+    OutputFormat.markdown => const MarkdownReportWriter().render(report),
+  };
 
   /// Renders the human readable layout of [report].
   ///

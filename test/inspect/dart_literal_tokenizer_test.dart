@@ -15,6 +15,7 @@
  */
 
 import 'package:inspectra/src/inspect/dart_literal_tokenizer.dart';
+import 'package:inspectra/src/inspect/string_literal.dart';
 import 'package:test/test.dart';
 
 /// Tests string literal extraction from Dart source.
@@ -40,7 +41,8 @@ void main() {
   });
 
   test('reports the starting line', () {
-    final literals = DartLiteralTokenizer("\n\nf('x');").extract();
+    final List<StringLiteral> literals = DartLiteralTokenizer("\n\nf('x');")
+        .extract();
     expect(literals.single.line, 3);
   });
 

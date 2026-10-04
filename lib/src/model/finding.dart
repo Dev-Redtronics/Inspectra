@@ -18,9 +18,9 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
-import 'finding_source.dart';
-import 'severity.dart';
-import 'source_location.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
 
 /// A single security relevant observation reported by any scanner.
 ///
@@ -114,7 +114,7 @@ final class Finding {
       location?.path ?? '',
       '${location?.line ?? ''}',
     ];
-    final digest = sha256.convert(utf8.encode(parts.join('|')));
+    final Digest digest = sha256.convert(utf8.encode(parts.join('|')));
     return digest.toString();
   }
 
@@ -125,7 +125,7 @@ final class Finding {
   ///
   /// Returns the JSON representation.
   Map<String, Object?> toJson() {
-    final currentLocation = location;
+    final SourceLocation? currentLocation = location;
     return <String, Object?>{
       'ruleId': ruleId,
       'source': source.id,

@@ -1,14 +1,32 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'package:args/args.dart';
 import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/cli/inspectra_command.dart';
 import 'package:inspectra/src/model/finding.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
 import 'package:inspectra/src/report/command_report.dart';
 import 'package:inspectra/src/trivy/configured_scans_report.dart';
+import 'package:inspectra/src/trivy/finding.dart';
 import 'package:inspectra/src/trivy/trivy_command.dart';
+import 'package:inspectra/src/trivy/trivy_command_report.dart';
 import 'package:inspectra/src/trivy/trivy_outcome.dart';
 import 'package:inspectra/src/trivy/trivy_provision.dart';
-import 'package:inspectra/src/trivy/trivy_report.dart';
 
 /// `inspectra trivy [scans...]`: runs Trivy, locating or downloading it as
 /// configured.
@@ -47,7 +65,7 @@ final class TrivyCommand extends InspectraCommand {
   /// The positional arguments.
   @override
   String get invocation {
-    final scans = TrivyScan.values.map((scan) => scan.name).join('|');
+    final String scans = TrivyScan.values.map((scan) => scan.name).join('|');
     return 'inspectra trivy [$scans...] [options]';
   }
 
@@ -63,16 +81,16 @@ final class TrivyCommand extends InspectraCommand {
     CommandSession session,
     ArgResults results,
   ) async {
-    final root = session.workingDirectory;
-    final display = session.display(root);
-    final named = _scans(results.rest);
-    final provisionOnly =
+    final String root = session.workingDirectory;
+    final String display = session.display(root);
+    final Set<TrivyScan> named = _scans(results.rest);
+    final bool provisionOnly =
         results['install'] == true || results['where'] == true;
     if (provisionOnly) {
-      final provision = await session.trivyProvisioner().provision(
-        onStatus: session.console.info,
-      );
-      return TrivyReport(
+      final TrivyProvision provision = await session
+          .trivyProvisioner()
+          .provision(onStatus: session.console.info);
+      return TrivyCommandReport(
         target: display,
         outcome: TrivyOutcome(provision: provision, findings: const []),
         findings: const <Finding>[],
@@ -82,13 +100,13 @@ final class TrivyCommand extends InspectraCommand {
     if (named.isNotEmpty || session.config.trivy.enabled) {
       return _configuredScans(session, named);
     }
-    final outcome = await session.trivyService().scan(
+    final TrivyOutcome outcome = await session.trivyService().scan(
       root,
       displayPrefix: display,
       onStatus: session.console.info,
     );
-    final filtered = session.filter().apply(outcome.findings);
-    return TrivyReport(
+    final FilterOutcome filtered = session.filter().apply(outcome.findings);
+    return TrivyCommandReport(
       target: display,
       outcome: outcome,
       findings: filtered.kept,
@@ -104,7 +122,7 @@ final class TrivyCommand extends InspectraCommand {
     CommandSession session,
     Set<TrivyScan> named,
   ) async {
-    final provision = await session.trivyProvisioner().provision(
+    final TrivyProvision provision = await session.trivyProvisioner().provision(
       onStatus: session.console.info,
     );
     final outcome = TrivyOutcome(provision: provision, findings: const []);
@@ -112,7 +130,7 @@ final class TrivyCommand extends InspectraCommand {
       case TrivyUnavailable(:final reason):
         throw UnavailableException(reason);
       case TrivyAvailable(:final executable):
-        final scanResults = await runTrivyScans(
+        final List<ScanResult> scanResults = await runTrivyScans(
           session.config,
           session.workingDirectory,
           only: named.isEmpty ? null : named,
@@ -130,7 +148,9 @@ final class TrivyCommand extends InspectraCommand {
   Set<TrivyScan> _scans(List<String> arguments) {
     final scans = <TrivyScan>{};
     for (final argument in arguments) {
-      final scan = TrivyScan.values.where((s) => s.name == argument);
+      final Iterable<TrivyScan> scan = TrivyScan.values.where(
+        (s) => s.name == argument,
+      );
       if (scan.isEmpty) {
         throw InvalidUsageException(
           'Unknown scan "$argument". Known scans: '

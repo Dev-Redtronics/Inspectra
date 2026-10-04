@@ -28,20 +28,17 @@ final class FakeResponse {
   /// Creates a `200` response with a JSON encoded [json] body.
   ///
   /// Returns the response.
-  factory FakeResponse.json(Object json, {int status = 200}) {
-    return FakeResponse(
-      status,
-      body: utf8.encode(jsonEncode(json)),
-      headers: const <String, String>{'content-type': 'application/json'},
-    );
-  }
+  factory FakeResponse.json(Object json, {int status = 200}) => FakeResponse(
+    status,
+    body: utf8.encode(jsonEncode(json)),
+    headers: const <String, String>{'content-type': 'application/json'},
+  );
 
   /// Creates a `200` response with a UTF-8 text [body].
   ///
   /// Returns the response.
-  factory FakeResponse.text(String body, {int status = 200}) {
-    return FakeResponse(status, body: utf8.encode(body));
-  }
+  factory FakeResponse.text(String body, {int status = 200}) =>
+      FakeResponse(status, body: utf8.encode(body));
 
   /// The HTTP status code.
   final int status;

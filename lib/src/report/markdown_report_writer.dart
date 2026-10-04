@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
-import 'command_report.dart';
-import 'severity_breakdown.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/report/severity_breakdown.dart';
 
 /// Renders reports as GitHub flavoured Markdown.
 ///
@@ -34,7 +34,7 @@ final class MarkdownReportWriter {
     final out = StringBuffer()
       ..writeln('## Inspectra `${report.command}` report')
       ..writeln();
-    final findings = report.findings;
+    final List<Finding> findings = report.findings;
     if (findings.isEmpty) {
       out.writeln('No findings. :white_check_mark:');
       return out.toString();
@@ -59,7 +59,7 @@ final class MarkdownReportWriter {
   ///
   /// Returns the Markdown fragment.
   String _rule(Finding finding) {
-    final url = finding.url;
+    final String? url = finding.url;
     if (url == null) {
       return '`${finding.ruleId}`';
     }
@@ -70,7 +70,7 @@ final class MarkdownReportWriter {
   ///
   /// Returns the Markdown fragment.
   String _where(Finding finding) {
-    final package = finding.packageName;
+    final String? package = finding.packageName;
     if (package != null) {
       return '$package ${finding.packageVersion ?? ''}'.trim();
     }

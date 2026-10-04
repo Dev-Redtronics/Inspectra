@@ -15,6 +15,8 @@
  */
 
 import 'package:inspectra/src/inspect/pubspec_scanner.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/pub/pubspec.dart';
 import 'package:inspectra/src/pub/pubspec_parser.dart';
 import 'package:test/test.dart';
 
@@ -22,7 +24,10 @@ import 'package:test/test.dart';
 void main() {
   /// Scans [content] and returns the rule ids.
   List<String> rulesFor(String content) {
-    final pubspec = const PubspecParser().parse(content, path: 'pubspec.yaml');
+    final Pubspec pubspec = const PubspecParser().parse(
+      content,
+      path: 'pubspec.yaml',
+    );
     return const PubspecScanner()
         .scan(pubspec, content: content, displayPath: 'pubspec.yaml')
         .map((f) => f.ruleId)
@@ -56,13 +61,13 @@ void main() {
         'environment:\n  sdk: ">=2.12.0 <4.0.0"\n'
         'dependencies:\n  a: {path: ../a}\n'
         'dependency_overrides:\n  b: 1.0.0\n';
-    final pubspec = const PubspecParser().parse(content, path: 'p');
-    final findings = const PubspecScanner().scan(
+    final Pubspec pubspec = const PubspecParser().parse(content, path: 'p');
+    final List<Finding> findings = const PubspecScanner().scan(
       pubspec,
       content: content,
       displayPath: 'pubspec.yaml',
     );
-    final byRule = {for (final f in findings) f.ruleId: f};
+    final Map<String, Finding> byRule = {for (final f in findings) f.ruleId: f};
     expect(byRule['OLD_SDK_CONSTRAINT']!.location!.line, 2);
     expect(byRule['PATH_DEPENDENCY']!.location!.line, 4);
     expect(byRule['DEPENDENCY_OVERRIDE']!.location!.line, 6);

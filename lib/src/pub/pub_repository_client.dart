@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-import '../model/inspectra_exception.dart';
-import '../net/http_result.dart';
-import '../net/http_transport.dart';
-import 'package_name.dart';
-import 'pub_package.dart';
-import 'pub_package_options.dart';
-import 'pub_score.dart';
-import 'pub_version.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/net/http_result.dart';
+import 'package:inspectra/src/net/http_transport.dart';
+import 'package:inspectra/src/pub/package_name.dart';
+import 'package:inspectra/src/pub/pub_package.dart';
+import 'package:inspectra/src/pub/pub_package_options.dart';
+import 'package:inspectra/src/pub/pub_score.dart';
+import 'package:inspectra/src/pub/pub_version.dart';
 
 /// A client of the pub repository API, pub.dev by default.
 ///
@@ -45,7 +45,7 @@ final class PubRepositoryClient {
   final String baseUrl;
 
   /// The media type of version 2 of the pub repository API.
-  static const Map<String, String> _acceptHeader = <String, String>{
+  static const _acceptHeader = <String, String>{
     'accept': 'application/vnd.pub.v2+json',
   };
 
@@ -58,17 +58,17 @@ final class PubRepositoryClient {
   ///
   /// Throws an [UnavailableException] when the repository cannot be queried.
   Future<PubPackage?> package(String name) async {
-    final result = await _get(name, '');
+    final HttpResult? result = await _get(name, '');
     if (result == null) {
       return null;
     }
-    final json = result.jsonObject(_service);
-    final latest = json['latest'];
+    final Map<String, Object?> json = result.jsonObject(_service);
+    final Object? latest = json['latest'];
     final latestVersion = latest is Map<String, Object?>
         ? '${latest['version'] ?? ''}'
         : '';
-    final versions = json['versions'];
-    final parsedVersions = versions is List<Object?>
+    final Object? versions = json['versions'];
+    final List<PubVersion> parsedVersions = versions is List<Object?>
         ? versions.whereType<Map<String, Object?>>().map(_version).toList()
         : const <PubVersion>[];
     return PubPackage(
@@ -84,11 +84,11 @@ final class PubRepositoryClient {
   ///
   /// Throws an [UnavailableException] when the repository cannot be queried.
   Future<PubScore?> score(String name) async {
-    final result = await _get(name, '/score');
+    final HttpResult? result = await _get(name, '/score');
     if (result == null) {
       return null;
     }
-    final json = result.jsonObject(_service);
+    final Map<String, Object?> json = result.jsonObject(_service);
     return PubScore(
       grantedPoints: _int(json['grantedPoints']),
       maxPoints: _int(json['maxPoints']),
@@ -103,11 +103,11 @@ final class PubRepositoryClient {
   ///
   /// Throws an [UnavailableException] when the repository cannot be queried.
   Future<String?> publisher(String name) async {
-    final result = await _get(name, '/publisher');
+    final HttpResult? result = await _get(name, '/publisher');
     if (result == null) {
       return null;
     }
-    final id = result.jsonObject(_service)['publisherId'];
+    final Object? id = result.jsonObject(_service)['publisherId'];
     return id is String && id.isNotEmpty ? id : null;
   }
 
@@ -117,12 +117,12 @@ final class PubRepositoryClient {
   ///
   /// Throws an [UnavailableException] when the repository cannot be queried.
   Future<PubPackageOptions> options(String name) async {
-    final result = await _get(name, '/options');
+    final HttpResult? result = await _get(name, '/options');
     if (result == null) {
       return const PubPackageOptions();
     }
-    final json = result.jsonObject(_service);
-    final replacedBy = json['replacedBy'];
+    final Map<String, Object?> json = result.jsonObject(_service);
+    final Object? replacedBy = json['replacedBy'];
     return PubPackageOptions(
       isDiscontinued: json['isDiscontinued'] == true,
       isUnlisted: json['isUnlisted'] == true,
@@ -136,9 +136,9 @@ final class PubRepositoryClient {
   ///
   /// Throws an [UnavailableException] for any other non-success status.
   Future<HttpResult?> _get(String name, String suffix) async {
-    final validName = PackageName.validate(name);
-    final uri = Uri.parse('$baseUrl/api/packages/$validName$suffix');
-    final result = await transport.get(uri, headers: _acceptHeader);
+    final String validName = PackageName.validate(name);
+    final Uri uri = Uri.parse('$baseUrl/api/packages/$validName$suffix');
+    final HttpResult result = await transport.get(uri, headers: _acceptHeader);
     if (result.isNotFound) {
       return null;
     }
@@ -154,9 +154,9 @@ final class PubRepositoryClient {
   ///
   /// Returns the version record.
   PubVersion _version(Map<String, Object?> json) {
-    final published = json['published'];
-    final sha = json['archive_sha256'];
-    final url = json['archive_url'];
+    final Object? published = json['published'];
+    final Object? sha = json['archive_sha256'];
+    final Object? url = json['archive_url'];
     return PubVersion(
       version: '${json['version'] ?? ''}',
       published: published is String ? DateTime.tryParse(published) : null,

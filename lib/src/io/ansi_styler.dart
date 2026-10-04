@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import '../model/severity.dart';
-import 'environment.dart';
+import 'package:inspectra/src/io/environment.dart';
+import 'package:inspectra/src/model/severity.dart';
 
 /// Applies ANSI colours and text attributes to strings when enabled.
 ///
@@ -30,7 +30,7 @@ final class AnsiStyler {
   final bool enabled;
 
   /// The escape sequence that resets all attributes.
-  static const String _reset = '\x1B[0m';
+  static const _reset = '\x1B[0m';
 
   /// Decides whether colours should be used.
   ///
@@ -49,7 +49,7 @@ final class AnsiStyler {
     if (noColorFlag || environment['NO_COLOR'] != null) {
       return false;
     }
-    final forced = environment['FORCE_COLOR'];
+    final String? forced = environment['FORCE_COLOR'];
     if (forced != null && forced != '0') {
       return true;
     }
@@ -92,7 +92,7 @@ final class AnsiStyler {
   ///
   /// The padding aligns the text that follows the label across lines.
   String severityLabel(Severity severity) {
-    final label = '[${severity.label}]'.padRight(11);
+    final String label = '[${severity.label}]'.padRight(11);
     return switch (severity) {
       Severity.critical => red(bold(label)),
       Severity.high => red(label),

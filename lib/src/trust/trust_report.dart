@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-import '../io/ansi_styler.dart';
-import '../model/finding.dart';
-import '../model/severity.dart';
-import '../report/command_report.dart';
-import 'trust_info.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/trust/trust_info.dart';
 
 /// The report of the `trust` command.
 final class TrustReport implements CommandReport {
@@ -56,7 +56,7 @@ final class TrustReport implements CommandReport {
   /// Returns the JSON body.
   @override
   Map<String, Object?> toJson() {
-    final json = info.toJson();
+    final Map<String, Object?> json = info.toJson();
     json['findings'] = <Object?>[
       for (final finding in findings)
         <String, Object?>{
@@ -71,7 +71,7 @@ final class TrustReport implements CommandReport {
   /// Writes the human readable report.
   @override
   void writeText(StringBuffer out, AnsiStyler style) {
-    final rule = style.dim('─' * 60);
+    final String rule = style.dim('─' * 60);
     out
       ..writeln()
       ..writeln(
@@ -79,14 +79,14 @@ final class TrustReport implements CommandReport {
         '· ${info.package} ${info.version}')}',
       )
       ..writeln(rule);
-    final created = info.createdAt;
+    final DateTime? created = info.createdAt;
     if (created != null) {
       out.writeln(
         '  Created:        ${_date(created)} '
         '(${now.difference(created).inDays} days ago)',
       );
     }
-    final published = info.publishedAt;
+    final DateTime? published = info.publishedAt;
     if (published != null) {
       out.writeln(
         '  Published:      ${_date(published)} '
@@ -101,20 +101,18 @@ final class TrustReport implements CommandReport {
         '  Pub points:     '
         '${info.grantedPoints ?? '?'}/${info.maxPoints ?? '?'}',
       )
-      ..writeln(
-        '  Publisher:      ${info.publisher == null ? style.red('none (unverified)') : '${info.publisher} (verified)'}',
-      )
+      ..writeln('  Publisher:      ${_publisher(style)}')
       ..writeln();
     if (findings.isEmpty) {
       out.writeln(style.green('✔ No trust concerns detected.'));
     }
-    for (final finding in findings) {
+    for (final Finding finding in findings) {
       out.writeln(
         '  ${style.severityLabel(finding.severity)}'
         '${finding.ruleId}: ${finding.title}',
       );
     }
-    final trusted = !findings.any((f) => f.severity == Severity.critical);
+    final bool trusted = !findings.any((f) => f.severity == Severity.critical);
     out
       ..writeln(rule)
       ..writeln(
@@ -122,6 +120,17 @@ final class TrustReport implements CommandReport {
             ? 'Verdict: ${style.green('TRUSTED')}'
             : 'Verdict: ${style.red('NOT TRUSTED')}',
       );
+  }
+
+  /// Describes the publisher of the assessed package.
+  ///
+  /// Returns `<publisher> (verified)` or a red `none (unverified)`.
+  String _publisher(AnsiStyler style) {
+    final String? publisher = info.publisher;
+    if (publisher == null) {
+      return style.red('none (unverified)');
+    }
+    return '$publisher (verified)';
   }
 
   /// Formats [time] as `YYYY-MM-DD`.

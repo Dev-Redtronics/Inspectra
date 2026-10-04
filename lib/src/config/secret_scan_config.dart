@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'package:inspectra/src/config/build_scan_config.dart';
 import 'package:inspectra/src/config/scan_config.dart';
 import 'package:inspectra/src/config/yaml_reader.dart';
@@ -37,7 +53,7 @@ final class SecretScanConfig extends BuildScanConfig {
   }
 
   /// The settings when nothing is configured.
-  static const SecretScanConfig defaults = SecretScanConfig(
+  static const defaults = SecretScanConfig(
     enabled: true,
     runOnBuild: true,
     failOnFindings: true,
@@ -48,7 +64,7 @@ final class SecretScanConfig extends BuildScanConfig {
   );
 
   /// The severities reported by default.
-  static const List<Severity> defaultSeverity = <Severity>[
+  static const defaultSeverity = <Severity>[
     Severity.critical,
     Severity.high,
     Severity.medium,
@@ -57,7 +73,7 @@ final class SecretScanConfig extends BuildScanConfig {
 
   /// The files scanned by default: the Dart sources and the configuration
   /// files a credential is actually pasted into.
-  static const List<String> defaultInclude = <String>[
+  static const defaultInclude = <String>[
     '**.dart',
     '**.yaml',
     '**.yml',
@@ -68,7 +84,7 @@ final class SecretScanConfig extends BuildScanConfig {
 
   /// The files never scanned by default: generated output and tool caches.
   /// A secret there is a copy of one in a file this scan already reads.
-  static const List<String> defaultExclude = <String>[
+  static const defaultExclude = <String>[
     '**/.dart_tool/**',
     '**/build/**',
     '**/.git/**',

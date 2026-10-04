@@ -16,13 +16,12 @@
 
 import 'dart:io';
 
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/pub/dependency_kind.dart';
+import 'package:inspectra/src/pub/dependency_spec.dart';
+import 'package:inspectra/src/pub/pubspec.dart';
+import 'package:inspectra/src/util/yaml_plain.dart';
 import 'package:yaml/yaml.dart';
-
-import '../util/yaml_plain.dart';
-import '../model/inspectra_exception.dart';
-import 'dependency_kind.dart';
-import 'dependency_spec.dart';
-import 'pubspec.dart';
 
 /// Parses `pubspec.yaml` files into [Pubspec] values.
 ///
@@ -63,8 +62,9 @@ final class PubspecParser {
     if (document is! Map<String, Object?>) {
       throw InvalidInputException('$path is not a pubspec.yaml file.');
     }
-    final environment = document['environment'];
-    final environmentMap = environment is Map<String, Object?>
+    final Object? environment = document['environment'];
+    final Map<String, Object?> environmentMap =
+        environment is Map<String, Object?>
         ? environment
         : const <String, Object?>{};
     return Pubspec(
@@ -88,7 +88,7 @@ final class PubspecParser {
     String key,
     String path,
   ) {
-    final section = document[key];
+    final Object? section = document[key];
     if (section == null) {
       return const <String, DependencySpec>{};
     }
@@ -113,7 +113,7 @@ final class PubspecParser {
     if (value is! Map<String, Object?>) {
       return DependencySpec(kind: DependencyKind.hosted, constraint: '$value');
     }
-    final constraint = _stringOrNull(value['version']);
+    final String? constraint = _stringOrNull(value['version']);
     if (value.containsKey('git')) {
       return _gitDependency(value['git'], constraint);
     }
@@ -178,7 +178,7 @@ final class PubspecParser {
     if (value == null) {
       return null;
     }
-    final text = '$value'.trim();
+    final String text = '$value'.trim();
     return text.isEmpty ? null : text;
   }
 }

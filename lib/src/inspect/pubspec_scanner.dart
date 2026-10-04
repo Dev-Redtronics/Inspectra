@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/pub/dependency_kind.dart';
+import 'package:inspectra/src/pub/dependency_spec.dart';
+import 'package:inspectra/src/pub/pubspec.dart';
+import 'package:inspectra/src/pub/pubspec_key_locator.dart';
 import 'package:pub_semver/pub_semver.dart';
-
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../model/source_location.dart';
-import '../pub/dependency_kind.dart';
-import '../pub/dependency_spec.dart';
-import '../pub/pubspec.dart';
-import '../pub/pubspec_key_locator.dart';
 
 /// Checks the dependency declarations of a `pubspec.yaml` for risky
 /// patterns.
@@ -45,7 +44,7 @@ final class PubspecScanner {
   const PubspecScanner();
 
   /// Paste and file sharing hosts that never host legitimate packages.
-  static const List<String> _suspiciousHosts = <String>[
+  static const _suspiciousHosts = <String>[
     'pastebin.com',
     'hastebin.com',
     'dpaste.org',
@@ -54,7 +53,7 @@ final class PubspecScanner {
   ];
 
   /// Branch names that are mutable by design.
-  static const Set<String> _branchRefs = <String>{
+  static const _branchRefs = <String>{
     'main',
     'master',
     'dev',
@@ -63,7 +62,7 @@ final class PubspecScanner {
   };
 
   /// Matches URLs whose host is an IPv4 or IPv6 literal.
-  static final RegExp _ipHost = RegExp(
+  static final _ipHost = RegExp(
     r'^(?:[a-z+]+://)?(?:[^@/]+@)?(?:\d{1,3}(?:\.\d{1,3}){3}|\[[0-9a-fA-F:]+\])',
   );
 
@@ -76,20 +75,29 @@ final class PubspecScanner {
     required String content,
     required String displayPath,
   }) {
-    final lines = content.split('\n');
+    final List<String> lines = content.split('\n');
     final findings = <Finding>[];
     final sections = <Map<String, DependencySpec>>[
       pubspec.dependencies,
       pubspec.devDependencies,
     ];
     for (final section in sections) {
-      for (final entry in section.entries) {
-        final location = locatePubspecKey(lines, entry.key, displayPath);
+      for (final MapEntry<String, DependencySpec> entry in section.entries) {
+        final SourceLocation location = locatePubspecKey(
+          lines,
+          entry.key,
+          displayPath,
+        );
         findings.addAll(_checkDependency(entry.key, entry.value, location));
       }
     }
-    for (final entry in pubspec.dependencyOverrides.entries) {
-      final location = locatePubspecKey(lines, entry.key, displayPath);
+    for (final MapEntry<String, DependencySpec> entry
+        in pubspec.dependencyOverrides.entries) {
+      final SourceLocation location = locatePubspecKey(
+        lines,
+        entry.key,
+        displayPath,
+      );
       findings
         ..add(
           _finding(
@@ -103,7 +111,7 @@ final class PubspecScanner {
         )
         ..addAll(_checkSource(entry.key, entry.value, location));
     }
-    final sdk = _oldSdk(pubspec.sdkConstraint, lines, displayPath);
+    final Finding? sdk = _oldSdk(pubspec.sdkConstraint, lines, displayPath);
     if (sdk != null) {
       findings.add(sdk);
     }
@@ -118,11 +126,11 @@ final class PubspecScanner {
     DependencySpec spec,
     SourceLocation location,
   ) {
-    final findings = _checkSource(name, spec, location);
+    final List<Finding> findings = _checkSource(name, spec, location);
     if (spec.kind != DependencyKind.hosted) {
       return findings;
     }
-    final constraint = spec.constraint?.trim();
+    final String? constraint = spec.constraint?.trim();
     if (constraint == '*') {
       findings.add(
         _finding(
@@ -171,7 +179,7 @@ final class PubspecScanner {
         ),
       );
     }
-    final url = spec.gitUrl ?? spec.hostedUrl;
+    final String? url = spec.gitUrl ?? spec.hostedUrl;
     if (url != null && url.startsWith('http://')) {
       findings.add(
         _finding(
@@ -198,8 +206,8 @@ final class PubspecScanner {
     SourceLocation location,
   ) {
     final findings = <Finding>[];
-    final url = spec.gitUrl ?? '';
-    final host = _suspiciousHosts.where(url.contains).firstOrNull;
+    final String url = spec.gitUrl ?? '';
+    final String? host = _suspiciousHosts.where(url.contains).firstOrNull;
     if (host != null) {
       findings.add(
         _finding(
@@ -222,7 +230,7 @@ final class PubspecScanner {
         ),
       );
     }
-    final ref = spec.gitRef;
+    final String? ref = spec.gitRef;
     if (ref == null || _branchRefs.contains(ref)) {
       final which = ref == null ? 'the default branch' : 'branch "$ref"';
       findings.add(
@@ -252,7 +260,7 @@ final class PubspecScanner {
     } on FormatException {
       return null;
     }
-    final allowsDart2 = parsed.allowsAny(
+    final bool allowsDart2 = parsed.allowsAny(
       VersionRange(min: Version(2, 0, 0), max: Version(3, 0, 0)),
     );
     if (!allowsDart2) {
@@ -277,14 +285,12 @@ final class PubspecScanner {
     Severity severity,
     String description,
     SourceLocation location,
-  ) {
-    return Finding(
-      ruleId: rule,
-      source: FindingSource.pubspec,
-      severity: severity,
-      title: description,
-      location: location,
-      packageName: name == 'sdk' ? null : name,
-    );
-  }
+  ) => Finding(
+    ruleId: rule,
+    source: FindingSource.pubspec,
+    severity: severity,
+    title: description,
+    location: location,
+    packageName: name == 'sdk' ? null : name,
+  );
 }

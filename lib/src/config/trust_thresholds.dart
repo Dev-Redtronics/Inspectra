@@ -1,5 +1,3 @@
-import 'package:inspectra/src/config/yaml_reader.dart';
-
 /*
  * Copyright 2026 Redtronics
  *
@@ -15,6 +13,8 @@ import 'package:inspectra/src/config/yaml_reader.dart';
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import 'package:inspectra/src/config/yaml_reader.dart';
 
 /// Thresholds of the pub.dev trust assessment, the `trust:` section of
 /// `inspectra.yaml`.
@@ -37,7 +37,7 @@ final class TrustThresholds {
   /// values.
   factory TrustThresholds.fromYaml(YamlReader yaml) {
     const defaults = TrustThresholds();
-    const large = 1 << 30;
+    const int large = 1 << 30;
     final config = TrustThresholds(
       freshPackageDays:
           yaml.optionalInt('fresh_package_days', min: 0, max: large) ??

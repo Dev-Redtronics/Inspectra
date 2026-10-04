@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import '../host/cpu_architecture.dart';
-import '../host/host_platform.dart';
-import '../host/operating_system.dart';
+import 'package:inspectra/src/host/cpu_architecture.dart';
+import 'package:inspectra/src/host/host_platform.dart';
+import 'package:inspectra/src/host/operating_system.dart';
 
 /// The Trivy release archive that runs on a given host.
 ///
@@ -36,23 +36,22 @@ final class TrivyReleaseAsset {
   /// The platform labels used by Trivy's release assets.
   ///
   /// Windows on ARM runs the x64 build through the built-in emulation.
-  static const Map<OperatingSystem, Map<CpuArchitecture, String>> _labels =
-      <OperatingSystem, Map<CpuArchitecture, String>>{
-        OperatingSystem.linux: <CpuArchitecture, String>{
-          CpuArchitecture.x64: 'Linux-64bit',
-          CpuArchitecture.arm64: 'Linux-ARM64',
-          CpuArchitecture.arm: 'Linux-ARM',
-          CpuArchitecture.ia32: 'Linux-32bit',
-        },
-        OperatingSystem.macos: <CpuArchitecture, String>{
-          CpuArchitecture.x64: 'macOS-64bit',
-          CpuArchitecture.arm64: 'macOS-ARM64',
-        },
-        OperatingSystem.windows: <CpuArchitecture, String>{
-          CpuArchitecture.x64: 'windows-64bit',
-          CpuArchitecture.arm64: 'windows-64bit',
-        },
-      };
+  static const _labels = <OperatingSystem, Map<CpuArchitecture, String>>{
+    OperatingSystem.linux: <CpuArchitecture, String>{
+      CpuArchitecture.x64: 'Linux-64bit',
+      CpuArchitecture.arm64: 'Linux-ARM64',
+      CpuArchitecture.arm: 'Linux-ARM',
+      CpuArchitecture.ia32: 'Linux-32bit',
+    },
+    OperatingSystem.macos: <CpuArchitecture, String>{
+      CpuArchitecture.x64: 'macOS-64bit',
+      CpuArchitecture.arm64: 'macOS-ARM64',
+    },
+    OperatingSystem.windows: <CpuArchitecture, String>{
+      CpuArchitecture.x64: 'windows-64bit',
+      CpuArchitecture.arm64: 'windows-64bit',
+    },
+  };
 
   /// Finds the asset of [version] for [host].
   ///
@@ -60,7 +59,7 @@ final class TrivyReleaseAsset {
   ///
   /// Returns the asset, or `null` when Trivy publishes no build for [host].
   static TrivyReleaseAsset? forHost(HostPlatform host, String version) {
-    final label = _labels[host.operatingSystem]?[host.architecture];
+    final String? label = _labels[host.operatingSystem]?[host.architecture];
     if (label == null) {
       return null;
     }

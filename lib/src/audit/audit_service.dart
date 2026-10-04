@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/source_location.dart';
-import '../osv/osv_client.dart';
-import '../osv/osv_vulnerability.dart';
-import '../pub/lockfile_entry.dart';
-import '../pub/lockfile.dart';
-import 'audit_scan.dart';
+import 'package:inspectra/src/audit/audit_scan.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/osv/osv_client.dart';
+import 'package:inspectra/src/osv/osv_vulnerability.dart';
+import 'package:inspectra/src/pub/lockfile.dart';
+import 'package:inspectra/src/pub/lockfile_entry.dart';
 
 /// Audits the packages of a lockfile against OSV.dev.
 final class AuditService {
@@ -45,7 +45,7 @@ final class AuditService {
     required String displayPath,
     void Function(int done, int total)? onProgress,
   }) async {
-    final scanned = lockfile.auditable(mirrorUrl);
+    final List<LockfileEntry> scanned = lockfile.auditable(mirrorUrl);
     final skipped = <LockfileEntry>[
       ...lockfile.unhosted,
       ...lockfile.privatelyHosted(mirrorUrl),
@@ -58,7 +58,8 @@ final class AuditService {
         findings: const <Finding>[],
       );
     }
-    final advisories = await osvClient.query(scanned, onProgress: onProgress);
+    final Map<LockfileEntry, List<OsvVulnerability>> advisories =
+        await osvClient.query(scanned, onProgress: onProgress);
     final findings = <Finding>[
       for (final entry in advisories.entries)
         for (final advisory in entry.value)
@@ -80,7 +81,9 @@ final class AuditService {
     OsvVulnerability advisory,
     String displayPath,
   ) {
-    final summary = advisory.summary.isEmpty ? advisory.id : advisory.summary;
+    final String summary = advisory.summary.isEmpty
+        ? advisory.id
+        : advisory.summary;
     return Finding(
       ruleId: advisory.id,
       source: FindingSource.osv,

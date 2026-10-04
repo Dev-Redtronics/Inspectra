@@ -15,11 +15,10 @@
  */
 
 import 'package:args/args.dart';
-
-import '../../model/inspectra_exception.dart';
-import '../../report/command_report.dart';
-import '../command_session.dart';
-import '../inspectra_command.dart';
+import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/inspectra_command.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/report/command_report.dart';
 
 /// `inspectra add <package> [version]`: audits a package and adds exactly
 /// the audited version to the current project.
@@ -66,14 +65,11 @@ final class AddCommand extends InspectraCommand {
   ///
   /// Throws an [InvalidUsageException] when the package is missing.
   @override
-  Future<CommandReport> execute(
-    CommandSession session,
-    ArgResults results,
-  ) async {
+  Future<CommandReport> execute(CommandSession session, ArgResults results) {
     if (results.rest.isEmpty) {
       throw const InvalidUsageException('add requires a <package> argument.');
     }
-    final name = results.rest[0];
+    final String name = results.rest[0];
     session.console.info('Safe package addition: $name');
     return session.packageAdder().add(
       name: name,

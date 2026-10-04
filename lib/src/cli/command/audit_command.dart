@@ -15,12 +15,16 @@
  */
 
 import 'package:args/args.dart';
-
-import '../../audit/audit_report.dart';
-import '../../pub/lockfile_parser.dart';
-import '../../report/command_report.dart';
-import '../command_session.dart';
-import '../inspectra_command.dart';
+import 'package:inspectra/src/audit/audit_report.dart';
+import 'package:inspectra/src/audit/audit_scan.dart';
+import 'package:inspectra/src/audit/audit_service.dart';
+import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/inspectra_command.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
+import 'package:inspectra/src/pub/lockfile.dart';
+import 'package:inspectra/src/pub/lockfile_entry.dart';
+import 'package:inspectra/src/pub/lockfile_parser.dart';
+import 'package:inspectra/src/report/command_report.dart';
 
 /// `inspectra audit`: checks every locked package against OSV.dev.
 final class AuditCommand extends InspectraCommand {
@@ -51,20 +55,22 @@ final class AuditCommand extends InspectraCommand {
     CommandSession session,
     ArgResults results,
   ) async {
-    final path = session.resolve(results['lockfile'] as String);
-    final display = session.display(path);
-    final lockfile = const LockfileParser().parseFile(path);
-    final service = session.auditService();
-    final total = lockfile.auditable(session.config.network.pubHostedUrl);
+    final String path = session.resolve(results['lockfile'] as String);
+    final String display = session.display(path);
+    final Lockfile lockfile = const LockfileParser().parseFile(path);
+    final AuditService service = session.auditService();
+    final List<LockfileEntry> total = lockfile.auditable(
+      session.config.network.pubHostedUrl,
+    );
     session.console.info(
       'Scanning ${total.length} packages from $display against OSV.dev...',
     );
-    final scan = await service.audit(
+    final AuditScan scan = await service.audit(
       lockfile,
       displayPath: display,
       onProgress: (done, all) => session.console.detail('  $done/$all'),
     );
-    final outcome = session.filter().apply(scan.findings);
+    final FilterOutcome outcome = session.filter().apply(scan.findings);
     return AuditReport(
       scan: scan,
       findings: outcome.kept,

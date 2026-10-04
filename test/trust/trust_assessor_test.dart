@@ -18,6 +18,7 @@ import 'package:inspectra/inspectra.dart';
 import 'package:inspectra/src/net/http_transport.dart';
 import 'package:inspectra/src/pub/pub_repository_client.dart';
 import 'package:inspectra/src/trust/trust_assessor.dart';
+import 'package:inspectra/src/trust/trust_info.dart';
 import 'package:test/test.dart';
 
 import '../support/fake_http_server.dart';
@@ -84,7 +85,7 @@ void main() {
         '/api/packages/good/publisher',
         FakeResponse.json(<String, Object?>{'publisherId': 'dart.dev'}),
       );
-    final info = await assessor().assessByName('good');
+    final TrustInfo? info = await assessor().assessByName('good');
     expect(info!.findings, isEmpty);
     expect(info.createdAt, DateTime.utc(2020));
     expect(info.isVerifiedPublisher, isTrue);
@@ -99,8 +100,8 @@ void main() {
       '/api/packages/fresh/options',
       FakeResponse.json(<String, Object?>{'isDiscontinued': true}),
     );
-    final info = await assessor().assessByName('fresh');
-    final rules = info!.findings.map((f) => f.ruleId).toSet();
+    final TrustInfo? info = await assessor().assessByName('fresh');
+    final Set<String> rules = info!.findings.map((f) => f.ruleId).toSet();
     expect(
       rules,
       containsAll(<String>[
@@ -118,7 +119,10 @@ void main() {
       '1.0.0': '2024-01-01T00:00:00Z',
       '2.0.0': '2026-09-30T23:00:00Z',
     });
-    final old = await assessor().assessByName('pkg', version: '1.0.0');
+    final TrustInfo? old = await assessor().assessByName(
+      'pkg',
+      version: '1.0.0',
+    );
     expect(
       old!.findings.map((f) => f.ruleId),
       isNot(contains('FRESH_RELEASE')),

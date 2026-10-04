@@ -1,5 +1,3 @@
-import 'package:inspectra/src/config/yaml_reader.dart';
-
 /*
  * Copyright 2026 Redtronics
  *
@@ -15,6 +13,8 @@ import 'package:inspectra/src/config/yaml_reader.dart';
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import 'package:inspectra/src/config/yaml_reader.dart';
 
 /// Settings of the typosquatting detector, the `typosquat:` section of
 /// `inspectra.yaml`.

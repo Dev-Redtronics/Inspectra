@@ -18,23 +18,23 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:inspectra/src/cli/command_context.dart';
+import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/exit_code.dart';
+import 'package:inspectra/src/cli/shared_options.dart';
+import 'package:inspectra/src/config/config_loader.dart';
+import 'package:inspectra/src/config/config_overrides.dart';
+import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/config/inspectra_config_exception.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/io/console.dart';
+import 'package:inspectra/src/io/verbosity.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/report/output_format.dart';
+import 'package:inspectra/src/report/report_renderer.dart';
 import 'package:path/path.dart' as p;
-
-import '../config/config_loader.dart';
-import '../config/config_overrides.dart';
-import '../config/inspectra_config_exception.dart';
-import '../io/ansi_styler.dart';
-import '../io/console.dart';
-import '../io/verbosity.dart';
-import '../model/inspectra_exception.dart';
-import '../model/severity.dart';
-import '../report/command_report.dart';
-import '../report/output_format.dart';
-import '../report/report_renderer.dart';
-import 'command_context.dart';
-import 'command_session.dart';
-import 'exit_code.dart';
-import 'shared_options.dart';
 
 /// The base of every Inspectra command.
 ///
@@ -70,7 +70,7 @@ abstract class InspectraCommand extends Command<int> {
   /// resolved against the working directory of the [context].
   String get projectDirectory {
     final global = globalResults?['directory'] as String?;
-    final base = context.workingDirectory;
+    final String base = context.workingDirectory;
     if (global == null) {
       return base;
     }
@@ -86,15 +86,15 @@ abstract class InspectraCommand extends Command<int> {
   /// Returns the process exit code.
   @override
   Future<int> run() async {
-    final results = argResults;
+    final ArgResults? results = argResults;
     if (results == null) {
       return ExitCode.software.code;
     }
-    final console = _console(results);
+    final Console console = _console(results);
     CommandSession? session;
     try {
-      final directory = projectDirectory;
-      final config = loadConfig(
+      final String directory = projectDirectory;
+      final InspectraConfig config = loadConfig(
         directory,
         overrides: ConfigOverrides(
           cli: SharedOptions.overrides(results),
@@ -112,7 +112,7 @@ abstract class InspectraCommand extends Command<int> {
       );
       session = active;
       _warnAboutExpiredRules(active);
-      final report = await execute(active, results);
+      final CommandReport report = await execute(active, results);
       return _finish(report, results, active);
     } on InspectraException catch (error) {
       console.error(error.message);
@@ -130,7 +130,7 @@ abstract class InspectraCommand extends Command<int> {
   /// Returns the console.
   Console _console(ArgResults results) {
     final colorFlag = results['color'] as bool?;
-    final enabled =
+    final bool enabled =
         colorFlag ??
         AnsiStyler.detect(
           environment: context.environment,
@@ -138,7 +138,7 @@ abstract class InspectraCommand extends Command<int> {
           hasTerminal: context.outIsTerminal,
           supportsAnsi: context.supportsAnsi,
         );
-    final verbosity = results['quiet'] == true
+    final Verbosity verbosity = results['quiet'] == true
         ? Verbosity.quiet
         : results['verbose'] == true
         ? Verbosity.verbose
@@ -153,9 +153,11 @@ abstract class InspectraCommand extends Command<int> {
 
   /// Warns about ignore rules whose expiry date has passed.
   void _warnAboutExpiredRules(CommandSession session) {
-    final now = context.clock.now();
-    for (final rule in session.config.ignore.where((r) => r.isExpired(now))) {
-      final day = rule.expires?.toIso8601String().substring(0, 10);
+    final DateTime now = context.clock.now();
+    for (final IgnoreRule rule in session.config.ignore.where(
+      (r) => r.isExpired(now),
+    )) {
+      final String? day = rule.expires?.toIso8601String().substring(0, 10);
       session.console.warning(
         'The ignore rule for ${rule.id} expired on '
         '$day and no longer suppresses findings ("${rule.reason}").',
@@ -174,12 +176,14 @@ abstract class InspectraCommand extends Command<int> {
     ArgResults results,
     CommandSession session,
   ) {
-    final format = OutputFormat.fromId(results['format'] as String);
+    final OutputFormat format = OutputFormat.fromId(
+      results['format'] as String,
+    );
     final outputPath = results['output'] as String?;
-    final style = outputPath == null
+    final AnsiStyler style = outputPath == null
         ? session.console.styler
         : const AnsiStyler(enabled: false);
-    final rendered = const ReportRenderer().render(
+    final String rendered = const ReportRenderer().render(
       report,
       format,
       style: style,
@@ -194,7 +198,7 @@ abstract class InspectraCommand extends Command<int> {
         'Report written to ${session.display(session.resolve(outputPath))}',
       );
     }
-    final threshold = session.config.failOn ?? defaultFailOn;
+    final Severity threshold = session.config.failOn ?? defaultFailOn;
     if (!report.isFailing(threshold) || results['exit-zero'] == true) {
       return ExitCode.success.code;
     }

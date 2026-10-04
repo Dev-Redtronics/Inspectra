@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'pub_version.dart';
+import 'package:inspectra/src/pub/pub_version.dart';
 
 /// The version listing of a package on a pub repository.
 final class PubPackage {
@@ -45,8 +45,8 @@ final class PubPackage {
   /// pub.dev does not report a creation date, so the earliest publication
   /// date of any version is used.
   DateTime? get firstPublished {
-    final dates = versions.map((entry) => entry.published).nonNulls.toList()
-      ..sort();
+    final List<DateTime> dates =
+        versions.map((entry) => entry.published).nonNulls.toList()..sort();
     return dates.firstOrNull;
   }
 }

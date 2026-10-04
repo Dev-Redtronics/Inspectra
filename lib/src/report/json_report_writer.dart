@@ -16,8 +16,8 @@
 
 import 'dart:convert';
 
-import '../version.dart';
-import 'command_report.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/version.dart';
 
 /// Renders reports as versioned JSON documents.
 ///
@@ -30,13 +30,13 @@ final class JsonReportWriter {
   const JsonReportWriter();
 
   /// The version of the document layout; incremented on breaking changes.
-  static const int schemaVersion = 1;
+  static const schemaVersion = 1;
 
   /// Renders [report] generated at [generatedAt].
   ///
   /// Returns the pretty printed JSON document followed by a line break.
   String render(CommandReport report, DateTime generatedAt) {
-    final body = report.toJson();
+    final Map<String, Object?> body = report.toJson();
     final document = <String, Object?>{
       'schemaVersion': schemaVersion,
       'tool': <String, Object?>{

@@ -15,6 +15,7 @@
  */
 
 import 'package:inspectra/inspectra.dart';
+import 'package:inspectra/src/net/http_result.dart';
 import 'package:inspectra/src/net/http_transport.dart';
 import 'package:test/test.dart';
 
@@ -53,7 +54,9 @@ void main() {
             )
           : FakeResponse.text('ok');
     });
-    final result = await transport().get(Uri.parse('${server.baseUrl}/flaky'));
+    final HttpResult result = await transport().get(
+      Uri.parse('${server.baseUrl}/flaky'),
+    );
     expect(result.statusCode, 200);
     expect(result.text, 'ok');
     expect(sleeps, <Duration>[
@@ -64,20 +67,22 @@ void main() {
 
   test('returns the last retryable response when attempts run out', () async {
     server.on('GET', '/down', const FakeResponse(503));
-    final result = await transport().get(Uri.parse('${server.baseUrl}/down'));
+    final HttpResult result = await transport().get(
+      Uri.parse('${server.baseUrl}/down'),
+    );
     expect(result.statusCode, 503);
     expect(sleeps, hasLength(2));
   });
 
   test('does not retry client errors', () async {
-    final result = await transport().get(
+    final HttpResult result = await transport().get(
       Uri.parse('${server.baseUrl}/missing'),
     );
     expect(result.isNotFound, isTrue);
     expect(sleeps, isEmpty);
   });
 
-  test('rejects responses larger than the limit', () async {
+  test('rejects responses larger than the limit', () {
     server.on('GET', '/big', FakeResponse.text('x' * 100));
     expect(
       () => transport().get(Uri.parse('${server.baseUrl}/big'), maxBytes: 10),
@@ -99,7 +104,7 @@ void main() {
   });
 
   test('probe treats any HTTP answer as reachable', () async {
-    final reachable = await transport().probe(
+    final bool reachable = await transport().probe(
       Uri.parse('${server.baseUrl}/'),
       const Duration(seconds: 2),
     );
@@ -107,7 +112,7 @@ void main() {
   });
 
   test('reports unreachable hosts after all attempts', () async {
-    final port = Uri.parse(server.baseUrl).port;
+    final int port = Uri.parse(server.baseUrl).port;
     await server.close();
     expect(
       () => transport().get(Uri.parse('http://127.0.0.1:$port/')),

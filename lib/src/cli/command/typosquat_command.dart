@@ -17,16 +17,18 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-
-import '../../model/finding.dart';
-import '../../model/severity.dart';
-import '../../pub/dependency_spec.dart';
-import '../../pub/pubspec_key_locator.dart';
-import '../../pub/pubspec_parser.dart';
-import '../../report/command_report.dart';
-import '../../typosquat/typosquat_report.dart';
-import '../command_session.dart';
-import '../inspectra_command.dart';
+import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/inspectra_command.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
+import 'package:inspectra/src/pub/dependency_spec.dart';
+import 'package:inspectra/src/pub/pubspec.dart';
+import 'package:inspectra/src/pub/pubspec_key_locator.dart';
+import 'package:inspectra/src/pub/pubspec_parser.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/typosquat/confusion_detector.dart';
+import 'package:inspectra/src/typosquat/typosquat_report.dart';
 
 /// `inspectra typosquat`: checks the dependencies of a `pubspec.yaml` for
 /// typosquatting and dependency confusion.
@@ -61,11 +63,11 @@ final class TyposquatCommand extends InspectraCommand {
     CommandSession session,
     ArgResults results,
   ) async {
-    final path = session.resolve(results['pubspec'] as String);
-    final display = session.display(path);
-    final pubspec = const PubspecParser().parseFile(path);
-    final lines = File(path).readAsLinesSync();
-    final names = pubspec.declaredNames;
+    final String path = session.resolve(results['pubspec'] as String);
+    final String display = session.display(path);
+    final Pubspec pubspec = const PubspecParser().parseFile(path);
+    final List<String> lines = File(path).readAsLinesSync();
+    final List<String> names = pubspec.declaredNames;
     session.console.info(
       'Analyzing ${names.length} dependencies for '
       'typosquatting and confusion...',
@@ -76,7 +78,7 @@ final class TyposquatCommand extends InspectraCommand {
         locate: (name) => locatePubspecKey(lines, name, display),
       ),
     ];
-    final confusion = session.confusionDetector();
+    final ConfusionDetector? confusion = session.confusionDetector();
     if (confusion != null) {
       findings.addAll(
         await confusion.analyze(<String, DependencySpec>{
@@ -85,7 +87,7 @@ final class TyposquatCommand extends InspectraCommand {
         }, locate: (name) => locatePubspecKey(lines, name, display)),
       );
     }
-    final outcome = session.filter().apply(findings);
+    final FilterOutcome outcome = session.filter().apply(findings);
     return TyposquatReport(
       pubspecPath: display,
       packages: names,

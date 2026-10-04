@@ -16,14 +16,15 @@
 
 import 'dart:math';
 
-import '../archive/archive_entry.dart';
-import '../archive/archive_entry_filter.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../model/source_location.dart';
-import '../report/snippet_sanitizer.dart';
-import 'dart_literal_tokenizer.dart';
+import 'package:inspectra/src/archive/archive_entry.dart';
+import 'package:inspectra/src/archive/archive_entry_filter.dart';
+import 'package:inspectra/src/inspect/dart_literal_tokenizer.dart';
+import 'package:inspectra/src/inspect/string_literal.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/report/snippet_sanitizer.dart';
 
 /// Flags string literals whose Shannon entropy suggests an encrypted or
 /// encoded payload or an embedded secret.
@@ -42,13 +43,13 @@ final class EntropyScanner {
   });
 
   /// The entropy above which a literal is reported as MEDIUM.
-  static const double mediumThreshold = 4.5;
+  static const mediumThreshold = 4.5;
 
   /// The entropy above which a literal is reported as HIGH.
-  static const double highThreshold = 5.5;
+  static const highThreshold = 5.5;
 
   /// The minimum literal length considered.
-  static const int minLength = 20;
+  static const minLength = 20;
 
   /// File name suffixes that are not scanned.
   final List<String> excludedSuffixes;
@@ -58,14 +59,14 @@ final class EntropyScanner {
 
   /// The length of an ascending character run, such as `abcdef` or
   /// `012345`, that marks a character table rather than a payload.
-  static const int _alphabetRun = 6;
+  static const _alphabetRun = 6;
 
   /// Scans the Dart files of [entries].
   ///
   /// Returns the findings, HIGH before MEDIUM, then by file and line.
   List<Finding> scan(List<ArchiveEntry> entries) {
     final findings = <Finding>[];
-    final candidates = entries.where(
+    final Iterable<ArchiveEntry> candidates = entries.where(
       (entry) =>
           entry.isText &&
           entry.path.endsWith('.dart') &&
@@ -73,9 +74,10 @@ final class EntropyScanner {
           !isInExcludedDirectory(entry, excludedDirectories),
     );
     for (final entry in candidates) {
-      final literals = DartLiteralTokenizer(entry.text).extract();
+      final List<StringLiteral> literals = DartLiteralTokenizer(entry.text)
+          .extract();
       for (final literal in literals) {
-        final finding = _evaluate(entry, literal.value, literal.line);
+        final Finding? finding = _evaluate(entry, literal.value, literal.line);
         if (finding != null) {
           findings.add(finding);
         }
@@ -88,7 +90,7 @@ final class EntropyScanner {
   ///
   /// Returns `0` for empty text.
   static double shannonEntropy(String text) {
-    final runes = text.runes.toList();
+    final List<int> runes = text.runes.toList();
     if (runes.isEmpty) {
       return 0;
     }
@@ -97,8 +99,8 @@ final class EntropyScanner {
       counts[rune] = (counts[rune] ?? 0) + 1;
     }
     var entropy = 0.0;
-    for (final count in counts.values) {
-      final probability = count / runes.length;
+    for (final int count in counts.values) {
+      final double probability = count / runes.length;
       entropy -= probability * log(probability) / ln2;
     }
     return entropy;
@@ -113,7 +115,7 @@ final class EntropyScanner {
     if (RegExp(r'\s').hasMatch(value)) {
       return true;
     }
-    final units = value.codeUnits;
+    final List<int> units = value.codeUnits;
     var run = 1;
     for (var index = 1; index < units.length; index++) {
       run = units[index] == units[index - 1] + 1 ? run + 1 : 1;
@@ -131,13 +133,15 @@ final class EntropyScanner {
     if (value.runes.length < minLength || _isBenign(value)) {
       return null;
     }
-    final entropy = shannonEntropy(value);
+    final double entropy = shannonEntropy(value);
     if (entropy <= mediumThreshold) {
       return null;
     }
-    final severity = entropy > highThreshold ? Severity.high : Severity.medium;
-    final rounded = (entropy * 100).round() / 100;
-    final excerpt = value.length > 60 ? value.substring(0, 60) : value;
+    final Severity severity = entropy > highThreshold
+        ? Severity.high
+        : Severity.medium;
+    final double rounded = (entropy * 100).round() / 100;
+    final String excerpt = value.length > 60 ? value.substring(0, 60) : value;
     return Finding(
       ruleId: 'HIGH_ENTROPY_STRING',
       source: FindingSource.entropy,

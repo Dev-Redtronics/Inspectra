@@ -16,8 +16,8 @@
 
 import 'dart:ffi';
 
-import 'cpu_architecture.dart';
-import 'operating_system.dart';
+import 'package:inspectra/src/host/cpu_architecture.dart';
+import 'package:inspectra/src/host/operating_system.dart';
 
 /// The operating system and processor architecture of the current machine.
 ///
@@ -42,9 +42,9 @@ final class HostPlatform {
   ///
   /// Returns the parsed platform; unknown parts map to `other`.
   factory HostPlatform.fromAbi(Abi abi) {
-    final parts = abi.toString().split('_');
-    final system = OperatingSystem.fromAbiName(parts.first);
-    final cpu = CpuArchitecture.fromAbiName(parts.last);
+    final List<String> parts = abi.toString().split('_');
+    final OperatingSystem system = OperatingSystem.fromAbiName(parts.first);
+    final CpuArchitecture cpu = CpuArchitecture.fromAbiName(parts.last);
     return HostPlatform(system, cpu);
   }
 

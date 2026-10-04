@@ -1,19 +1,25 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:io';
 
+import 'package:inspectra/src/util/dart_tool_exception.dart';
 import 'package:path/path.dart' as p;
 
-/// Thrown when the `dart` tool cannot be started or fails, as opposed to
-/// reporting findings.
-class DartToolException implements Exception {
-  /// Creates the exception.
-  const DartToolException(this.message);
-
-  /// What went wrong.
-  final String message;
-
-  @override
-  String toString() => message;
-}
+export 'package:inspectra/src/util/dart_tool_exception.dart';
 
 /// The `dart` executable: the one running Inspectra under `dart run`, or the
 /// one on the `PATH` when Inspectra was compiled to an executable.

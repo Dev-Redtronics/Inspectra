@@ -31,7 +31,7 @@ void main() {
       'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N': 5.5,
       'CVSS:3.1/AV:P/AC:H/PR:H/UI:R/S:U/C:N/I:N/A:N': 0,
     };
-    for (final entry in references.entries) {
+    for (final MapEntry<String, double> entry in references.entries) {
       test(entry.key, () {
         expect(calculator.baseScore(entry.key), entry.value);
       });
@@ -44,7 +44,7 @@ void main() {
 
     test('roundUp follows the CVSS v3.1 specification', () {
       expect(CvssV3Calculator.roundUp(4.02), 4.1);
-      expect(CvssV3Calculator.roundUp(4.0), 4.0);
+      expect(CvssV3Calculator.roundUp(4), 4.0);
       expect(CvssV3Calculator.roundUp(4.000002), 4.0);
     });
   });

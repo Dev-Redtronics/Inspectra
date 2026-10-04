@@ -31,7 +31,7 @@ int levenshteinDistance(String a, String b, {int limit = 1 << 30}) {
   var previous = List<int>.generate(b.length + 1, (index) => index);
   for (var i = 1; i <= a.length; i++) {
     final current = List<int>.filled(b.length + 1, 0)..[0] = i;
-    var rowMinimum = current[0];
+    int rowMinimum = current[0];
     for (var j = 1; j <= b.length; j++) {
       final cost = a.codeUnitAt(i - 1) == b.codeUnitAt(j - 1) ? 0 : 1;
       current[j] = min(

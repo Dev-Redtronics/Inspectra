@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
-import 'trivy_provision.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/trivy/trivy_provision.dart';
 
 /// The result of the Trivy step of a scan.
 final class TrivyOutcome {
@@ -36,7 +36,7 @@ final class TrivyOutcome {
   ///
   /// Returns the JSON object.
   Map<String, Object?> toJson() {
-    final current = provision;
+    final TrivyProvision current = provision;
     return switch (current) {
       TrivyAvailable() => <String, Object?>{
         'status': 'ran',

@@ -15,13 +15,14 @@
  */
 
 import 'package:args/args.dart';
-
-import '../../inspect/inspection_report.dart';
-import '../../model/inspectra_exception.dart';
-import '../../pub/package_name.dart';
-import '../../report/command_report.dart';
-import '../command_session.dart';
-import '../inspectra_command.dart';
+import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/inspectra_command.dart';
+import 'package:inspectra/src/inspect/inspection_report.dart';
+import 'package:inspectra/src/inspect/inspection_result.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
+import 'package:inspectra/src/pub/package_name.dart';
+import 'package:inspectra/src/report/command_report.dart';
 
 /// `inspectra inspect <package> <version>`: statically analyses the
 /// published source of a package version before it is added.
@@ -57,15 +58,15 @@ final class InspectCommand extends InspectraCommand {
         'inspect requires <package> and <version> arguments.',
       );
     }
-    final name = PackageName.validate(results.rest[0]);
-    final version = PackageName.validateExactVersion(results.rest[1]);
+    final String name = PackageName.validate(results.rest[0]);
+    final String version = PackageName.validateExactVersion(results.rest[1]);
     session.console.info('Inspecting $name $version...');
-    final result = await session.inspector().inspect(
+    final InspectionResult result = await session.inspector().inspect(
       name,
       version,
       onStatus: (message) => session.console.info('  $message'),
     );
-    final outcome = session.filter().apply(result.findings);
+    final FilterOutcome outcome = session.filter().apply(result.findings);
     return InspectionReport(
       result: result,
       findings: outcome.kept,

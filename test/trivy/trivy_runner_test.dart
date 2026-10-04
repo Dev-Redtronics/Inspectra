@@ -29,7 +29,7 @@ void main() {
   ).scan('trivy', '/project', displayPrefix: '.');
 
   test('maps a successful run', () async {
-    final findings = await scan(
+    final List<Finding> findings = await scan(
       const ProcessOutcome(exitCode: 0, stdout: '{"Results":[]}', stderr: ''),
     );
     expect(findings, isEmpty);

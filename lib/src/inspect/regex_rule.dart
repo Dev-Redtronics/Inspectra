@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import '../model/severity.dart';
+import 'package:inspectra/src/model/severity.dart';
 
 /// One pattern based detection rule of the source inspector.
 final class RegexRule {

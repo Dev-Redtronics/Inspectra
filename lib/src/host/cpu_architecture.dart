@@ -45,7 +45,9 @@ enum CpuArchitecture {
   ///
   /// Returns the matching architecture, or [other] when none matches.
   static CpuArchitecture fromAbiName(String name) {
-    final matches = values.where((cpu) => cpu.abiName == name);
+    final Iterable<CpuArchitecture> matches = values.where(
+      (cpu) => cpu.abiName == name,
+    );
     return matches.firstOrNull ?? CpuArchitecture.other;
   }
 }

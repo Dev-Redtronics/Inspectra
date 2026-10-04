@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import '../inspect/inspection_report.dart';
-import '../io/ansi_styler.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../report/command_report.dart';
+import 'package:inspectra/src/inspect/inspection_report.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/report/command_report.dart';
 
 /// The report of the `add` command.
 final class AddReport implements CommandReport {
@@ -90,27 +90,25 @@ final class AddReport implements CommandReport {
   ///
   /// Returns the JSON body.
   @override
-  Map<String, Object?> toJson() {
-    return <String, Object?>{
-      'package': package,
-      'version': version,
-      'dev': dev,
-      'installed': installed,
-      'blocked': blocked,
-      'blockReasons': blockReasons,
-      'forced': forced,
-      'dryRun': dryRun,
-      'riskScore': inspection.riskScore,
-      'riskLabel': inspection.riskLabel,
-      'inspection': inspection.toJson(),
-      'findings': findings.map((finding) => finding.toJson()).toList(),
-    };
-  }
+  Map<String, Object?> toJson() => <String, Object?>{
+    'package': package,
+    'version': version,
+    'dev': dev,
+    'installed': installed,
+    'blocked': blocked,
+    'blockReasons': blockReasons,
+    'forced': forced,
+    'dryRun': dryRun,
+    'riskScore': inspection.riskScore,
+    'riskLabel': inspection.riskLabel,
+    'inspection': inspection.toJson(),
+    'findings': findings.map((finding) => finding.toJson()).toList(),
+  };
 
   /// Writes the human readable report.
   @override
   void writeText(StringBuffer out, AnsiStyler style) {
-    final typosquat = findings.where(
+    final Iterable<Finding> typosquat = findings.where(
       (finding) => finding.source == FindingSource.typosquat,
     );
     if (typosquat.isNotEmpty) {
@@ -124,7 +122,7 @@ final class AddReport implements CommandReport {
     }
     inspection.writeText(out, style);
     out.writeln();
-    for (final reason in blockReasons) {
+    for (final String reason in blockReasons) {
       out.writeln('${style.red('[BLOCKED]')} $reason');
     }
     if (pubOutput.trim().isNotEmpty) {

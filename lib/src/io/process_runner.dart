@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'process_outcome.dart';
+import 'package:inspectra/src/io/process_outcome.dart';
 
 /// Runs external processes such as `git`, `dart pub add` and `trivy`.
 ///

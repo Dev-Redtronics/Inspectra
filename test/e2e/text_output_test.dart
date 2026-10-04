@@ -83,8 +83,8 @@ void main() {
           'downloadCount30Days': 3,
         }),
       );
-    final harness = project(const <String, String>{});
-    final code = await harness.run(<String>['trust', 'young', '1.0.0']);
+    final TestHarness harness = project(const <String, String>{});
+    final int code = await harness.run(<String>['trust', 'young', '1.0.0']);
     expect(code, 1);
     expect(harness.out, contains('Verdict: NOT TRUSTED'));
     expect(harness.out, contains('FRESH_PACKAGE'));
@@ -169,7 +169,7 @@ void main() {
         stderr: '',
       );
     });
-    final harness = project(<String, String>{
+    final TestHarness harness = project(<String, String>{
       'packages/app/pubspec.lock': '''
 packages:
   http:
@@ -182,7 +182,7 @@ packages:
           'name: app\nenvironment:\n  sdk: ^3.5.0\ndependencies:\n'
           '  http: any\n',
     }, processRunner: trivy);
-    final code = await harness.run(<String>[
+    final int code = await harness.run(<String>[
       '-r',
       '--trivy-executable',
       'trivy',
@@ -190,7 +190,7 @@ packages:
       'k',
     ]);
     expect(code, 1);
-    final out = harness.out;
+    final String out = harness.out;
     expect(out, contains('Known vulnerabilities (1)'));
     expect(out, contains('Fix: upgrade to 1.0.0'));
     expect(out, contains('Supply chain'));
@@ -202,7 +202,9 @@ packages:
   });
 
   test('scan explains a missing lockfile', () async {
-    final harness = project(<String, String>{'pubspec.yaml': 'name: x\n'});
+    final TestHarness harness = project(<String, String>{
+      'pubspec.yaml': 'name: x\n',
+    });
     expect(await harness.run(<String>['scan', '--offline']), 65);
     expect(harness.err, contains('dart pub get'));
   });
@@ -224,7 +226,10 @@ packages:
         stderr: '',
       );
     });
-    final harness = project(const <String, String>{}, processRunner: trivy);
+    final TestHarness harness = project(
+      const <String, String>{},
+      processRunner: trivy,
+    );
     expect(
       await harness.run(<String>['trivy', '--trivy-executable', 'trivy']),
       1,
@@ -243,7 +248,7 @@ packages:
   });
 
   test('typosquat prints a clean result', () async {
-    final harness = project(<String, String>{
+    final TestHarness harness = project(<String, String>{
       'pubspec.yaml': 'name: a\ndependencies:\n  http: ^1.0.0\n',
     });
     expect(await harness.run(<String>['typosquat', '--offline']), 0);
@@ -252,7 +257,7 @@ packages:
   });
 
   test('expired ignore rules are reported', () async {
-    final harness = project(<String, String>{
+    final TestHarness harness = project(<String, String>{
       'pubspec.yaml': 'name: a\ndependencies:\n  http: ^1.0.0\n',
       'inspectra.yaml':
           'ignore:\n  - id: X\n    reason: Old.\n'
@@ -263,7 +268,7 @@ packages:
   });
 
   test('--output reports where the file was written', () async {
-    final harness = project(<String, String>{
+    final TestHarness harness = project(<String, String>{
       'pubspec.yaml': 'name: a\ndependencies:\n  http: ^1.0.0\n',
     });
     expect(

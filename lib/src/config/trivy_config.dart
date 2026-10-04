@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'package:inspectra/src/config/filesystem_scan_config.dart';
 import 'package:inspectra/src/config/license_scan_config.dart';
 import 'package:inspectra/src/config/secret_scan_config.dart';
@@ -95,35 +111,35 @@ final class TrivyConfig {
   ///
   /// Pinning a version keeps scans reproducible; updating this constant is
   /// part of the regular release process.
-  static const String pinnedVersion = '0.75.0';
+  static const pinnedVersion = '0.75.0';
 
   /// The special [version] value that resolves the newest Trivy release.
-  static const String latestVersion = 'latest';
+  static const latestVersion = 'latest';
 
   /// The environment variable that names the Trivy executable, kept for
   /// compatibility; it overrides `trivy.executable`.
-  static const String legacyExecutableVariable = 'INSPECTRA_TRIVY';
+  static const legacyExecutableVariable = 'INSPECTRA_TRIVY';
 
   /// Where official Trivy release assets are downloaded from.
-  static const String defaultDownloadBaseUrl =
+  static const defaultDownloadBaseUrl =
       'https://github.com/aquasecurity/trivy/releases/download';
 
   /// The page that redirects to the newest Trivy release.
-  static const String defaultLatestReleaseUrl =
+  static const defaultLatestReleaseUrl =
       'https://github.com/aquasecurity/trivy/releases/latest';
 
   /// Where `check` and `trivy` write the JSON report of each scan.
-  static const String defaultReportDirectory = '.dart_tool/inspectra/trivy';
+  static const defaultReportDirectory = '.dart_tool/inspectra/trivy';
 
   /// Returns a copy whose file system paths are resolved with [resolve]:
   /// [installDirectory], [cacheDirectory] and an [executable] that contains
   /// a path separator. A bare executable name stays a `PATH` lookup.
   TrivyConfig withResolvedPaths(String Function(String path) resolve) {
-    final command = executable;
-    final isPath =
+    final String? command = executable;
+    final bool isPath =
         command != null && (command.contains('/') || command.contains(r'\'));
-    final install = installDirectory;
-    final cache = cacheDirectory;
+    final String? install = installDirectory;
+    final String? cache = cacheDirectory;
     return TrivyConfig(
       enabled: enabled,
       mode: mode,

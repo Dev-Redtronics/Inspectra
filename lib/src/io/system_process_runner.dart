@@ -18,8 +18,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'process_outcome.dart';
-import 'process_runner.dart';
+import 'package:inspectra/src/io/process_outcome.dart';
+import 'package:inspectra/src/io/process_runner.dart';
 
 /// The production [ProcessRunner] backed by `dart:io`.
 final class SystemProcessRunner implements ProcessRunner {
@@ -27,7 +27,7 @@ final class SystemProcessRunner implements ProcessRunner {
   const SystemProcessRunner();
 
   /// The exit code reported for a process that was killed on timeout.
-  static const int timedOutExitCode = -1;
+  static const timedOutExitCode = -1;
 
   /// Starts [executable], collects its output and enforces [timeout].
   ///
@@ -43,18 +43,18 @@ final class SystemProcessRunner implements ProcessRunner {
     bool runInShell = false,
     Duration? timeout,
   }) async {
-    final process = await Process.start(
+    final Process process = await Process.start(
       executable,
       arguments,
       workingDirectory: workingDirectory,
       runInShell: runInShell,
     );
     const decoder = Utf8Decoder(allowMalformed: true);
-    final stdoutText = process.stdout.transform(decoder).join();
-    final stderrText = process.stderr.transform(decoder).join();
-    final exitCode = await _awaitExit(process, timeout);
-    final collectedStdout = await stdoutText;
-    final collectedStderr = await stderrText;
+    final Future<String> stdoutText = process.stdout.transform(decoder).join();
+    final Future<String> stderrText = process.stderr.transform(decoder).join();
+    final int? exitCode = await _awaitExit(process, timeout);
+    final String collectedStdout = await stdoutText;
+    final String collectedStderr = await stderrText;
     if (exitCode == null) {
       return ProcessOutcome(
         exitCode: timedOutExitCode,

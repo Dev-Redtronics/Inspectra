@@ -31,25 +31,24 @@ void main() {
   tearDown(() => directory.deleteSync(recursive: true));
 
   /// Creates a manager whose `git rev-parse` answers [gitPath].
-  GitHookManager manager({String gitPath = '.git/hooks/pre-commit'}) {
-    return GitHookManager(
-      processRunner: FakeProcessRunner(
-        (executable, arguments) => ProcessOutcome(
-          exitCode: gitPath.isEmpty ? 128 : 0,
-          stdout: '$gitPath\n',
-          stderr: '',
+  GitHookManager manager({String gitPath = '.git/hooks/pre-commit'}) =>
+      GitHookManager(
+        processRunner: FakeProcessRunner(
+          (executable, arguments) => ProcessOutcome(
+            exitCode: gitPath.isEmpty ? 128 : 0,
+            stdout: '$gitPath\n',
+            stderr: '',
+          ),
         ),
-      ),
-      workingDirectory: directory.path,
-      host: HostPlatform.current(),
-    );
-  }
+        workingDirectory: directory.path,
+        host: HostPlatform.current(),
+      );
 
   test('installs, updates and removes its own hook', () async {
-    final (path, existed) = await manager().install();
+    final (String path, bool existed) = await manager().install();
     expect(existed, isFalse);
     expect(File(path).readAsStringSync(), contains(PreCommitScript.marker));
-    final (_, existedAgain) = await manager().install();
+    final (_, bool existedAgain) = await manager().install();
     expect(existedAgain, isTrue);
     expect(await manager().remove(), path);
     expect(File(path).existsSync(), isFalse);
@@ -57,7 +56,7 @@ void main() {
   });
 
   test('honours the path reported by git, e.g. core.hooksPath', () async {
-    final (path, _) = await manager(gitPath: 'custom/hooks/pre-commit')
+    final (String path, _) = await manager(gitPath: 'custom/hooks/pre-commit')
         .install();
     expect(
       path,

@@ -16,9 +16,9 @@
 
 import 'package:args/args.dart';
 
-import '../model/inspectra_exception.dart';
-import '../model/severity.dart';
-import '../report/output_format.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/report/output_format.dart';
 
 /// The options shared by every command and their translation into
 /// configuration overrides.
@@ -146,13 +146,13 @@ final class SharedOptions {
   static Map<String, String> overrides(ArgResults results) {
     final overrides = <String, String>{};
     for (final assignment in results['set'] as List<String>) {
-      final separator = assignment.indexOf('=');
+      final int separator = assignment.indexOf('=');
       if (separator <= 0) {
         throw InvalidUsageException(
           '--set expects key=value, got "$assignment".',
         );
       }
-      final key = assignment.substring(0, separator).trim();
+      final String key = assignment.substring(0, separator).trim();
       overrides[key] = assignment.substring(separator + 1).trim();
     }
     final mapping = <String, String>{
@@ -164,9 +164,9 @@ final class SharedOptions {
       'trivy-download': 'trivy.download',
       'trivy-use-installed': 'trivy.use_installed',
     };
-    for (final entry in mapping.entries) {
-      final defined = results.options.contains(entry.key);
-      final value = defined ? results[entry.key] : null;
+    for (final MapEntry<String, String> entry in mapping.entries) {
+      final bool defined = results.options.contains(entry.key);
+      final Object? value = defined ? results[entry.key] : null;
       if (value != null) {
         overrides[entry.value] = '$value';
       }

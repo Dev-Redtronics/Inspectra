@@ -16,13 +16,13 @@
 
 import 'dart:typed_data';
 
-import '../archive/archive_entry.dart';
-import '../archive/archive_entry_kind.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../model/source_location.dart';
-import '../report/snippet_sanitizer.dart';
+import 'package:inspectra/src/archive/archive_entry.dart';
+import 'package:inspectra/src/archive/archive_entry_kind.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/report/snippet_sanitizer.dart';
 
 /// Checks the structure of a package archive for attacks and surprises.
 ///
@@ -49,10 +49,10 @@ final class ArchiveScanner {
   const ArchiveScanner();
 
   /// The longest acceptable entry name.
-  static const int maxNameLength = 4096;
+  static const maxNameLength = 4096;
 
   /// Extensions of hidden files that are executable.
-  static const Set<String> _scriptExtensions = <String>{
+  static const _scriptExtensions = <String>{
     '.dart',
     '.sh',
     '.bat',
@@ -61,7 +61,7 @@ final class ArchiveScanner {
   };
 
   /// Extensions of native binaries.
-  static const Set<String> _binaryExtensions = <String>{
+  static const _binaryExtensions = <String>{
     '.so',
     '.dll',
     '.dylib',
@@ -73,7 +73,7 @@ final class ArchiveScanner {
 
   /// Magic numbers of executable formats: ELF, PE, Mach-O 32/64 bit and
   /// universal binaries.
-  static const List<List<int>> _magicNumbers = <List<int>>[
+  static const _magicNumbers = <List<int>>[
     <int>[0x7F, 0x45, 0x4C, 0x46],
     <int>[0x4D, 0x5A],
     <int>[0xFE, 0xED, 0xFA, 0xCE],
@@ -84,7 +84,7 @@ final class ArchiveScanner {
   ];
 
   /// The setuid and setgid permission bits.
-  static const int _setIdBits = 0xC00;
+  static const _setIdBits = 0xC00;
 
   /// Scans [entries].
   ///
@@ -102,7 +102,7 @@ final class ArchiveScanner {
   /// Returns the findings of that entry.
   List<Finding> _scanEntry(ArchiveEntry entry) {
     final findings = <Finding>[];
-    final segments = entry.path.split('/');
+    final List<String> segments = entry.path.split('/');
     if (entry.name.length > maxNameLength) {
       findings.add(
         _finding(
@@ -133,7 +133,7 @@ final class ArchiveScanner {
         ),
       );
     }
-    final link = _linkFinding(entry);
+    final Finding? link = _linkFinding(entry);
     if (link != null) {
       findings.add(link);
     }
@@ -169,8 +169,8 @@ final class ArchiveScanner {
       return const <Finding>[];
     }
     final findings = <Finding>[];
-    final name = entry.baseName;
-    final extension = _extension(name);
+    final String name = entry.baseName;
+    final String extension = _extension(name);
     if (name.startsWith('.') && _scriptExtensions.contains(extension)) {
       findings.add(
         _finding(
@@ -209,14 +209,15 @@ final class ArchiveScanner {
   /// Returns a finding for links, CRITICAL when the target escapes the
   /// package, otherwise `null`.
   Finding? _linkFinding(ArchiveEntry entry) {
-    final isLink =
+    final bool isLink =
         entry.kind == ArchiveEntryKind.symlink ||
         entry.kind == ArchiveEntryKind.hardLink;
     if (!isLink) {
       return null;
     }
-    final target = (entry.linkTarget ?? '').replaceAll(r'\', '/');
-    final escapes = _isAbsolute(target) || target.split('/').contains('..');
+    final String target = (entry.linkTarget ?? '').replaceAll(r'\', '/');
+    final bool escapes =
+        _isAbsolute(target) || target.split('/').contains('..');
     return _finding(
       entry,
       'LINK_ENTRY',
@@ -232,11 +233,11 @@ final class ArchiveScanner {
     final findings = <Finding>[];
     final exact = <String>{};
     final folded = <String, String>{};
-    for (final entry in entries.where(
+    for (final ArchiveEntry entry in entries.where(
       (e) => e.kind != ArchiveEntryKind.directory,
     )) {
-      final path = entry.path;
-      final lower = path.toLowerCase();
+      final String path = entry.path;
+      final String lower = path.toLowerCase();
       if (!exact.add(path)) {
         findings.add(
           _finding(
@@ -248,7 +249,7 @@ final class ArchiveScanner {
         );
         continue;
       }
-      final previous = folded[lower];
+      final String? previous = folded[lower];
       if (previous != null) {
         findings.add(
           _finding(
@@ -277,7 +278,7 @@ final class ArchiveScanner {
   ///
   /// Returns `true` for native executables and libraries.
   bool _hasMagic(Uint8List bytes) {
-    for (final magic in _magicNumbers) {
+    for (final List<int> magic in _magicNumbers) {
       if (bytes.length < magic.length) {
         continue;
       }
@@ -294,7 +295,7 @@ final class ArchiveScanner {
 
   /// Returns the lower case extension of [fileName], including the dot.
   String _extension(String fileName) {
-    final dot = fileName.lastIndexOf('.');
+    final int dot = fileName.lastIndexOf('.');
     return dot <= 0 ? '' : fileName.substring(dot).toLowerCase();
   }
 
@@ -306,14 +307,12 @@ final class ArchiveScanner {
     String rule,
     Severity severity,
     String description,
-  ) {
-    return Finding(
-      ruleId: rule,
-      source: FindingSource.archive,
-      severity: severity,
-      title: description,
-      location: SourceLocation(SnippetSanitizer.sanitize(entry.path)),
-      attributes: <String, Object?>{'entryName': entry.path},
-    );
-  }
+  ) => Finding(
+    ruleId: rule,
+    source: FindingSource.archive,
+    severity: severity,
+    title: description,
+    location: SourceLocation(SnippetSanitizer.sanitize(entry.path)),
+    attributes: <String, Object?>{'entryName': entry.path},
+  );
 }

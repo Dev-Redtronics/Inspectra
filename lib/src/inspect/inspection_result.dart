@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
-import '../trust/trust_info.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/trust/trust_info.dart';
 
 /// The raw outcome of inspecting one package version.
 final class InspectionResult {

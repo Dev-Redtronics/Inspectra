@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-import '../io/ansi_styler.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../report/command_report.dart';
-import 'inspection_result.dart';
-import 'risk_scorer.dart';
+import 'package:inspectra/src/inspect/inspection_result.dart';
+import 'package:inspectra/src/inspect/risk_scorer.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/trust/trust_info.dart';
 
 /// The report of the `inspect` command.
 ///
@@ -77,69 +78,65 @@ final class InspectionReport implements CommandReport {
   ///
   /// Returns the JSON body.
   @override
-  Map<String, Object?> toJson() {
-    return <String, Object?>{
-      'package': result.package,
-      'version': result.version,
-      'dartFileCount': result.dartFileCount,
-      'riskScore': riskScore,
-      'riskLabel': riskLabel,
-      'failScore': failScore,
-      'suppressed': suppressedCount,
-      'regexFindings': _of(FindingSource.regex).map(_located).toList(),
-      'entropyFindings': _of(FindingSource.entropy)
-          .map(
-            (f) => <String, Object?>{
-              'file': f.location?.path,
-              'line': f.location?.line,
-              'entropy': f.attributes['entropy'],
-              'severity': f.severity.label,
-              'snippet': f.snippet,
-            },
-          )
-          .toList(),
-      'unicodeFindings': _of(FindingSource.unicode)
-          .map(
-            (f) => <String, Object?>{
-              ..._located(f),
-              'codepoint': f.attributes['codepoint'],
-            },
-          )
-          .toList(),
-      'archiveFindings': _of(FindingSource.archive)
-          .map(
-            (f) => <String, Object?>{
-              'rule': f.ruleId,
-              'severity': f.severity.label,
-              'description': f.title,
-              'entryName': f.attributes['entryName'],
-            },
-          )
-          .toList(),
-      'pubspecFindings': _of(FindingSource.pubspec).map(_located).toList(),
-      'trustInfo': result.trust.toJson(),
-      'findings': findings.map((finding) => finding.toJson()).toList(),
-    };
-  }
+  Map<String, Object?> toJson() => <String, Object?>{
+    'package': result.package,
+    'version': result.version,
+    'dartFileCount': result.dartFileCount,
+    'riskScore': riskScore,
+    'riskLabel': riskLabel,
+    'failScore': failScore,
+    'suppressed': suppressedCount,
+    'regexFindings': _of(FindingSource.regex).map(_located).toList(),
+    'entropyFindings': _of(FindingSource.entropy)
+        .map(
+          (f) => <String, Object?>{
+            'file': f.location?.path,
+            'line': f.location?.line,
+            'entropy': f.attributes['entropy'],
+            'severity': f.severity.label,
+            'snippet': f.snippet,
+          },
+        )
+        .toList(),
+    'unicodeFindings': _of(FindingSource.unicode)
+        .map(
+          (f) => <String, Object?>{
+            ..._located(f),
+            'codepoint': f.attributes['codepoint'],
+          },
+        )
+        .toList(),
+    'archiveFindings': _of(FindingSource.archive)
+        .map(
+          (f) => <String, Object?>{
+            'rule': f.ruleId,
+            'severity': f.severity.label,
+            'description': f.title,
+            'entryName': f.attributes['entryName'],
+          },
+        )
+        .toList(),
+    'pubspecFindings': _of(FindingSource.pubspec).map(_located).toList(),
+    'trustInfo': result.trust.toJson(),
+    'findings': findings.map((finding) => finding.toJson()).toList(),
+  };
 
   /// Serialises a located finding in the `dart_audit` layout.
   ///
   /// Returns the JSON object.
-  Map<String, Object?> _located(Finding finding) {
-    return <String, Object?>{
-      'file': finding.location?.path,
-      'line': finding.location?.line,
-      'rule': finding.ruleId,
-      'severity': finding.severity.label,
-      'description': finding.title,
-      'snippet': finding.snippet,
-    };
-  }
+  Map<String, Object?> _located(Finding finding) => <String, Object?>{
+    'file': finding.location?.path,
+    'line': finding.location?.line,
+    'rule': finding.ruleId,
+    'severity': finding.severity.label,
+    'description': finding.title,
+    'snippet': finding.snippet,
+  };
 
   /// Writes the human readable report.
   @override
   void writeText(StringBuffer out, AnsiStyler style) {
-    final rule = style.dim('─' * 60);
+    final String rule = style.dim('─' * 60);
     out
       ..writeln()
       ..writeln(
@@ -159,7 +156,9 @@ final class InspectionReport implements CommandReport {
     for (final (title, source) in sections) {
       _writeSection(out, style, title, _of(source));
     }
-    final codeFindings = findings.where((f) => f.source != FindingSource.trust);
+    final Iterable<Finding> codeFindings = findings.where(
+      (f) => f.source != FindingSource.trust,
+    );
     if (codeFindings.isEmpty) {
       out
         ..writeln(style.green('  ✔ No suspicious patterns found.'))
@@ -173,23 +172,32 @@ final class InspectionReport implements CommandReport {
 
   /// Writes the trust block.
   void _writeTrust(StringBuffer out, AnsiStyler style) {
-    final trust = result.trust;
+    final TrustInfo trust = result.trust;
     out
       ..writeln('  ${style.bold('Package Trust Assessment')}')
-      ..writeln(
-        '  Publisher: ${trust.publisher == null ? style.red('none') : '${trust.publisher} (verified)'}',
-      )
+      ..writeln('  Publisher: ${_publisher(style)}')
       ..writeln(
         '  Likes: ${trust.likeCount ?? 'n/a'} · Downloads (30d): '
         '${trust.downloadCount30Days ?? 'n/a'}',
       );
-    for (final finding in _of(FindingSource.trust)) {
+    for (final Finding finding in _of(FindingSource.trust)) {
       out.writeln(
         '  ${style.severityLabel(finding.severity)}'
         '${finding.title}',
       );
     }
     out.writeln();
+  }
+
+  /// Describes the publisher of the inspected package.
+  ///
+  /// Returns `<publisher> (verified)` or a red `none`.
+  String _publisher(AnsiStyler style) {
+    final String? publisher = result.trust.publisher;
+    if (publisher == null) {
+      return style.red('none');
+    }
+    return '$publisher (verified)';
   }
 
   /// Writes one section of located findings.
@@ -211,11 +219,11 @@ final class InspectionReport implements CommandReport {
         )
         ..writeln('    Rule: ${finding.ruleId}')
         ..writeln('    ${finding.title}');
-      final detail = finding.description;
+      final String detail = finding.description;
       if (detail.isNotEmpty) {
         out.writeln('    ${style.dim(detail)}');
       }
-      final snippet = finding.snippet;
+      final String? snippet = finding.snippet;
       if (snippet != null) {
         out.writeln('    ${style.dim('› $snippet')}');
       }

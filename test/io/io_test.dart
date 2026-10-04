@@ -58,7 +58,7 @@ void main() {
       const off = AnsiStyler(enabled: false);
       expect(on.red('x'), '\x1B[31mx\x1B[0m');
       expect(off.red('x'), 'x');
-      for (final severity in Severity.values) {
+      for (final Severity severity in Severity.values) {
         expect(on.severityLabel(severity), contains(severity.label));
       }
       expect(on.green('a') + on.cyan('b') + on.dim('c'), contains('b'));
@@ -107,7 +107,9 @@ void main() {
     });
 
     test('finds executables on the PATH and in extra directories', () {
-      final directory = Directory.systemTemp.createTempSync('resolver_');
+      final Directory directory = Directory.systemTemp.createTempSync(
+        'resolver_',
+      );
       addTearDown(() => directory.deleteSync(recursive: true));
       final tool = File('${directory.path}/tool')..writeAsStringSync('x');
       final plain = File('${directory.path}/plain')..writeAsStringSync('x');
@@ -134,7 +136,7 @@ void main() {
 
   group('SystemProcessRunner', () {
     test('runs a process and captures its output', () async {
-      final outcome = await const SystemProcessRunner().run(
+      final ProcessOutcome outcome = await const SystemProcessRunner().run(
         Platform.resolvedExecutable,
         const <String>['--version'],
       );
@@ -149,7 +151,7 @@ void main() {
           )..writeAsStringSync(
             'Future<void> main() => Future.delayed(Duration(minutes: 5));',
           );
-      final outcome = await const SystemProcessRunner().run(
+      final ProcessOutcome outcome = await const SystemProcessRunner().run(
         Platform.resolvedExecutable,
         <String>['run', script.path],
         timeout: const Duration(milliseconds: 500),

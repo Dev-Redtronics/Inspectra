@@ -16,10 +16,11 @@
 
 import 'dart:convert';
 
-import '../model/finding.dart';
-import '../model/severity.dart';
-import '../version.dart';
-import 'command_report.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/version.dart';
 
 /// Renders reports as SARIF 2.1.0 logs.
 ///
@@ -32,7 +33,7 @@ final class SarifReportWriter {
   const SarifReportWriter();
 
   /// The numeric security severity GitHub uses to rank alerts.
-  static const Map<Severity, String> _securitySeverity = <Severity, String>{
+  static const _securitySeverity = <Severity, String>{
     Severity.critical: '9.5',
     Severity.high: '8.0',
     Severity.medium: '5.5',
@@ -45,7 +46,7 @@ final class SarifReportWriter {
   /// Returns the SARIF document followed by a line break.
   String render(CommandReport report) {
     final rules = <String, Map<String, Object?>>{};
-    for (final finding in report.findings) {
+    for (final Finding finding in report.findings) {
       rules.putIfAbsent(finding.ruleId, () => _rule(finding));
     }
     final document = <String, Object?>{
@@ -76,7 +77,7 @@ final class SarifReportWriter {
   ///
   /// Returns the SARIF reporting descriptor.
   Map<String, Object?> _rule(Finding finding) {
-    final url = finding.url;
+    final String? url = finding.url;
     return <String, Object?>{
       'id': finding.ruleId,
       'name': finding.ruleId,
@@ -93,8 +94,8 @@ final class SarifReportWriter {
   ///
   /// Returns the result object.
   Map<String, Object?> _result(Finding finding) {
-    final location = finding.location;
-    final message = finding.description.isEmpty
+    final SourceLocation? location = finding.location;
+    final String message = finding.description.isEmpty
         ? finding.title
         : '${finding.title}\n\n${finding.description}';
     return <String, Object?>{
@@ -127,13 +128,11 @@ final class SarifReportWriter {
   /// Maps a severity to a SARIF result level.
   ///
   /// Returns `error`, `warning` or `note`.
-  String _level(Severity severity) {
-    return switch (severity) {
-      Severity.critical => 'error',
-      Severity.high => 'error',
-      Severity.medium => 'warning',
-      Severity.low => 'note',
-      Severity.unknown => 'note',
-    };
-  }
+  String _level(Severity severity) => switch (severity) {
+    Severity.critical => 'error',
+    Severity.high => 'error',
+    Severity.medium => 'warning',
+    Severity.low => 'note',
+    Severity.unknown => 'note',
+  };
 }

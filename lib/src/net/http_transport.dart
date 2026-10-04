@@ -19,12 +19,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import '../config/network_config.dart';
-import '../io/environment.dart';
-import '../model/inspectra_exception.dart';
-import '../version.dart';
-import 'http_result.dart';
-import 'retry_policy.dart';
+import 'package:inspectra/src/config/network_config.dart';
+import 'package:inspectra/src/io/environment.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/net/http_result.dart';
+import 'package:inspectra/src/net/retry_policy.dart';
+import 'package:inspectra/src/version.dart';
 
 /// The only component that performs HTTP requests.
 ///
@@ -51,12 +51,11 @@ final class HttpTransport {
     Future<void> Function(Duration delay)? sleep,
     RetryPolicy? retryPolicy,
   }) {
-    final client = HttpClient(context: _securityContext(config));
-    client
+    final client = HttpClient(context: _securityContext(config))
       ..connectionTimeout = config.timeout
       ..userAgent = userAgent
       ..findProxy = (uri) => _findProxy(uri, config, environment);
-    final policy =
+    final RetryPolicy policy =
         retryPolicy ??
         RetryPolicy(
           maxAttempts: config.maxAttempts < 1 ? 1 : config.maxAttempts,
@@ -69,7 +68,7 @@ final class HttpTransport {
   HttpTransport._(this._client, this._config, this._retryPolicy, this._sleep);
 
   /// The `User-Agent` sent with every request.
-  static const String userAgent =
+  static const userAgent =
       'inspectra/$inspectraVersion (+https://github.com/dev-redtronics/inspectra)';
 
   /// The default upper bound for response bodies: 64 MiB.
@@ -97,7 +96,7 @@ final class HttpTransport {
   ///
   /// Returns `null` for the default context when nothing is configured.
   static SecurityContext? _securityContext(NetworkConfig config) {
-    final certificates = config.caCertificates;
+    final String? certificates = config.caCertificates;
     if (certificates == null) {
       return null;
     }
@@ -127,14 +126,14 @@ final class HttpTransport {
     NetworkConfig config,
     Environment environment,
   ) {
-    final explicit = config.proxy;
+    final String? explicit = config.proxy;
     if (explicit == null) {
       return HttpClient.findProxyFromEnvironment(
         uri,
         environment: environment.variables,
       );
     }
-    final proxyUri = Uri.parse(explicit);
+    final Uri proxyUri = Uri.parse(explicit);
     final credentials = proxyUri.userInfo.isEmpty
         ? ''
         : '${proxyUri.userInfo}@';
@@ -155,18 +154,16 @@ final class HttpTransport {
     int maxBytes = defaultMaxBytes,
     bool followRedirects = true,
     Map<String, String> headers = const <String, String>{},
-  }) {
-    return _withRetries(
+  }) => _withRetries(
+    uri,
+    () => _attempt(
+      'GET',
       uri,
-      () => _attempt(
-        'GET',
-        uri,
-        maxBytes: maxBytes,
-        followRedirects: followRedirects,
-        headers: headers,
-      ),
-    );
-  }
+      maxBytes: maxBytes,
+      followRedirects: followRedirects,
+      headers: headers,
+    ),
+  );
 
   /// Sends a `POST` request with a JSON encoded [body] to [uri].
   ///
@@ -181,7 +178,7 @@ final class HttpTransport {
     Object body, {
     int maxBytes = defaultMaxBytes,
   }) {
-    final encoded = utf8.encode(jsonEncode(body));
+    final Uint8List encoded = utf8.encode(jsonEncode(body));
     return _withRetries(
       uri,
       () => _attempt(
@@ -246,7 +243,7 @@ final class HttpTransport {
     var attemptNumber = 0;
     while (true) {
       attemptNumber++;
-      final isLastAttempt = attemptNumber >= _retryPolicy.maxAttempts;
+      final bool isLastAttempt = attemptNumber >= _retryPolicy.maxAttempts;
       HttpResult? result;
       Object? failure;
       try {
@@ -256,7 +253,7 @@ final class HttpTransport {
       } on TimeoutException catch (error) {
         failure = error;
       }
-      final retryable =
+      final bool retryable =
           result == null || _retryPolicy.isRetryableStatus(result.statusCode);
       if (result != null && (!retryable || isLastAttempt)) {
         return result;
@@ -267,7 +264,7 @@ final class HttpTransport {
           '$failure',
         );
       }
-      final delay = _retryPolicy.delayFor(
+      final Duration delay = _retryPolicy.delayFor(
         attemptNumber,
         retryAfter: result?.retryAfter,
       );
@@ -289,8 +286,10 @@ final class HttpTransport {
     required Map<String, String> headers,
     List<int>? body,
   }) async {
-    final timeout = _config.timeout;
-    final request = await _client.openUrl(method, uri).timeout(timeout);
+    final Duration timeout = _config.timeout;
+    final HttpClientRequest request = await _client
+        .openUrl(method, uri)
+        .timeout(timeout);
     request
       ..followRedirects = followRedirects
       ..maxRedirects = 5;
@@ -300,8 +299,12 @@ final class HttpTransport {
         ..contentLength = body.length
         ..add(body);
     }
-    final response = await request.close().timeout(timeout);
-    final bytes = await _readBody(response, maxBytes, uri).timeout(timeout);
+    final HttpClientResponse response = await request.close().timeout(timeout);
+    final Uint8List bytes = await _readBody(
+      response,
+      maxBytes,
+      uri,
+    ).timeout(timeout);
     final responseHeaders = <String, String>{};
     response.headers.forEach((name, values) {
       responseHeaders[name.toLowerCase()] = values.join(',');

@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/host/host_platform.dart';
+import 'package:inspectra/src/host/operating_system.dart';
+import 'package:inspectra/src/io/environment.dart';
 import 'package:path/path.dart' as p;
-
-import '../io/environment.dart';
-import 'host_platform.dart';
-import 'operating_system.dart';
 
 /// Resolves the per-user cache directory that Inspectra writes to.
 ///
@@ -40,18 +39,18 @@ final class CacheDirectory {
   final HostPlatform host;
 
   /// The application folder name appended to the platform cache root.
-  static const String _applicationFolder = 'inspectra';
+  static const _applicationFolder = 'inspectra';
 
   /// Resolves the cache directory.
   ///
   /// Returns the absolute path, or `null` when no home directory can be
   /// determined, in which case callers fall back to the system temp folder.
   String? resolve() {
-    final override = environment['INSPECTRA_CACHE_DIR'];
+    final String? override = environment['INSPECTRA_CACHE_DIR'];
     if (override != null) {
       return override;
     }
-    final root = _platformRoot();
+    final String? root = _platformRoot();
     if (root == null) {
       return null;
     }
@@ -62,7 +61,7 @@ final class CacheDirectory {
   ///
   /// Returns the root folder, or `null` when it cannot be determined.
   String? _platformRoot() {
-    final home = environment.homeDirectory;
+    final String? home = environment.homeDirectory;
     return switch (host.operatingSystem) {
       OperatingSystem.windows => environment['LOCALAPPDATA'] ?? home,
       OperatingSystem.macos => _joinOrNull(home, 'Library/Caches'),
@@ -75,7 +74,7 @@ final class CacheDirectory {
   ///
   /// Returns `$XDG_CACHE_HOME` or `<home>/.cache`, or `null` without a home.
   String? _xdgCache(String? home) {
-    final xdg = environment['XDG_CACHE_HOME'];
+    final String? xdg = environment['XDG_CACHE_HOME'];
     if (xdg != null) {
       return xdg;
     }

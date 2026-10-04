@@ -21,6 +21,7 @@ import 'package:inspectra/inspectra.dart';
 import 'package:inspectra/src/net/http_transport.dart';
 import 'package:inspectra/src/osv/osv_cache.dart';
 import 'package:inspectra/src/osv/osv_client.dart';
+import 'package:inspectra/src/osv/osv_vulnerability.dart';
 import 'package:inspectra/src/pub/lockfile_entry.dart';
 import 'package:test/test.dart';
 
@@ -110,7 +111,8 @@ void main() {
           'summary': 'Second',
         }),
       );
-    final result = await client().query(<LockfileEntry>[http, path]);
+    final Map<LockfileEntry, List<OsvVulnerability>> result = await client()
+        .query(<LockfileEntry>[http, path]);
     expect(result[http]!.map((v) => v.id), <String>['GHSA-A', 'GHSA-B']);
     expect(result[path], isEmpty);
     server.requests.clear();
@@ -118,7 +120,7 @@ void main() {
     expect(server.requests.where((r) => r.startsWith('GET')), isEmpty);
   });
 
-  test('reports OSV outages as unavailable', () async {
+  test('reports OSV outages as unavailable', () {
     server.on('POST', '/v1/querybatch', const FakeResponse(400));
     expect(
       () => client().query(<LockfileEntry>[http]),

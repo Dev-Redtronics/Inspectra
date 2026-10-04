@@ -1,4 +1,23 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:typed_data';
+
+import 'package:inspectra/src/api/diff_kind.dart';
+import 'package:inspectra/src/api/diff_line.dart';
 
 /// The most changed lines shown before the diff is cut short.
 const _maxReportedLines = 120;
@@ -21,8 +40,8 @@ String? diffApi({required String expected, required String actual}) {
   final List<String> before = _normalizeLineEndings(expected).split('\n');
   final List<String> after = _normalizeLineEndings(actual).split('\n');
 
-  final List<_Line> lines = _compare(before, after);
-  if (lines.every((line) => line.kind == _Kind.same)) {
+  final List<DiffLine> lines = _compare(before, after);
+  if (lines.every((line) => line.kind == DiffKind.same)) {
     return null;
   }
   return _render(lines);
@@ -33,25 +52,8 @@ String? diffApi({required String expected, required String actual}) {
 String _normalizeLineEndings(String text) =>
     text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 
-enum _Kind { same, removed, added }
-
-class _Line {
-  const _Line(this.kind, this.text, this.before, this.after);
-
-  final _Kind kind;
-  final String text;
-
-  /// The 1-based line number in the expected text, for unchanged and removed
-  /// lines; for an added line, the number of the line it follows.
-  final int before;
-
-  /// The 1-based line number in the actual text, for unchanged and added
-  /// lines; for a removed line, the number of the line it follows.
-  final int after;
-}
-
 /// Aligns [before] and [after] along their longest common subsequence.
-List<_Line> _compare(List<String> before, List<String> after) {
+List<DiffLine> _compare(List<String> before, List<String> after) {
   var start = 0;
   while (start < before.length &&
       start < after.length &&
@@ -67,31 +69,34 @@ List<_Line> _compare(List<String> before, List<String> after) {
 
   final List<String> oldMiddle = before.sublist(start, before.length - end);
   final List<String> newMiddle = after.sublist(start, after.length - end);
-  final result = <_Line>[
-    for (var i = 0; i < start; i++) _Line(_Kind.same, before[i], i + 1, i + 1),
+  final result = <DiffLine>[
+    for (var i = 0; i < start; i++)
+      DiffLine(DiffKind.same, before[i], i + 1, i + 1),
   ];
 
   var oldLine = start;
   var newLine = start;
-  for (final _Kind kind in _align(oldMiddle, newMiddle)) {
+  for (final DiffKind kind in _align(oldMiddle, newMiddle)) {
     switch (kind) {
-      case _Kind.same:
+      case DiffKind.same:
         oldLine++;
         newLine++;
-        result.add(_Line(kind, before[oldLine - 1], oldLine, newLine));
-      case _Kind.removed:
+        result.add(DiffLine(kind, before[oldLine - 1], oldLine, newLine));
+      case DiffKind.removed:
         oldLine++;
-        result.add(_Line(kind, before[oldLine - 1], oldLine, newLine));
-      case _Kind.added:
+        result.add(DiffLine(kind, before[oldLine - 1], oldLine, newLine));
+      case DiffKind.added:
         newLine++;
-        result.add(_Line(kind, after[newLine - 1], oldLine, newLine));
+        result.add(DiffLine(kind, after[newLine - 1], oldLine, newLine));
     }
   }
 
   for (var i = 0; i < end; i++) {
     final int oldIndex = before.length - end + i;
     final int newIndex = after.length - end + i;
-    result.add(_Line(_Kind.same, before[oldIndex], oldIndex + 1, newIndex + 1));
+    result.add(
+      DiffLine(DiffKind.same, before[oldIndex], oldIndex + 1, newIndex + 1),
+    );
   }
   return result;
 }
@@ -99,18 +104,16 @@ List<_Line> _compare(List<String> before, List<String> after) {
 /// The edit script turning [before] into [after]: a classic dynamic
 /// programming longest common subsequence, which is exact and fast enough
 /// for the region between the common prefix and suffix of two dumps.
-List<_Kind> _align(List<String> before, List<String> after) {
+List<DiffKind> _align(List<String> before, List<String> after) {
   final int rows = before.length;
   final int columns = after.length;
   if ((rows + 1) * (columns + 1) > _maxTableCells) {
     return [
-      for (var i = 0; i < rows; i++) _Kind.removed,
-      for (var i = 0; i < columns; i++) _Kind.added,
+      for (var i = 0; i < rows; i++) DiffKind.removed,
+      for (var i = 0; i < columns; i++) DiffKind.added,
     ];
   }
 
-  // lengths[i][j] is the length of the longest common subsequence of
-  // before[i..] and after[j..].
   final List<Int32List> lengths = [
     for (var i = 0; i <= rows; i++) Int32List(columns + 1),
   ];
@@ -124,36 +127,38 @@ List<_Kind> _align(List<String> before, List<String> after) {
     }
   }
 
-  final script = <_Kind>[];
+  final script = <DiffKind>[];
   var i = 0;
   var j = 0;
   while (i < rows && j < columns) {
     if (before[i] == after[j]) {
-      script.add(_Kind.same);
+      script.add(DiffKind.same);
       i++;
       j++;
-    } else if (lengths[i + 1][j] >= lengths[i][j + 1]) {
-      script.add(_Kind.removed);
-      i++;
-    } else {
-      script.add(_Kind.added);
-      j++;
+      continue;
     }
+    if (lengths[i + 1][j] >= lengths[i][j + 1]) {
+      script.add(DiffKind.removed);
+      i++;
+      continue;
+    }
+    script.add(DiffKind.added);
+    j++;
   }
   for (; i < rows; i++) {
-    script.add(_Kind.removed);
+    script.add(DiffKind.removed);
   }
   for (; j < columns; j++) {
-    script.add(_Kind.added);
+    script.add(DiffKind.added);
   }
   return script;
 }
 
 /// Groups the changed lines into hunks with their context.
-String _render(List<_Line> lines) {
+String _render(List<DiffLine> lines) {
   final changed = <int>[
     for (var i = 0; i < lines.length; i++)
-      if (lines[i].kind != _Kind.same) i,
+      if (lines[i].kind != DiffKind.same) i,
   ];
 
   final hunks = <(int, int)>[];
@@ -164,36 +169,38 @@ String _render(List<_Line> lines) {
         : index + _contextLines;
     if (hunks.isNotEmpty && from <= hunks.last.$2 + 1) {
       hunks.last = (hunks.last.$1, to);
-    } else {
-      hunks.add((from, to));
+      continue;
     }
+    hunks.add((from, to));
   }
 
   final output = <String>[];
   var shown = 0;
   for (final (int from, int to) in hunks) {
-    final List<_Line> hunk = lines.sublist(from, to + 1);
-    final int oldCount = hunk.where((line) => line.kind != _Kind.added).length;
+    final List<DiffLine> hunk = lines.sublist(from, to + 1);
+    final int oldCount = hunk
+        .where((line) => line.kind != DiffKind.added)
+        .length;
     final int newCount = hunk
-        .where((line) => line.kind != _Kind.removed)
+        .where((line) => line.kind != DiffKind.removed)
         .length;
     output.add(
       '@@ -${_start(hunk.first.before, oldCount)},$oldCount '
       '+${_start(hunk.first.after, newCount)},$newCount @@',
     );
     for (final line in hunk) {
-      if (line.kind != _Kind.same && shown == _maxReportedLines) {
+      if (line.kind != DiffKind.same && shown == _maxReportedLines) {
         final int remaining = changed.length - shown;
         output.add('... and $remaining more changed line(s)');
         return output.join('\n');
       }
-      if (line.kind != _Kind.same) {
+      if (line.kind != DiffKind.same) {
         shown++;
       }
       final String prefix = switch (line.kind) {
-        _Kind.same => ' ',
-        _Kind.removed => '-',
-        _Kind.added => '+',
+        DiffKind.same => ' ',
+        DiffKind.removed => '-',
+        DiffKind.added => '+',
       };
       output.add('$prefix${line.text}');
     }

@@ -57,7 +57,7 @@ enum Severity {
   /// `MODERATE` is the GitHub Security Advisory spelling of [medium] and
   /// `NONE` is the CVSS spelling of a zero score, which Inspectra reports as
   /// [low] so that it is never silently dropped.
-  static const Map<String, Severity> _aliases = <String, Severity>{
+  static const _aliases = <String, Severity>{
     'CRITICAL': Severity.critical,
     'HIGH': Severity.high,
     'MEDIUM': Severity.medium,
@@ -88,7 +88,7 @@ enum Severity {
   ///
   /// Returns the parsed severity or [unknown].
   static Severity parse(String? value) {
-    final normalised = value?.trim().toUpperCase() ?? '';
+    final String normalised = value?.trim().toUpperCase() ?? '';
     return _aliases[normalised] ?? Severity.unknown;
   }
 
@@ -100,8 +100,10 @@ enum Severity {
   ///
   /// Returns the parsed severity, or `null` when [value] is not recognised.
   static Severity? tryParse(String value) {
-    final normalised = value.trim().toUpperCase();
-    final matches = Severity.values.where((s) => s.label == normalised);
+    final String normalised = value.trim().toUpperCase();
+    final Iterable<Severity> matches = Severity.values.where(
+      (s) => s.label == normalised,
+    );
     return matches.firstOrNull;
   }
 

@@ -39,7 +39,9 @@ enum OperatingSystem {
   ///
   /// Returns the matching system, or [other] when none matches.
   static OperatingSystem fromAbiName(String name) {
-    final matches = values.where((system) => system.abiName == name);
+    final Iterable<OperatingSystem> matches = values.where(
+      (system) => system.abiName == name,
+    );
     return matches.firstOrNull ?? OperatingSystem.other;
   }
 }

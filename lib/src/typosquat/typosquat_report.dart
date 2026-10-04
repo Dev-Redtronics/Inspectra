@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-import '../io/ansi_styler.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../report/command_report.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/report/command_report.dart';
 
 /// The report of the `typosquat` command.
 ///
@@ -67,38 +67,36 @@ final class TyposquatReport implements CommandReport {
   ///
   /// Returns the JSON body.
   @override
-  Map<String, Object?> toJson() {
-    return <String, Object?>{
-      'pubspec': pubspecPath,
-      'packages': packages,
-      'confusionChecked': confusionChecked,
-      'typosquatFindings': <Object?>[
-        for (final finding in _of(FindingSource.typosquat))
-          <String, Object?>{
-            'rule': finding.ruleId,
-            'severity': finding.severity.label,
-            'description': finding.title,
-            'localPackage': finding.packageName,
-            'matchedPublicPackage': finding.attributes['matchedPublicPackage'],
-          },
-      ],
-      'confusionFindings': <Object?>[
-        for (final finding in _of(FindingSource.confusion))
-          <String, Object?>{
-            'rule': finding.ruleId,
-            'severity': finding.severity.label,
-            'description': finding.title,
-            'packageName': finding.packageName,
-            'publicVersion': finding.attributes['publicVersion'],
-          },
-      ],
-    };
-  }
+  Map<String, Object?> toJson() => <String, Object?>{
+    'pubspec': pubspecPath,
+    'packages': packages,
+    'confusionChecked': confusionChecked,
+    'typosquatFindings': <Object?>[
+      for (final finding in _of(FindingSource.typosquat))
+        <String, Object?>{
+          'rule': finding.ruleId,
+          'severity': finding.severity.label,
+          'description': finding.title,
+          'localPackage': finding.packageName,
+          'matchedPublicPackage': finding.attributes['matchedPublicPackage'],
+        },
+    ],
+    'confusionFindings': <Object?>[
+      for (final finding in _of(FindingSource.confusion))
+        <String, Object?>{
+          'rule': finding.ruleId,
+          'severity': finding.severity.label,
+          'description': finding.title,
+          'packageName': finding.packageName,
+          'publicVersion': finding.attributes['publicVersion'],
+        },
+    ],
+  };
 
   /// Writes the human readable report.
   @override
   void writeText(StringBuffer out, AnsiStyler style) {
-    final rule = style.dim('─' * 60);
+    final String rule = style.dim('─' * 60);
     out
       ..writeln()
       ..writeln(
@@ -136,11 +134,12 @@ final class TyposquatReport implements CommandReport {
     }
     out.writeln('  ${style.bold('$title:')}');
     for (final finding in sectionFindings) {
-      out.writeln(
-        '  ${style.severityLabel(finding.severity)}'
-        '${finding.packageName}  ${style.dim('(${finding.ruleId})')}',
-      );
-      out.writeln('    ${finding.title}');
+      out
+        ..writeln(
+          '  ${style.severityLabel(finding.severity)}'
+          '${finding.packageName}  ${style.dim('(${finding.ruleId})')}',
+        )
+        ..writeln('    ${finding.title}');
     }
     out.writeln();
   }

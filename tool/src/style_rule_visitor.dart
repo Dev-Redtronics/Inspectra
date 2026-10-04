@@ -41,11 +41,11 @@ final class StyleRuleVisitor extends RecursiveAstVisitor<void> {
   final LineInfo lineInfo;
 
   /// The recorded violations.
-  final List<StyleViolation> violations = <StyleViolation>[];
+  final violations = <StyleViolation>[];
 
   /// Records a violation at [node] with [message].
   void _report(AstNode node, String message) {
-    final line = lineInfo.getLocation(node.offset).lineNumber;
+    final int line = lineInfo.getLocation(node.offset).lineNumber;
     violations.add(StyleViolation(path, line, message));
   }
 

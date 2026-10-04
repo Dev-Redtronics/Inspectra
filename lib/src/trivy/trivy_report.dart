@@ -14,99 +14,26 @@
  * limitations under the License.
  */
 
-import '../io/ansi_styler.dart';
-import '../model/finding.dart';
-import '../model/severity.dart';
-import '../report/command_report.dart';
-import '../report/severity_breakdown.dart';
-import 'trivy_outcome.dart';
-import 'trivy_provision.dart';
+import 'dart:convert';
 
-/// The report of the `trivy` command.
-final class TrivyReport implements CommandReport {
-  /// Creates a report for the scan of [target] with [outcome] and the
-  /// policy filtered [findings]; [provisionOnly] marks `--install` and
-  /// `--where` runs that did not scan.
-  const TrivyReport({
-    required this.target,
-    required this.outcome,
-    required this.findings,
-    this.provisionOnly = false,
-  });
+import 'package:inspectra/src/trivy/trivy.dart';
 
-  /// The display path of the scanned directory.
-  final String target;
+/// The parts of a Trivy JSON report Inspectra reads.
+class TrivyReport {
+  /// Creates a report from its results.
+  const TrivyReport(this.results);
 
-  /// How Trivy was provisioned and what it reported.
-  final TrivyOutcome outcome;
-
-  /// The findings after ignore rules and severity filters.
-  @override
-  final List<Finding> findings;
-
-  /// Whether only provisioning was requested.
-  final bool provisionOnly;
-
-  /// The name of the command.
-  @override
-  String get command => 'trivy';
-
-  /// Fails when any finding reaches [threshold].
-  ///
-  /// Returns `true` when the command must exit with `1`.
-  @override
-  bool isFailing(Severity threshold) =>
-      findings.any((finding) => finding.severity.isAtLeast(threshold));
-
-  /// Builds the JSON body.
-  ///
-  /// Returns the JSON body.
-  @override
-  Map<String, Object?> toJson() {
-    return <String, Object?>{
-      'target': target,
-      'trivy': outcome.toJson(),
-      'provisionOnly': provisionOnly,
-    };
+  /// Parses the output of `trivy --format json`.
+  factory TrivyReport.parse(String json) {
+    final Object? decoded = jsonDecode(json);
+    final Object? results = decoded is Map ? decoded['Results'] : null;
+    return TrivyReport([
+      if (results is List)
+        for (final result in results)
+          if (result is Map<String, Object?>) TrivyResult(result),
+    ]);
   }
 
-  /// Writes the human readable report.
-  @override
-  void writeText(StringBuffer out, AnsiStyler style) {
-    final rule = style.dim('─' * 60);
-    out
-      ..writeln()
-      ..writeln(
-        '${style.bold('inspectra')}'
-        '${style.dim(' — Trivy · $target')}',
-      )
-      ..writeln(rule);
-    final provision = outcome.provision;
-    switch (provision) {
-      case TrivyAvailable(:final executable, :final version, :final origin):
-        out.writeln('  Trivy $version (${origin.id}): $executable');
-      case TrivyUnavailable(:final reason):
-        out.writeln(style.yellow('  ⚠ Trivy skipped: $reason'));
-    }
-    if (provisionOnly) {
-      return;
-    }
-    out.writeln();
-    for (final finding in findings) {
-      out
-        ..writeln(
-          '  ${style.severityLabel(finding.severity)}'
-          '${style.bold(finding.ruleId)} ${style.dim('${finding.location}')}',
-        )
-        ..writeln('    ${finding.title}');
-    }
-    out
-      ..writeln(rule)
-      ..writeln(
-        findings.isEmpty
-            ? style.green('✔ No Trivy findings.')
-            : 'Trivy findings: ${findings.length} '
-                  '(${severityBreakdown(findings)})',
-      );
-  }
+  /// One entry per scanned target.
+  final List<TrivyResult> results;
 }

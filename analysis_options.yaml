@@ -24,5 +24,3 @@ linter:
     - no_default_cases
     - public_member_api_docs
     - throw_in_finally
-    - type_annotate_public_apis
-    - unnecessary_await_in_return

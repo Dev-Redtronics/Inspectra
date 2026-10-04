@@ -16,6 +16,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:inspectra/inspectra.dart';
@@ -97,12 +98,12 @@ void main() {
   /// Serves a release of [version] whose checksum file lists [checksum],
   /// or the real checksum when it is `null`.
   void serveRelease(String version, {String? checksum}) {
-    final archive = buildBinaryTarGz(<String, List<int>>{
+    final Uint8List archive = buildBinaryTarGz(<String, List<int>>{
       'trivy': utf8.encode('#!/bin/sh\necho trivy'),
       'README.md': utf8.encode('readme'),
     });
     final name = 'trivy_${version}_Linux-64bit.tar.gz';
-    final sum = checksum ?? sha256.convert(archive).toString();
+    final String sum = checksum ?? sha256.convert(archive).toString();
     server
       ..on(
         'GET',
@@ -123,30 +124,32 @@ void main() {
     bool useInstalled = true,
     TrivyMode mode = TrivyMode.auto,
     String? executable,
-  }) {
-    return TrivyConfig(
-      mode: mode,
-      version: version,
-      download: download,
-      useInstalled: useInstalled,
-      executable: executable,
-      downloadBaseUrl: '${server.baseUrl}/releases/download',
-      latestReleaseUrl: '${server.baseUrl}/releases/latest',
-    );
-  }
+  }) => TrivyConfig(
+    mode: mode,
+    version: version,
+    download: download,
+    useInstalled: useInstalled,
+    executable: executable,
+    downloadBaseUrl: '${server.baseUrl}/releases/download',
+    latestReleaseUrl: '${server.baseUrl}/releases/latest',
+  );
 
   /// Provisions with a no-op status callback.
   Future<TrivyProvision> run(TrivyProvisioner subject) =>
       subject.provision(onStatus: (_) {});
 
   test('is unavailable when disabled', () async {
-    final result = await run(provisioner(config(mode: TrivyMode.disabled)));
+    final TrivyProvision result = await run(
+      provisioner(config(mode: TrivyMode.disabled)),
+    );
     expect(result, isA<TrivyUnavailable>());
     expect(runner.calls, isEmpty);
   });
 
   test('uses the configured executable only', () async {
-    final result = await run(provisioner(config(executable: '/opt/trivy')));
+    final TrivyProvision result = await run(
+      provisioner(config(executable: '/opt/trivy')),
+    );
     expect(
       result,
       isA<TrivyAvailable>().having(
@@ -163,7 +166,9 @@ void main() {
     if (!Platform.isWindows) {
       Process.runSync('chmod', <String>['755', file.path]);
     }
-    final result = await run(provisioner(config(), path: bin.path));
+    final TrivyProvision result = await run(
+      provisioner(config(), path: bin.path),
+    );
     expect(
       result,
       isA<TrivyAvailable>()
@@ -173,7 +178,9 @@ void main() {
   });
 
   test('does not download when downloading is disabled', () async {
-    final result = await run(provisioner(config(download: false)));
+    final TrivyProvision result = await run(
+      provisioner(config(download: false)),
+    );
     expect(
       result,
       isA<TrivyUnavailable>().having(
@@ -186,18 +193,20 @@ void main() {
   });
 
   test('does not touch the network in offline mode', () async {
-    final result = await run(provisioner(config(), offline: true));
+    final TrivyProvision result = await run(
+      provisioner(config(), offline: true),
+    );
     expect(result, isA<TrivyUnavailable>());
     expect(server.requests, isEmpty);
   });
 
   test('skips the download when the host is unreachable', () async {
-    final port = Uri.parse(server.baseUrl).port;
+    final int port = Uri.parse(server.baseUrl).port;
     await server.close();
     final unreachable = TrivyConfig(
       downloadBaseUrl: 'http://127.0.0.1:$port/releases/download',
     );
-    final result = await run(provisioner(unreachable));
+    final TrivyProvision result = await run(provisioner(unreachable));
     expect(
       result,
       isA<TrivyUnavailable>().having(
@@ -210,7 +219,7 @@ void main() {
 
   test('downloads, verifies and caches the pinned version', () async {
     serveRelease('0.75.0');
-    final first = await run(provisioner(config()));
+    final TrivyProvision first = await run(provisioner(config()));
     expect(
       first,
       isA<TrivyAvailable>().having(
@@ -221,7 +230,7 @@ void main() {
     );
     final installed = File('${directory.path}/cache/0.75.0/trivy');
     expect(installed.readAsStringSync(), contains('echo trivy'));
-    final second = await run(provisioner(config()));
+    final TrivyProvision second = await run(provisioner(config()));
     expect(
       second,
       isA<TrivyAvailable>().having(
@@ -234,7 +243,7 @@ void main() {
 
   test('never installs an archive with a wrong checksum', () async {
     serveRelease('0.75.0', checksum: 'deadbeef');
-    final result = await run(provisioner(config()));
+    final TrivyProvision result = await run(provisioner(config()));
     expect(
       result,
       isA<TrivyUnavailable>().having(
@@ -256,7 +265,9 @@ void main() {
       ),
     );
     serveRelease('0.99.0');
-    final result = await run(provisioner(config(version: 'latest')));
+    final TrivyProvision result = await run(
+      provisioner(config(version: 'latest')),
+    );
     expect(
       result,
       isA<TrivyAvailable>().having((r) => r.version, 'version', '0.99.0'),
@@ -273,7 +284,7 @@ void main() {
         Process.runSync('chmod', <String>['755', file.path]);
       }
       serveRelease('0.99.0');
-      final result = await run(
+      final TrivyProvision result = await run(
         provisioner(
           config(version: '0.99.0', useInstalled: false),
           path: bin.path,
@@ -302,7 +313,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync('x');
     }
-    final result = await run(
+    final TrivyProvision result = await run(
       provisioner(config(version: 'latest'), offline: true),
     );
     expect(

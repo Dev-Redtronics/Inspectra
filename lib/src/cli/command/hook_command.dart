@@ -15,12 +15,11 @@
  */
 
 import 'package:args/args.dart';
-
-import '../../hook/git_hook_manager.dart';
-import '../../hook/hook_report.dart';
-import '../../report/command_report.dart';
-import '../command_session.dart';
-import '../inspectra_command.dart';
+import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/inspectra_command.dart';
+import 'package:inspectra/src/hook/git_hook_manager.dart';
+import 'package:inspectra/src/hook/hook_report.dart';
+import 'package:inspectra/src/report/command_report.dart';
 
 /// `inspectra hook [install|remove]`: installs or removes the Git
 /// pre-commit hook that audits staged dependency changes.
@@ -59,10 +58,10 @@ final class HookCommand extends InspectraCommand {
       workingDirectory: session.workingDirectory,
       host: session.context.host,
     );
-    final remove =
+    final bool remove =
         results['remove'] == true || results.rest.firstOrNull == 'remove';
     if (remove) {
-      final removed = await manager.remove();
+      final String? removed = await manager.remove();
       return HookReport(
         action: 'remove',
         path: removed,
@@ -72,7 +71,7 @@ final class HookCommand extends InspectraCommand {
             : 'Pre-commit hook removed from $removed.',
       );
     }
-    final (path, existed) = await manager.install();
+    final (String path, bool existed) = await manager.install();
     return HookReport(
       action: 'install',
       path: path,

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'osv_range.dart';
+import 'package:inspectra/src/osv/osv_range.dart';
 
 /// One `affected[]` entry of an OSV record.
 final class OsvAffected {

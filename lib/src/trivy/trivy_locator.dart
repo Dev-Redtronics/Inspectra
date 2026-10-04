@@ -17,13 +17,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:inspectra/src/io/environment.dart';
+import 'package:inspectra/src/io/executable_resolver.dart';
+import 'package:inspectra/src/io/process_outcome.dart';
+import 'package:inspectra/src/io/process_runner.dart';
+import 'package:inspectra/src/trivy/trivy_origin.dart';
+import 'package:inspectra/src/trivy/trivy_provision.dart';
 import 'package:path/path.dart' as p;
-
-import '../io/environment.dart';
-import '../io/executable_resolver.dart';
-import '../io/process_runner.dart';
-import 'trivy_origin.dart';
-import 'trivy_provision.dart';
 
 /// Finds Trivy executables that are already present on the machine.
 final class TrivyLocator {
@@ -69,7 +69,7 @@ final class TrivyLocator {
   ///
   /// Returns the first working executable, or `null`.
   Future<TrivyAvailable?> installed() async {
-    final found = resolver.resolve(
+    final String? found = resolver.resolve(
       'trivy',
       extraDirectories: searchDirectories ?? _wellKnownDirectories(),
     );
@@ -83,7 +83,7 @@ final class TrivyLocator {
   ///
   /// Returns the cached executable, or `null`.
   Future<TrivyAvailable?> cached(String version) {
-    final path = cachedPath(version);
+    final String path = cachedPath(version);
     if (!File(path).existsSync()) {
       return Future<TrivyAvailable?>.value();
     }
@@ -101,7 +101,7 @@ final class TrivyLocator {
     if (!root.existsSync()) {
       return null;
     }
-    final versions =
+    final List<String> versions =
         root
             .listSync()
             .whereType<Directory>()
@@ -120,11 +120,11 @@ final class TrivyLocator {
   /// Returns the available executable, or `null` when it cannot run.
   Future<TrivyAvailable?> _probe(String executable, TrivyOrigin origin) async {
     try {
-      final outcome = await processRunner.run(executable, const <String>[
-        '--version',
-        '--format',
-        'json',
-      ], timeout: const Duration(seconds: 30));
+      final ProcessOutcome outcome = await processRunner.run(
+        executable,
+        const <String>['--version', '--format', 'json'],
+        timeout: const Duration(seconds: 30),
+      );
       if (!outcome.succeeded) {
         return null;
       }
@@ -144,13 +144,14 @@ final class TrivyLocator {
   /// Returns the bare version, or `null` when none is found.
   static String? parseVersion(String output) {
     try {
-      final decoded = jsonDecode(output);
+      final Object? decoded = jsonDecode(output);
       if (decoded is Map<String, Object?> && decoded['Version'] is String) {
-        final version = decoded['Version'] as String;
+        final version = decoded['Version']! as String;
         return version.startsWith('v') ? version.substring(1) : version;
       }
     } on FormatException {
-      final match = RegExp(r'Version:\s*v?(\S+)').firstMatch(output);
+      final RegExpMatch? match = RegExp(r'Version:\s*v?(\S+)')
+          .firstMatch(output);
       return match?[1];
     }
     return null;
@@ -160,8 +161,8 @@ final class TrivyLocator {
   ///
   /// Returns the existing well-known directories.
   List<String> _wellKnownDirectories() {
-    final home = environment.homeDirectory;
-    final localAppData = environment['LOCALAPPDATA'];
+    final String? home = environment.homeDirectory;
+    final String? localAppData = environment['LOCALAPPDATA'];
     return <String>[
       '/usr/local/bin',
       '/usr/bin',
@@ -182,11 +183,17 @@ final class TrivyLocator {
   ///
   /// Returns a negative, zero or positive comparison result.
   static int _compareVersions(String a, String b) {
-    final left = a.split('.').map((part) => int.tryParse(part) ?? 0).toList();
-    final right = b.split('.').map((part) => int.tryParse(part) ?? 0).toList();
+    final List<int> left = a
+        .split('.')
+        .map((part) => int.tryParse(part) ?? 0)
+        .toList();
+    final List<int> right = b
+        .split('.')
+        .map((part) => int.tryParse(part) ?? 0)
+        .toList();
     for (var index = 0; index < 3; index++) {
-      final l = index < left.length ? left[index] : 0;
-      final r = index < right.length ? right[index] : 0;
+      final int l = index < left.length ? left[index] : 0;
+      final int r = index < right.length ? right[index] : 0;
       if (l != r) {
         return l.compareTo(r);
       }

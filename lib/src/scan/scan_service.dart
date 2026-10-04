@@ -16,25 +16,26 @@
 
 import 'dart:io';
 
+import 'package:inspectra/src/audit/audit_scan.dart';
+import 'package:inspectra/src/audit/audit_service.dart';
+import 'package:inspectra/src/inspect/pubspec_scanner.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/pub/dependency_spec.dart';
+import 'package:inspectra/src/pub/lockfile.dart';
+import 'package:inspectra/src/pub/lockfile_parser.dart';
+import 'package:inspectra/src/pub/project_discovery.dart';
+import 'package:inspectra/src/pub/pubspec.dart';
+import 'package:inspectra/src/pub/pubspec_key_locator.dart';
+import 'package:inspectra/src/pub/pubspec_parser.dart';
+import 'package:inspectra/src/scan/scan_result.dart';
+import 'package:inspectra/src/trivy/trivy_outcome.dart';
+import 'package:inspectra/src/trivy/trivy_service.dart';
+import 'package:inspectra/src/typosquat/confusion_detector.dart';
+import 'package:inspectra/src/typosquat/typosquat_detector.dart';
+import 'package:inspectra/src/util/display_path.dart';
 import 'package:path/path.dart' as p;
-
-import '../audit/audit_scan.dart';
-import '../audit/audit_service.dart';
-import '../inspect/pubspec_scanner.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/inspectra_exception.dart';
-import '../pub/dependency_spec.dart';
-import '../pub/lockfile_parser.dart';
-import '../pub/project_discovery.dart';
-import '../pub/pubspec_key_locator.dart';
-import '../pub/pubspec_parser.dart';
-import '../trivy/trivy_outcome.dart';
-import '../trivy/trivy_service.dart';
-import '../typosquat/confusion_detector.dart';
-import '../typosquat/typosquat_detector.dart';
-import '../util/display_path.dart';
-import 'scan_result.dart';
 
 /// Runs every project level check in one pass: the OSV.dev audit, the
 /// pubspec rules, typosquatting and dependency confusion detection, and
@@ -81,8 +82,8 @@ final class ScanService {
     required bool recursive,
     required void Function(String message) onStatus,
   }) async {
-    final rootDisplay = displayPath(root, workingDirectory);
-    final lockfiles = ProjectDiscovery(root)
+    final String rootDisplay = displayPath(root, workingDirectory);
+    final List<String> lockfiles = ProjectDiscovery(root)
         .find('pubspec.lock', recursive: recursive);
     if (lockfiles.isEmpty) {
       throw InvalidInputException(
@@ -93,22 +94,27 @@ final class ScanService {
     final projectFindings = <Finding>[];
     final pubspecs = <String>[];
     for (final lockfilePath in lockfiles) {
-      final display = displayPath(lockfilePath, workingDirectory);
+      final String display = displayPath(lockfilePath, workingDirectory);
       onStatus('Auditing $display against OSV.dev...');
-      final lockfile = const LockfileParser().parseFile(lockfilePath);
+      final Lockfile lockfile = const LockfileParser().parseFile(lockfilePath);
       audits.add(await auditService.audit(lockfile, displayPath: display));
-      final pubspecPath = p.join(p.dirname(lockfilePath), 'pubspec.yaml');
+      final String pubspecPath = p.join(
+        p.dirname(lockfilePath),
+        'pubspec.yaml',
+      );
       if (File(pubspecPath).existsSync()) {
         pubspecs.add(displayPath(pubspecPath, workingDirectory));
         projectFindings.addAll(await _checkPubspec(pubspecPath, onStatus));
       }
     }
-    final trivy = await trivyService.scan(
+    final TrivyOutcome trivy = await trivyService.scan(
       root,
       displayPrefix: rootDisplay,
       onStatus: onStatus,
     );
-    final osvFindings = audits.expand((audit) => audit.findings).toList();
+    final List<Finding> osvFindings = audits
+        .expand((audit) => audit.findings)
+        .toList();
     return ScanResult(
       root: rootDisplay,
       audits: audits,
@@ -130,11 +136,11 @@ final class ScanService {
     String pubspecPath,
     void Function(String message) onStatus,
   ) async {
-    final display = displayPath(pubspecPath, workingDirectory);
+    final String display = displayPath(pubspecPath, workingDirectory);
     onStatus('Checking $display for supply chain risks...');
-    final content = File(pubspecPath).readAsStringSync();
-    final pubspec = const PubspecParser().parse(content, path: display);
-    final lines = content.split('\n');
+    final String content = File(pubspecPath).readAsStringSync();
+    final Pubspec pubspec = const PubspecParser().parse(content, path: display);
+    final List<String> lines = content.split('\n');
     final findings = <Finding>[
       ...const PubspecScanner().scan(
         pubspec,
@@ -146,7 +152,7 @@ final class ScanService {
         locate: (name) => locatePubspecKey(lines, name, display),
       ),
     ];
-    final confusion = confusionDetector;
+    final ConfusionDetector? confusion = confusionDetector;
     if (confusion != null) {
       findings.addAll(
         await confusion.analyze(<String, DependencySpec>{
@@ -175,7 +181,7 @@ final class ScanService {
       if (finding.source != FindingSource.trivy) {
         return true;
       }
-      final keys = finding.identifiers.map(
+      final Iterable<String> keys = finding.identifiers.map(
         (id) => '${finding.packageName}@${finding.packageVersion}#$id',
       );
       return !keys.any(known.contains);

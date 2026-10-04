@@ -16,13 +16,15 @@
 
 import 'package:inspectra/inspectra.dart';
 import 'package:inspectra/src/pub/dependency_kind.dart';
+import 'package:inspectra/src/pub/dependency_spec.dart';
+import 'package:inspectra/src/pub/pubspec.dart';
 import 'package:inspectra/src/pub/pubspec_parser.dart';
 import 'package:test/test.dart';
 
 /// Tests `pubspec.yaml` parsing.
 void main() {
   test('understands every dependency notation', () {
-    final pubspec = const PubspecParser().parse('''
+    final Pubspec pubspec = const PubspecParser().parse('''
 name: app
 environment:
   sdk: ^3.5.0
@@ -37,7 +39,7 @@ dependencies:
   hosted: {hosted: https://pub.corp, version: ^2.0.0}
   flutter: {sdk: flutter}
 ''', path: 'pubspec.yaml');
-    final deps = pubspec.dependencies;
+    final Map<String, DependencySpec> deps = pubspec.dependencies;
     expect(deps['plain']!.constraint, '^1.0.0');
     expect(deps['bare']!.constraint, isNull);
     expect(deps['short_git']!.kind, DependencyKind.git);
@@ -49,7 +51,7 @@ dependencies:
   });
 
   test('detects Flutter through environment.flutter', () {
-    final pubspec = const PubspecParser().parse(
+    final Pubspec pubspec = const PubspecParser().parse(
       'name: a\nenvironment:\n  flutter: ">=3.0.0"\n',
       path: 'p',
     );

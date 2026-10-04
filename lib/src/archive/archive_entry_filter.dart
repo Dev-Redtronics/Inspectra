@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'archive_entry.dart';
+import 'package:inspectra/src/archive/archive_entry.dart';
 
 /// Decides whether an archive entry lies in one of the excluded top level
 /// directories, such as `test/` or `example/`.
@@ -27,6 +27,6 @@ bool isInExcludedDirectory(
   ArchiveEntry entry,
   List<String> excludedDirectories,
 ) {
-  final segments = entry.path.split('/');
+  final List<String> segments = entry.path.split('/');
   return segments.length > 1 && excludedDirectories.contains(segments.first);
 }

@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/utilities.dart';
@@ -5,117 +21,16 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:coverage/coverage.dart';
 import 'package:glob/glob.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/coverage/coverage_exception.dart';
+import 'package:inspectra/src/coverage/coverage_report.dart';
+import 'package:inspectra/src/coverage/file_coverage.dart';
 import 'package:inspectra/src/util/dart_tool.dart';
 import 'package:inspectra/src/util/files.dart';
 import 'package:path/path.dart' as p;
 
-/// Thrown when coverage could not be collected, as opposed to being too low.
-class CoverageException implements Exception {
-  /// Creates the exception.
-  const CoverageException(this.message);
-
-  /// What went wrong.
-  final String message;
-
-  @override
-  String toString() => message;
-}
-
-/// The line coverage of one source file.
-class FileCoverage {
-  /// Creates the coverage of [path].
-  const FileCoverage(this.path, this.linesFound, this.linesHit);
-
-  /// The file, relative to the package root.
-  final String path;
-
-  /// The number of executable lines.
-  final int linesFound;
-
-  /// The number of executable lines that ran.
-  final int linesHit;
-
-  /// The covered share of lines in percent; 100 for a file without lines.
-  double get percent => linesFound == 0 ? 100 : linesHit * 100 / linesFound;
-}
-
-/// The result of a coverage run.
-class CoverageReport {
-  /// Creates a report.
-  CoverageReport({
-    required List<FileCoverage> files,
-    required this.untested,
-    required this.lcovPath,
-    required this.minLineCoverage,
-  }) : files = List.unmodifiable(
-         files..sort((a, b) => a.path.compareTo(b.path)),
-       );
-
-  /// The covered files, sorted by path.
-  final List<FileCoverage> files;
-
-  /// Files below `report_on` that no test loaded, relative to the package root.
-  ///
-  /// The VM only reports coverage for libraries a test imported, so these are
-  /// not part of [percent]: import them from a test to have them counted.
-  final List<String> untested;
-
-  /// The written `lcov.info`.
-  final String lcovPath;
-
-  /// The configured threshold in percent, if any.
-  final double? minLineCoverage;
-
-  /// The number of executable lines in all [files].
-  int get linesFound => files.fold(0, (sum, file) => sum + file.linesFound);
-
-  /// The number of executable lines that ran.
-  int get linesHit => files.fold(0, (sum, file) => sum + file.linesHit);
-
-  /// The total line coverage in percent.
-  double get percent => linesFound == 0 ? 100 : linesHit * 100 / linesFound;
-
-  /// Whether the coverage is below the threshold.
-  bool get failed => minLineCoverage != null && percent < minLineCoverage!;
-
-  /// A readable summary for the console.
-  String render() {
-    final int width = files.fold(
-      4,
-      (max, file) => file.path.length > max ? file.path.length : max,
-    );
-    final buffer = StringBuffer();
-    for (final FileCoverage file in files) {
-      buffer.writeln(
-        '  ${file.path.padRight(width)}  ${_percent(file.percent).padLeft(7)}  (${file.linesHit}/${file.linesFound})',
-      );
-    }
-    buffer.writeln(
-      '  ${'Total'.padRight(width)}  ${_percent(percent).padLeft(7)}  ($linesHit/$linesFound)',
-    );
-    if (untested.isNotEmpty) {
-      buffer.writeln(
-        '\n  ${untested.length} file(s) were not loaded by any test and are '
-        'not counted:',
-      );
-      for (final String path in untested) {
-        buffer.writeln('    $path');
-      }
-    }
-    buffer.writeln('\n  Report: $lcovPath');
-    final double? threshold = minLineCoverage;
-    if (threshold != null) {
-      final verdict = failed ? 'is below' : 'meets';
-      buffer.write(
-        '  Line coverage ${_percent(percent)} $verdict the required '
-        '${_percent(threshold)}.',
-      );
-    }
-    return buffer.toString().trimRight();
-  }
-
-  static String _percent(double value) => '${value.toStringAsFixed(2)}%';
-}
+export 'package:inspectra/src/coverage/coverage_exception.dart';
+export 'package:inspectra/src/coverage/coverage_report.dart';
+export 'package:inspectra/src/coverage/file_coverage.dart';
 
 /// Runs the tests of the package in [packageRoot] with coverage, writes
 /// `lcov.info` and checks the configured threshold.
@@ -126,7 +41,6 @@ Future<CoverageReport> runCoverage(
   String packageRoot, {
   double? minLineCoverage,
 }) async {
-  // Resolved like the coverage package resolves the paths it reports.
   final String root = Directory(packageRoot).absolute
       .resolveSymbolicLinksSync();
   final output = Directory(p.join(root, config.outputDirectory));
@@ -241,18 +155,27 @@ Map<String, HitMap> parseLcov(String lcov, String root) {
     if (line.startsWith('SF:')) {
       final String path = p.normalize(p.join(root, line.substring(3)));
       current = result.putIfAbsent(Uri.file(path).toString(), HitMap.new);
-    } else if (line.startsWith('DA:') && current != null) {
+      continue;
+    }
+    if (line.startsWith('DA:') && current != null) {
       final [String number, String hits, ...] = line.substring(3).split(',');
       final int lineNumber = int.parse(number);
       current.lineHits[lineNumber] =
           (current.lineHits[lineNumber] ?? 0) + int.parse(hits);
-    } else if (line == 'end_of_record') {
+      continue;
+    }
+    if (line == 'end_of_record') {
       current = null;
     }
   }
   return result;
 }
 
+/// Runs [executable] with [arguments] in [root], forwarding its output to
+/// the terminal.
+///
+/// Throws a [CoverageException] when the process cannot be started or exits
+/// with a non-zero code, since then no coverage was collected.
 Future<void> _runTests(
   String executable,
   List<String> arguments,

@@ -36,7 +36,7 @@ void main() {
     final secret = String.fromCharCodes(<int>[
       for (var i = 0; i < 60; i++) alphabet.codeUnitAt((i * 7) % 62),
     ]);
-    final findings = scanner.scan([
+    final List<Finding> findings = scanner.scan([
       textEntry('lib/k.dart', "const k = '$secret';"),
     ]);
     expect(findings.single.severity, Severity.high);
@@ -44,7 +44,7 @@ void main() {
   });
 
   test('ignores prose, character tables, generated and short strings', () {
-    final findings = scanner.scan([
+    final List<Finding> findings = scanner.scan([
       textEntry(
         'lib/a.dart',
         "const a = 'application/x-www-form-urlencoded; c=1';",

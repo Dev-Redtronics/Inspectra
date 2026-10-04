@@ -16,34 +16,31 @@
 
 import 'dart:io';
 
+import 'package:inspectra/src/add/safe_package_adder.dart';
+import 'package:inspectra/src/audit/audit_service.dart';
+import 'package:inspectra/src/cli/command_context.dart';
+import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/host/cache_directory.dart';
+import 'package:inspectra/src/inspect/package_inspector.dart';
+import 'package:inspectra/src/io/console.dart';
+import 'package:inspectra/src/io/executable_resolver.dart';
+import 'package:inspectra/src/net/http_transport.dart';
+import 'package:inspectra/src/osv/osv_cache.dart';
+import 'package:inspectra/src/osv/osv_client.dart';
+import 'package:inspectra/src/policy/finding_filter.dart';
+import 'package:inspectra/src/pub/package_archive_downloader.dart';
+import 'package:inspectra/src/pub/pub_repository_client.dart';
+import 'package:inspectra/src/trivy/trivy_installer.dart';
+import 'package:inspectra/src/trivy/trivy_locator.dart';
+import 'package:inspectra/src/trivy/trivy_provisioner.dart';
+import 'package:inspectra/src/trivy/trivy_release_asset.dart';
+import 'package:inspectra/src/trivy/trivy_runner.dart';
+import 'package:inspectra/src/trivy/trivy_service.dart';
+import 'package:inspectra/src/trust/trust_assessor.dart';
+import 'package:inspectra/src/typosquat/confusion_detector.dart';
+import 'package:inspectra/src/typosquat/typosquat_detector.dart';
+import 'package:inspectra/src/util/display_path.dart';
 import 'package:path/path.dart' as p;
-
-import '../add/safe_package_adder.dart';
-import '../audit/audit_service.dart';
-import '../config/inspectra_config.dart';
-import '../config/network_config.dart';
-import '../config/trivy_config.dart';
-import '../host/cache_directory.dart';
-import '../inspect/package_inspector.dart';
-import '../io/console.dart';
-import '../io/executable_resolver.dart';
-import '../net/http_transport.dart';
-import '../osv/osv_cache.dart';
-import '../osv/osv_client.dart';
-import '../policy/finding_filter.dart';
-import '../pub/package_archive_downloader.dart';
-import '../pub/pub_repository_client.dart';
-import '../trivy/trivy_installer.dart';
-import '../trivy/trivy_locator.dart';
-import '../trivy/trivy_provisioner.dart';
-import '../trivy/trivy_release_asset.dart';
-import '../trivy/trivy_runner.dart';
-import '../trivy/trivy_service.dart';
-import '../trust/trust_assessor.dart';
-import '../typosquat/confusion_detector.dart';
-import '../typosquat/typosquat_detector.dart';
-import '../util/display_path.dart';
-import 'command_context.dart';
 
 /// The state of one command invocation and the composition root that wires
 /// Inspectra's services together.
@@ -88,8 +85,8 @@ final class CommandSession {
 
   /// The network settings with the CA bundle resolved against the project.
   NetworkConfig get _resolvedNetwork {
-    final network = config.network;
-    final certificates = network.caCertificates;
+    final NetworkConfig network = config.network;
+    final String? certificates = network.caCertificates;
     if (certificates == null) {
       return network;
     }
@@ -119,7 +116,7 @@ final class CommandSession {
 
   /// The per-user cache directory, falling back to the temp directory.
   String get cacheRoot {
-    final resolved = CacheDirectory(
+    final String? resolved = CacheDirectory(
       environment: context.environment,
       host: context.host,
     ).resolve();
@@ -220,9 +217,10 @@ final class CommandSession {
   ///
   /// Returns the provisioner.
   TrivyProvisioner trivyProvisioner() {
-    final trivy = trivyConfig;
+    final TrivyConfig trivy = trivyConfig;
     final binaryName = context.host.isWindows ? 'trivy.exe' : 'trivy';
-    final installRoot = trivy.installDirectory ?? p.join(cacheRoot, 'trivy');
+    final String installRoot =
+        trivy.installDirectory ?? p.join(cacheRoot, 'trivy');
     return TrivyProvisioner(
       config: trivy,
       locator: TrivyLocator(

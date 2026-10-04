@@ -43,36 +43,12 @@ final class IgnoreRule {
     this.expires,
   });
 
-  /// Reads the `ignore:` list of the configuration in [yaml]; only the
-  /// configuration file can express it.
-  ///
-  /// Returns the rules, empty when the list is absent.
-  ///
-  /// Throws an [InspectraConfigException] for malformed entries, entries
-  /// without `id` or `reason`, unknown keys and invalid expiry dates.
-  static List<IgnoreRule> listFromYaml(YamlReader yaml) {
-    final raw = yaml.structured('ignore');
-    if (raw == null) {
-      return const <IgnoreRule>[];
-    }
-    if (raw is! List) {
-      throw const InspectraConfigException(
-        'ignore',
-        'expected a list of entries with id and reason.',
-      );
-    }
-    return <IgnoreRule>[
-      for (var index = 0; index < raw.length; index++)
-        _fromEntry(raw[index], 'ignore[$index]'),
-    ];
-  }
-
   /// Parses one entry of the `ignore:` list at [path].
   ///
   /// Returns the rule.
   ///
   /// Throws an [InspectraConfigException] for malformed entries.
-  static IgnoreRule _fromEntry(Object? entry, String path) {
+  factory IgnoreRule._fromEntry(Object? entry, String path) {
     if (entry is! Map) {
       throw InspectraConfigException(
         path,
@@ -81,15 +57,17 @@ final class IgnoreRule {
       );
     }
     const allowed = <String>{'id', 'reason', 'package', 'expires'};
-    final unknown = entry.keys.where((key) => !allowed.contains('$key'));
+    final Iterable<dynamic> unknown = entry.keys.where(
+      (key) => !allowed.contains('$key'),
+    );
     if (unknown.isNotEmpty) {
       throw InspectraConfigException(
         '$path.${unknown.first}',
         'unknown option. Known options here: id, package, reason, expires.',
       );
     }
-    final id = _text(entry['id']);
-    final reason = _text(entry['reason']);
+    final String? id = _text(entry['id']);
+    final String? reason = _text(entry['reason']);
     if (id == null || reason == null) {
       throw InspectraConfigException(
         path,
@@ -97,8 +75,10 @@ final class IgnoreRule {
         '"reason"; every suppression must be justified.',
       );
     }
-    final expiresText = _text(entry['expires']);
-    final expires = expiresText == null ? null : DateTime.tryParse(expiresText);
+    final String? expiresText = _text(entry['expires']);
+    final DateTime? expires = expiresText == null
+        ? null
+        : DateTime.tryParse(expiresText);
     if (expiresText != null && expires == null) {
       throw InspectraConfigException(
         '$path.expires',
@@ -113,12 +93,36 @@ final class IgnoreRule {
     );
   }
 
+  /// Reads the `ignore:` list of the configuration in [yaml]; only the
+  /// configuration file can express it.
+  ///
+  /// Returns the rules, empty when the list is absent.
+  ///
+  /// Throws an [InspectraConfigException] for malformed entries, entries
+  /// without `id` or `reason`, unknown keys and invalid expiry dates.
+  static List<IgnoreRule> listFromYaml(YamlReader yaml) {
+    final Object? raw = yaml.structured('ignore');
+    if (raw == null) {
+      return const <IgnoreRule>[];
+    }
+    if (raw is! List) {
+      throw const InspectraConfigException(
+        'ignore',
+        'expected a list of entries with id and reason.',
+      );
+    }
+    return <IgnoreRule>[
+      for (var index = 0; index < raw.length; index++)
+        IgnoreRule._fromEntry(raw[index], 'ignore[$index]'),
+    ];
+  }
+
   /// Returns [value] as trimmed text, or `null` when absent or blank.
   static String? _text(Object? value) {
     if (value == null) {
       return null;
     }
-    final text = '$value'.trim();
+    final String text = '$value'.trim();
     return text.isEmpty ? null : text;
   }
 
@@ -140,7 +144,7 @@ final class IgnoreRule {
   ///
   /// Returns `true` once the day after [expires] has started.
   bool isExpired(DateTime now) {
-    final lastDay = expires;
+    final DateTime? lastDay = expires;
     if (lastDay == null) {
       return false;
     }
@@ -156,7 +160,7 @@ final class IgnoreRule {
     if (!finding.identifiers.contains(id)) {
       return false;
     }
-    final scope = package;
+    final String? scope = package;
     return scope == null || scope == finding.packageName;
   }
 }

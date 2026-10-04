@@ -63,8 +63,10 @@ final class TestHarness {
     Map<String, String> environment = const <String, String>{},
     ProcessRunner? processRunner,
   }) {
-    final directory = Directory.systemTemp.createTempSync('inspectra_test_');
-    for (final entry in files.entries) {
+    final Directory directory = Directory.systemTemp.createTempSync(
+      'inspectra_test_',
+    );
+    for (final MapEntry<String, String> entry in files.entries) {
       File('${directory.path}/${entry.key}')
         ..parent.createSync(recursive: true)
         ..writeAsStringSync(entry.value);

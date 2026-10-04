@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:yaml/yaml.dart';
@@ -43,7 +59,7 @@ final class YamlReader {
   final Map<Object?, Object?> _map;
 
   /// The keys that have been read.
-  final Set<String> _read = <String>{};
+  final _read = <String>{};
 
   /// Converts [node] into a mapping.
   ///
@@ -116,7 +132,7 @@ final class YamlReader {
   ///
   /// Throws an [InspectraConfigException] for anything but a boolean.
   bool boolean(String key, {required bool fallback}) {
-    final override = _override(key)?.trim().toLowerCase();
+    final String? override = _override(key)?.trim().toLowerCase();
     if (override != null) {
       const truthy = <String>{'true', 'yes', '1', 'on'};
       const falsy = <String>{'false', 'no', '0', 'off'};
@@ -151,7 +167,7 @@ final class YamlReader {
   /// Throws an [InspectraConfigException] for anything but a non-empty
   /// scalar.
   String? optionalString(String key) {
-    final override = _override(key)?.trim();
+    final String? override = _override(key)?.trim();
     if (override != null && override.isNotEmpty) {
       return override;
     }
@@ -159,7 +175,7 @@ final class YamlReader {
     if (value == null) {
       return null;
     }
-    final isScalar = value is String || value is num;
+    final bool isScalar = value is String || value is num;
     if (isScalar && '$value'.isNotEmpty) {
       return '$value';
     }
@@ -175,7 +191,7 @@ final class YamlReader {
     required double min,
     required double max,
   }) {
-    final override = _override(key);
+    final String? override = _override(key);
     final Object? value = override == null
         ? _fileValue(key)
         : double.tryParse(override.trim()) ?? override;
@@ -193,7 +209,7 @@ final class YamlReader {
   ///
   /// Throws an [InspectraConfigException] for anything else.
   int? optionalInt(String key, {required int min, required int max}) {
-    final override = _override(key);
+    final String? override = _override(key);
     final Object? value = override == null
         ? _fileValue(key)
         : int.tryParse(override.trim()) ?? override;
@@ -211,12 +227,13 @@ final class YamlReader {
   ///
   /// Throws an [InspectraConfigException] for malformed durations.
   Duration duration(String key, {required Duration fallback}) {
-    final override = _override(key);
+    final String? override = _override(key);
     final Object? value = override ?? _fileValue(key);
     if (value == null) {
       return fallback;
     }
-    final match = RegExp(r'^(\d+)\s*(ms|s|m|h)?$').firstMatch('$value'.trim());
+    final RegExpMatch? match = RegExp(r'^(\d+)\s*(ms|s|m|h)?$')
+        .firstMatch('$value'.trim());
     if (match == null) {
       throw _invalid(key, 'a duration such as 30s, 10m or 1h', value);
     }
@@ -226,7 +243,7 @@ final class YamlReader {
       'm': 60 * 1000,
       'h': 60 * 60 * 1000,
     };
-    final amount = int.parse(match[1] ?? '0');
+    final int amount = int.parse(match[1] ?? '0');
     return Duration(
       milliseconds: amount * (milliseconds[match[2] ?? 's'] ?? 1),
     );
@@ -238,9 +255,11 @@ final class YamlReader {
   /// Throws an [InspectraConfigException] for anything but a list of
   /// non-empty strings.
   List<String> strings(String key, {required List<String> fallback}) {
-    final override = _override(key);
+    final String? override = _override(key);
     if (override != null) {
-      final items = override.split(',').map((item) => item.trim());
+      final Iterable<String> items = override
+          .split(',')
+          .map((item) => item.trim());
       return List<String>.unmodifiable(items.where((i) => i.isNotEmpty));
     }
     final Object? value = _fileValue(key);
@@ -253,7 +272,7 @@ final class YamlReader {
     final result = <String>[];
     for (var index = 0; index < value.length; index++) {
       final Object? element = value[index];
-      final isScalar = element is String || element is num;
+      final bool isScalar = element is String || element is num;
       if (!isScalar || '$element'.isEmpty) {
         throw InspectraConfigException(
           '${_child(key)}[$index]',
@@ -278,9 +297,9 @@ final class YamlReader {
     required T? Function(String value) parse,
     required String expected,
   }) {
-    final present =
+    final bool present =
         _map[key] != null || overrides.lookup(_childKey(key)) != null;
-    final raw = strings(key, fallback: const <String>[]);
+    final List<String> raw = strings(key, fallback: const <String>[]);
     if (!present) {
       return List<T>.unmodifiable(fallback);
     }
@@ -292,7 +311,7 @@ final class YamlReader {
     }
     final result = <T>[];
     for (var index = 0; index < raw.length; index++) {
-      final parsed = parse(raw[index]);
+      final T? parsed = parse(raw[index]);
       if (parsed == null) {
         throw InspectraConfigException(
           '${_child(key)}[$index]',
@@ -309,11 +328,11 @@ final class YamlReader {
   ///
   /// Throws an [InspectraConfigException] for names that are not options.
   T choice<T>(String key, Map<String, T> options, {required T fallback}) {
-    final name = optionalString(key);
+    final String? name = optionalString(key);
     if (name == null) {
       return fallback;
     }
-    final selected = options[name.toLowerCase()];
+    final T? selected = options[name.toLowerCase()];
     if (selected == null) {
       throw InspectraConfigException(
         _child(key),
@@ -331,7 +350,7 @@ final class YamlReader {
       if (key is String && _read.contains(key)) {
         continue;
       }
-      final known = _read.toList()..sort();
+      final List<String> known = _read.toList()..sort();
       throw InspectraConfigException(
         _child('$key'),
         'unknown option. Known options here: ${known.join(', ')}.',

@@ -36,7 +36,7 @@ void main() {
         ),
       ];
 
-  final twoLines = affected(<List<Map<String, String>>>[
+  final List<OsvAffected> twoLines = affected(<List<Map<String, String>>>[
     <Map<String, String>>[
       <String, String>{'introduced': '0'},
       <String, String>{'fixed': '1.5.0'},
@@ -57,7 +57,7 @@ void main() {
   });
 
   test('returns null for last_affected ranges and other packages', () {
-    final noFix = affected(<List<Map<String, String>>>[
+    final List<OsvAffected> noFix = affected(<List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{'introduced': '0'},
         <String, String>{'last_affected': '3.0.0'},

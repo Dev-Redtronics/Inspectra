@@ -1,80 +1,29 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:inspectra/src/trivy/pubspec_lock.dart';
 import 'package:inspectra/src/util/files.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
-/// One package of a `pubspec.lock`.
-class LockedPackage {
-  /// Creates a locked package.
-  const LockedPackage({
-    required this.name,
-    required this.version,
-    required this.source,
-    required this.json,
-  });
-
-  /// The package name.
-  final String name;
-
-  /// The resolved version.
-  final String version;
-
-  /// Where it comes from: `hosted`, `git`, `path` or `sdk`.
-  final String source;
-
-  /// The entry as it appears in the lock file.
-  final Map<String, Object?> json;
-
-  /// Whether the package is third-party code fetched by pub, as opposed to a
-  /// package of the same repository or of the SDK.
-  bool get isExternal => source == 'hosted' || source == 'git';
-}
-
-/// A parsed `pubspec.lock`.
-class PubspecLock {
-  /// Creates a lock from its packages.
-  const PubspecLock(this.packages);
-
-  /// Parses the content of a `pubspec.lock`.
-  factory PubspecLock.parse(String content) {
-    final Object? yaml = loadYaml(content);
-    final Object? packages = yaml is Map ? yaml['packages'] : null;
-    final result = <String, LockedPackage>{};
-    if (packages is Map) {
-      for (final MapEntry(:key, :value) in packages.entries) {
-        if (key is! String || value is! Map) {
-          continue;
-        }
-        final json = jsonDecode(jsonEncode(value)) as Map<String, Object?>;
-        result[key] = LockedPackage(
-          name: key,
-          version: '${value['version'] ?? ''}',
-          source: '${value['source'] ?? ''}',
-          json: json,
-        );
-      }
-    }
-    return PubspecLock(Map.unmodifiable(result));
-  }
-
-  /// The locked packages by name.
-  final Map<String, LockedPackage> packages;
-
-  /// A lock file holding only the packages in [names].
-  ///
-  /// It is written as JSON, which every YAML parser - Trivy's included -
-  /// reads as YAML.
-  String retain(Iterable<String> names) {
-    final Map<String, Map<String, Object?>> retained = {
-      for (final name in names.toList()..sort())
-        if (packages[name] case final package?) name: package.json,
-    };
-    return const JsonEncoder.withIndent('  ')
-        .convert({'packages': retained, 'sdks': <String, Object?>{}});
-  }
-}
+export 'package:inspectra/src/trivy/locked_package.dart';
+export 'package:inspectra/src/trivy/pubspec_lock.dart';
 
 /// The dependency graph of a resolved package.
 ///
@@ -83,6 +32,7 @@ class PubspecLock {
 /// `dev_dependencies` pull in - something the lock file alone cannot tell,
 /// since it marks every indirect dependency as just `transitive`.
 class PackageGraph {
+  /// Creates the graph from its parts; use [load] to build one.
   PackageGraph._(
     this.rootName,
     this.lock,
@@ -155,8 +105,13 @@ class PackageGraph {
   /// The lock file the graph was built from.
   final PubspecLock lock;
 
+  /// The directory of every resolved package, keyed by package name.
   final Map<String, String> _directories;
+
+  /// The `dependencies` every package declares, keyed by package name.
   final Map<String, Set<String>> _dependencies;
+
+  /// The `dev_dependencies` the root package declares.
   final Set<String> _devDependencies;
 
   /// The directory of the package [name], or `null` when it is not resolved.
@@ -182,6 +137,9 @@ class PackageGraph {
     return seen.where(lock.packages.containsKey).toSet();
   }
 
+  /// Reads `.dart_tool/package_config.json` from [file] into the directory
+  /// of every package, keyed by name; entries without a name or root are
+  /// skipped.
   static Map<String, String> _readPackageConfig(File file) {
     final Object? json = jsonDecode(file.readAsStringSync());
     final Object? packages = json is Map ? json['packages'] : null;
@@ -207,6 +165,10 @@ class PackageGraph {
     return result;
   }
 
+  /// The names of the packages the pubspec at [pubspecPath] declares as
+  /// `dev_dependencies` when [dev] is set, otherwise as `dependencies`.
+  ///
+  /// Returns an empty set when the pubspec does not exist.
   static Set<String> _declaredDependencies(
     String pubspecPath, {
     required bool dev,

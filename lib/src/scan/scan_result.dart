@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import '../audit/audit_scan.dart';
-import '../model/finding.dart';
-import '../trivy/trivy_outcome.dart';
+import 'package:inspectra/src/audit/audit_scan.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/trivy/trivy_outcome.dart';
 
 /// The raw outcome of the `scan` command, before reporting policies.
 final class ScanResult {

@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/io/environment.dart';
 
@@ -32,7 +48,7 @@ final class ConfigOverrides {
   final Environment environment;
 
   /// The command line keys that a configuration option has read.
-  final Set<String> _consumed = <String>{};
+  final _consumed = <String>{};
 
   /// Returns the environment variable name of the dotted [path], for example
   /// `INSPECTRA_TRIVY_DOWNLOAD_BASE_URL` for `trivy.download_base_url`.
@@ -44,13 +60,13 @@ final class ConfigOverrides {
   /// Returns the raw text and a description of its origin, or `null` when
   /// the option is not overridden.
   (String, String)? lookup(String path) {
-    final fromCli = cli[path];
+    final String? fromCli = cli[path];
     if (fromCli != null) {
       _consumed.add(path);
       return (fromCli, 'the command line');
     }
-    final variable = environmentName(path);
-    final fromEnvironment = environment[variable];
+    final String variable = environmentName(path);
+    final String? fromEnvironment = environment[variable];
     if (fromEnvironment == null) {
       return null;
     }
@@ -61,7 +77,7 @@ final class ConfigOverrides {
   ///
   /// Throws an [InspectraConfigException] naming the first unknown key.
   void ensureAllConsumed() {
-    for (final key in cli.keys) {
+    for (final String key in cli.keys) {
       if (!_consumed.contains(key)) {
         throw InspectraConfigException(
           key,

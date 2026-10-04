@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
-import '../pub/lockfile_entry.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/pub/lockfile_entry.dart';
 
 /// The raw outcome of auditing one lockfile, before reporting policies are
 /// applied.

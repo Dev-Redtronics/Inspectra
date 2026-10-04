@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-import '../config/trivy_config.dart';
-import '../config/trivy_mode.dart';
-import '../model/finding.dart';
-import '../model/inspectra_exception.dart';
-import 'trivy_outcome.dart';
-import 'trivy_provision.dart';
-import 'trivy_provisioner.dart';
-import 'trivy_runner.dart';
+import 'package:inspectra/src/config/trivy_config.dart';
+import 'package:inspectra/src/config/trivy_mode.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/trivy/trivy_outcome.dart';
+import 'package:inspectra/src/trivy/trivy_provision.dart';
+import 'package:inspectra/src/trivy/trivy_provisioner.dart';
+import 'package:inspectra/src/trivy/trivy_runner.dart';
 
 /// Provisions Trivy, applies the configured mode and runs the scan.
 final class TrivyService {
@@ -55,7 +55,9 @@ final class TrivyService {
     required String displayPrefix,
     required void Function(String message) onStatus,
   }) async {
-    final provision = await provisioner.provision(onStatus: onStatus);
+    final TrivyProvision provision = await provisioner.provision(
+      onStatus: onStatus,
+    );
     switch (provision) {
       case TrivyUnavailable(:final reason):
         if (config.mode == TrivyMode.required) {
@@ -67,7 +69,7 @@ final class TrivyService {
         return TrivyOutcome(provision: provision, findings: const <Finding>[]);
       case TrivyAvailable(:final executable, :final version):
         onStatus('Running Trivy $version...');
-        final findings = await runner.scan(
+        final List<Finding> findings = await runner.scan(
           executable,
           directory,
           displayPrefix: displayPrefix,

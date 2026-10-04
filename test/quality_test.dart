@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:io';
 
 import 'package:inspectra/inspectra.dart';
@@ -6,9 +22,13 @@ import 'package:test/test.dart';
 
 import 'support/fixtures.dart';
 
+/// A Dart file that `dart format` leaves unchanged.
 const _formatted = 'void main() {\n  print(1);\n}\n';
+
+/// A Dart file that `dart format` would change.
 const _unformatted = 'void  main( ) {print(1);}\n';
 
+/// Tests the format and lint checks against temporary packages.
 void main() {
   group('configuration', () {
     test('format and lint are off by default', () {

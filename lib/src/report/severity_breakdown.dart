@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
-import '../model/severity.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/severity.dart';
 
 /// Summarises [findings] per severity, from critical to unknown, omitting
 /// severities without findings.
@@ -24,8 +24,8 @@ import '../model/severity.dart';
 /// are no findings.
 String severityBreakdown(List<Finding> findings) {
   final parts = <String>[];
-  for (final severity in Severity.values) {
-    final count = findings.where((f) => f.severity == severity).length;
+  for (final Severity severity in Severity.values) {
+    final int count = findings.where((f) => f.severity == severity).length;
     if (count > 0) {
       parts.add('$count ${severity.name}');
     }

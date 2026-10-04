@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/pub/dependency_kind.dart';
+import 'package:inspectra/src/pub/dependency_spec.dart';
+import 'package:inspectra/src/pub/lockfile.dart';
+import 'package:inspectra/src/pub/pub_package.dart';
+import 'package:inspectra/src/pub/pub_repository_client.dart';
+import 'package:inspectra/src/util/bounded_concurrency.dart';
 import 'package:pub_semver/pub_semver.dart';
-
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../model/source_location.dart';
-import '../pub/dependency_kind.dart';
-import '../pub/dependency_spec.dart';
-import '../pub/lockfile.dart';
-import '../pub/pub_repository_client.dart';
-import '../util/bounded_concurrency.dart';
 
 /// Detects dependency confusion risks.
 ///
@@ -59,7 +59,7 @@ final class ConfusionDetector {
   final String mirrorUrl;
 
   /// The major version above which a release looks inflated.
-  static const int inflatedMajor = 50;
+  static const inflatedMajor = 50;
 
   /// Analyses the hosted [dependencies]; [locate] maps a name to its
   /// declaration.
@@ -69,10 +69,10 @@ final class ConfusionDetector {
     Map<String, DependencySpec> dependencies, {
     required SourceLocation Function(String name) locate,
   }) async {
-    final hosted = dependencies.entries
+    final List<MapEntry<String, DependencySpec>> hosted = dependencies.entries
         .where((entry) => entry.value.kind == DependencyKind.hosted)
         .toList();
-    final results = await mapWithConcurrency(
+    final List<Finding?> results = await mapWithConcurrency(
       hosted,
       concurrency,
       (entry) => _check(entry.key, entry.value, locate(entry.key)),
@@ -88,8 +88,11 @@ final class ConfusionDetector {
     DependencySpec spec,
     SourceLocation location,
   ) async {
-    final isPrivate = !Lockfile.isPublicRegistry(spec.hostedUrl, mirrorUrl);
-    final listing = await publicRepository.package(name);
+    final bool isPrivate = !Lockfile.isPublicRegistry(
+      spec.hostedUrl,
+      mirrorUrl,
+    );
+    final PubPackage? listing = await publicRepository.package(name);
     if (listing == null) {
       return null;
     }
@@ -106,7 +109,7 @@ final class ConfusionDetector {
         location,
       );
     }
-    final major = _major(listing.latestVersion);
+    final int? major = _major(listing.latestVersion);
     if (major == null || major <= inflatedMajor) {
       return null;
     }
@@ -143,16 +146,14 @@ final class ConfusionDetector {
     String description,
     String publicVersion,
     SourceLocation location,
-  ) {
-    return Finding(
-      ruleId: rule,
-      source: FindingSource.confusion,
-      severity: severity,
-      title: description,
-      location: location,
-      packageName: name,
-      url: 'https://pub.dev/packages/$name',
-      attributes: <String, Object?>{'publicVersion': publicVersion},
-    );
-  }
+  ) => Finding(
+    ruleId: rule,
+    source: FindingSource.confusion,
+    severity: severity,
+    title: description,
+    location: location,
+    packageName: name,
+    url: 'https://pub.dev/packages/$name',
+    attributes: <String, Object?>{'publicVersion': publicVersion},
+  );
 }

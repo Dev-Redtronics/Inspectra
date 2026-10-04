@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import '../model/inspectra_exception.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
 
 /// The process exit codes of Inspectra, following `sysexits.h`.
 ///
@@ -50,11 +50,9 @@ enum ExitCode {
   /// Maps an expected failure to its exit code.
   ///
   /// Returns the exit code of [error].
-  static ExitCode of(InspectraException error) {
-    return switch (error) {
-      InvalidUsageException() => ExitCode.usage,
-      InvalidInputException() => ExitCode.dataError,
-      UnavailableException() => ExitCode.unavailable,
-    };
-  }
+  static ExitCode of(InspectraException error) => switch (error) {
+    InvalidUsageException() => ExitCode.usage,
+    InvalidInputException() => ExitCode.dataError,
+    UnavailableException() => ExitCode.unavailable,
+  };
 }

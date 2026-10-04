@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-import '../model/inspectra_exception.dart';
-import '../net/http_transport.dart';
-import '../pub/lockfile_entry.dart';
-import '../util/bounded_concurrency.dart';
-import 'osv_cache.dart';
-import 'osv_vulnerability.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/net/http_result.dart';
+import 'package:inspectra/src/net/http_transport.dart';
+import 'package:inspectra/src/osv/osv_cache.dart';
+import 'package:inspectra/src/osv/osv_vulnerability.dart';
+import 'package:inspectra/src/pub/lockfile_entry.dart';
+import 'package:inspectra/src/util/bounded_concurrency.dart';
 
 /// Queries OSV.dev for vulnerabilities of Dart packages.
 ///
@@ -40,10 +41,10 @@ final class OsvClient {
 
   /// The number of queries per `querybatch` request; OSV.dev accepts up to
   /// 1000.
-  static const int batchSize = 500;
+  static const batchSize = 500;
 
   /// The OSV ecosystem name of Dart packages.
-  static const String ecosystem = 'Pub';
+  static const ecosystem = 'Pub';
 
   /// The HTTP transport.
   final HttpTransport transport;
@@ -69,15 +70,15 @@ final class OsvClient {
   }) async {
     final references = <LockfileEntry, Map<String, String>>{};
     for (var start = 0; start < packages.length; start += batchSize) {
-      final end = start + batchSize > packages.length
+      final int end = start + batchSize > packages.length
           ? packages.length
           : start + batchSize;
-      final batch = packages.sublist(start, end);
+      final List<LockfileEntry> batch = packages.sublist(start, end);
       references.addAll(await _queryBatch(batch));
       onProgress?.call(end, packages.length);
     }
     final ids = <String, String>{for (final refs in references.values) ...refs};
-    final records = await _fetchAll(ids);
+    final Map<String, OsvVulnerability> records = await _fetchAll(ids);
     return <LockfileEntry, List<OsvVulnerability>>{
       for (final entry in references.entries)
         entry.key: <OsvVulnerability>[
@@ -99,12 +100,12 @@ final class OsvClient {
       for (final package in batch) (package, null),
     ];
     while (pending.isNotEmpty) {
-      final results = await _post(pending);
+      final List<Object?> results = await _post(pending);
       final next = <(LockfileEntry, String?)>[];
       for (var index = 0; index < pending.length; index++) {
-        final package = pending[index].$1;
-        final result = index < results.length ? results[index] : null;
-        final token = _collect(result, found[package]!);
+        final LockfileEntry package = pending[index].$1;
+        final Object? result = index < results.length ? results[index] : null;
+        final String? token = _collect(result, found[package]!);
         if (token != null) {
           next.add((package, token));
         }
@@ -120,7 +121,7 @@ final class OsvClient {
   ///
   /// Throws an [UnavailableException] for non-success responses.
   Future<List<Object?>> _post(List<(LockfileEntry, String?)> queries) async {
-    final uri = Uri.parse('$baseUrl/v1/querybatch');
+    final Uri uri = Uri.parse('$baseUrl/v1/querybatch');
     final body = <String, Object?>{
       'queries': <Map<String, Object?>>[
         for (final (package, token) in queries)
@@ -134,13 +135,13 @@ final class OsvClient {
           },
       ],
     };
-    final result = await transport.postJson(uri, body);
+    final HttpResult result = await transport.postJson(uri, body);
     if (!result.isSuccess) {
       throw UnavailableException(
         'OSV.dev returned HTTP ${result.statusCode} for $uri.',
       );
     }
-    final results = result.jsonObject('OSV.dev')['results'];
+    final Object? results = result.jsonObject('OSV.dev')['results'];
     return results is List<Object?> ? results : const <Object?>[];
   }
 
@@ -151,15 +152,18 @@ final class OsvClient {
     if (result is! Map<String, Object?>) {
       return null;
     }
-    final vulns = result['vulns'];
-    final entries = vulns is List<Object?> ? vulns : const <Object?>[];
-    for (final entry in entries.whereType<Map<String, Object?>>()) {
-      final id = entry['id'];
+    final Object? vulns = result['vulns'];
+    final List<Object?> entries = vulns is List<Object?>
+        ? vulns
+        : const <Object?>[];
+    for (final Map<String, Object?> entry
+        in entries.whereType<Map<String, Object?>>()) {
+      final Object? id = entry['id'];
       if (id is String) {
         target[id] = '${entry['modified'] ?? ''}';
       }
     }
-    final token = result['next_page_token'];
+    final Object? token = result['next_page_token'];
     return token is String && token.isNotEmpty ? token : null;
   }
 
@@ -170,7 +174,7 @@ final class OsvClient {
   Future<Map<String, OsvVulnerability>> _fetchAll(
     Map<String, String> ids,
   ) async {
-    final records = await mapWithConcurrency(
+    final List<OsvVulnerability> records = await mapWithConcurrency(
       ids.entries,
       transport.concurrency,
       (entry) => _fetch(entry.key, entry.value),
@@ -186,18 +190,18 @@ final class OsvClient {
   ///
   /// Throws an [UnavailableException] when the record cannot be fetched.
   Future<OsvVulnerability> _fetch(String id, String modified) async {
-    final cached = cache.read(id, modified);
+    final OsvVulnerability? cached = cache.read(id, modified);
     if (cached != null) {
       return cached;
     }
-    final uri = Uri.parse('$baseUrl/v1/vulns/${Uri.encodeComponent(id)}');
-    final result = await transport.get(uri);
+    final Uri uri = Uri.parse('$baseUrl/v1/vulns/${Uri.encodeComponent(id)}');
+    final HttpResult result = await transport.get(uri);
     if (!result.isSuccess) {
       throw UnavailableException(
         'OSV.dev returned HTTP ${result.statusCode} for $uri.',
       );
     }
-    final json = result.jsonObject('OSV.dev');
+    final Map<String, Object?> json = result.jsonObject('OSV.dev');
     cache.write(id, json);
     final record = OsvVulnerability.fromJson(json);
     return record.id == id

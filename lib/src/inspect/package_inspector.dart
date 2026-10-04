@@ -14,27 +14,31 @@
  * limitations under the License.
  */
 
-import '../archive/archive_entry.dart';
-import '../archive/archive_limits.dart';
-import '../archive/archive_reader.dart';
-import '../config/inspect_config.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/inspectra_exception.dart';
-import '../model/severity.dart';
-import '../model/source_location.dart';
-import '../pub/package_archive_downloader.dart';
-import '../pub/pub_package.dart';
-import '../pub/pub_repository_client.dart';
-import '../pub/pubspec.dart';
-import '../pub/pubspec_parser.dart';
-import '../trust/trust_assessor.dart';
-import 'archive_scanner.dart';
-import 'entropy_scanner.dart';
-import 'inspection_result.dart';
-import 'pubspec_scanner.dart';
-import 'regex_scanner.dart';
-import 'unicode_scanner.dart';
+import 'dart:typed_data';
+
+import 'package:inspectra/src/archive/archive_entry.dart';
+import 'package:inspectra/src/archive/archive_limits.dart';
+import 'package:inspectra/src/archive/archive_reader.dart';
+import 'package:inspectra/src/config/inspect_config.dart';
+import 'package:inspectra/src/inspect/archive_scanner.dart';
+import 'package:inspectra/src/inspect/entropy_scanner.dart';
+import 'package:inspectra/src/inspect/inspection_result.dart';
+import 'package:inspectra/src/inspect/pubspec_scanner.dart';
+import 'package:inspectra/src/inspect/regex_scanner.dart';
+import 'package:inspectra/src/inspect/unicode_scanner.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/pub/package_archive_downloader.dart';
+import 'package:inspectra/src/pub/pub_package.dart';
+import 'package:inspectra/src/pub/pub_repository_client.dart';
+import 'package:inspectra/src/pub/pub_version.dart';
+import 'package:inspectra/src/pub/pubspec.dart';
+import 'package:inspectra/src/pub/pubspec_parser.dart';
+import 'package:inspectra/src/trust/trust_assessor.dart';
+import 'package:inspectra/src/trust/trust_info.dart';
 
 /// Inspects the published source of a package version before it is used.
 ///
@@ -85,14 +89,14 @@ final class PackageInspector {
     PubPackage? knownListing,
   }) async {
     onStatus('Fetching package metadata...');
-    final listing = knownListing ?? await repository.package(name);
+    final PubPackage? listing = knownListing ?? await repository.package(name);
     if (listing == null) {
       throw InvalidUsageException(
         'Package "$name" was not found on '
         '${repository.baseUrl}.',
       );
     }
-    final record = listing.find(version);
+    final PubVersion? record = listing.find(version);
     if (record == null) {
       throw InvalidUsageException(
         'Version $version of "$name" was never '
@@ -100,7 +104,7 @@ final class PackageInspector {
       );
     }
     onStatus('Downloading and verifying the archive...');
-    final bytes = await downloader.download(name, record);
+    final Uint8List bytes = await downloader.download(name, record);
     final reader = ArchiveReader(
       ArchiveLimits(
         maxArchiveBytes: config.maxArchiveBytes,
@@ -108,8 +112,8 @@ final class PackageInspector {
         maxEntries: config.maxEntries,
       ),
     );
-    final entries = reader.readTarGz(bytes);
-    final dartFiles = entries.where(
+    final List<ArchiveEntry> entries = reader.readTarGz(bytes);
+    final Iterable<ArchiveEntry> dartFiles = entries.where(
       (e) => e.isFile && e.path.endsWith('.dart'),
     );
     onStatus('Running security scanners on ${entries.length} entries...');
@@ -127,7 +131,7 @@ final class PackageInspector {
       ..._scanPubspec(entries),
     ];
     onStatus('Assessing trust signals...');
-    final trust = await trustAssessor.assess(listing, version);
+    final TrustInfo trust = await trustAssessor.assess(listing, version);
     return InspectionResult(
       package: name,
       version: version,
@@ -143,7 +147,7 @@ final class PackageInspector {
   ///
   /// Returns the findings; a malformed pubspec is itself a finding.
   List<Finding> _scanPubspec(List<ArchiveEntry> entries) {
-    final entry = entries
+    final ArchiveEntry? entry = entries
         .where((e) => e.isFile && e.path == 'pubspec.yaml')
         .firstOrNull;
     if (entry == null) {

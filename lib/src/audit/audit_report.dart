@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-import '../io/ansi_styler.dart';
-import '../model/finding.dart';
-import '../model/severity.dart';
-import '../pub/lockfile_entry.dart';
-import '../report/command_report.dart';
-import '../report/severity_breakdown.dart';
-import 'audit_scan.dart';
+import 'package:inspectra/src/audit/audit_scan.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/pub/lockfile_entry.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/report/severity_breakdown.dart';
 
 /// The report of the `audit` command.
 ///
@@ -78,53 +78,47 @@ final class AuditReport implements CommandReport {
   ///
   /// Returns the JSON body.
   @override
-  Map<String, Object?> toJson() {
-    return <String, Object?>{
-      'lockfile': scan.lockfilePath,
-      'scanned': scan.scanned.length,
-      'vulnerablePackages': vulnerablePackages.length,
-      'totalVulnerabilities': findings.length,
-      'suppressed': suppressedCount,
-      'results': <Object?>[
-        for (final package in scan.scanned)
-          <String, Object?>{
-            'name': package.name,
-            'version': package.version,
-            'isDirect': package.isDirect,
-            'vulnerabilities': _findingsOf(package)
-                .map(_vulnerability)
-                .toList(),
-          },
-      ],
-      'skipped': <Object?>[
-        for (final package in scan.skipped)
-          <String, Object?>{
-            'name': package.name,
-            'version': package.version,
-            'source': package.source,
-          },
-      ],
-    };
-  }
+  Map<String, Object?> toJson() => <String, Object?>{
+    'lockfile': scan.lockfilePath,
+    'scanned': scan.scanned.length,
+    'vulnerablePackages': vulnerablePackages.length,
+    'totalVulnerabilities': findings.length,
+    'suppressed': suppressedCount,
+    'results': <Object?>[
+      for (final package in scan.scanned)
+        <String, Object?>{
+          'name': package.name,
+          'version': package.version,
+          'isDirect': package.isDirect,
+          'vulnerabilities': _findingsOf(package).map(_vulnerability).toList(),
+        },
+    ],
+    'skipped': <Object?>[
+      for (final package in scan.skipped)
+        <String, Object?>{
+          'name': package.name,
+          'version': package.version,
+          'source': package.source,
+        },
+    ],
+  };
 
   /// Serialises one advisory finding in the `dart_audit` layout.
   ///
   /// Returns the JSON object.
-  Map<String, Object?> _vulnerability(Finding finding) {
-    return <String, Object?>{
-      'id': finding.ruleId,
-      'summary': finding.title,
-      'severity': finding.severity.name,
-      'fixedVersion': finding.fixedVersion,
-      'aliases': finding.aliases,
-      'detailsUrl': finding.url,
-    };
-  }
+  Map<String, Object?> _vulnerability(Finding finding) => <String, Object?>{
+    'id': finding.ruleId,
+    'summary': finding.title,
+    'severity': finding.severity.name,
+    'fixedVersion': finding.fixedVersion,
+    'aliases': finding.aliases,
+    'detailsUrl': finding.url,
+  };
 
   /// Writes the human readable report.
   @override
   void writeText(StringBuffer out, AnsiStyler style) {
-    final rule = style.dim('─' * 60);
+    final String rule = style.dim('─' * 60);
     out
       ..writeln()
       ..writeln(
@@ -133,11 +127,12 @@ final class AuditReport implements CommandReport {
       )
       ..writeln(rule);
     _writeSkipped(out, style);
-    final vulnerable = vulnerablePackages;
+    final List<LockfileEntry> vulnerable = vulnerablePackages;
     if (vulnerable.isEmpty) {
       out.writeln(
         style.green(
-          '✔ No known vulnerabilities found in ${scan.scanned.length} packages.',
+          '✔ No known vulnerabilities found in '
+          '${scan.scanned.length} packages.',
         ),
       );
     }
@@ -160,7 +155,7 @@ final class AuditReport implements CommandReport {
         '(git/path/sdk/private registry — not covered by OSV.dev):',
       ),
     );
-    for (final package in scan.skipped) {
+    for (final LockfileEntry package in scan.skipped) {
       out.writeln(style.dim('  · ${package.name} (${package.source})'));
     }
     out.writeln();
@@ -177,8 +172,8 @@ final class AuditReport implements CommandReport {
       '${style.bold(package.name)} ${package.version}'
       '${style.dim(kind)}',
     );
-    for (final finding in _findingsOf(package)) {
-      final aliases = finding.aliases.isEmpty
+    for (final Finding finding in _findingsOf(package)) {
+      final String aliases = finding.aliases.isEmpty
           ? ''
           : style.dim(' · ${finding.aliases.join(', ')}');
       out
@@ -187,7 +182,7 @@ final class AuditReport implements CommandReport {
           '${style.bold(finding.ruleId)}$aliases',
         )
         ..writeln('  ${style.dim(finding.title)}');
-      final fixed = finding.fixedVersion;
+      final String? fixed = finding.fixedVersion;
       out
         ..writeln(
           fixed == null
@@ -202,7 +197,9 @@ final class AuditReport implements CommandReport {
 
   /// Writes the clean packages in verbose mode.
   void _writeClean(StringBuffer out, AnsiStyler style) {
-    final clean = scan.scanned.where((p) => _findingsOf(p).isEmpty).toList();
+    final List<LockfileEntry> clean = scan.scanned
+        .where((p) => _findingsOf(p).isEmpty)
+        .toList();
     if (!verbose || clean.isEmpty) {
       return;
     }
@@ -214,7 +211,7 @@ final class AuditReport implements CommandReport {
 
   /// Writes the closing summary.
   void _writeSummary(StringBuffer out, AnsiStyler style, int vulnerable) {
-    final suppressed = suppressedCount == 0
+    final String suppressed = suppressedCount == 0
         ? ''
         : style.dim(' ($suppressedCount suppressed by ignore rules)');
     if (findings.isEmpty) {
@@ -228,14 +225,17 @@ final class AuditReport implements CommandReport {
       ..writeln(
         style.red(
           style.bold(
-            '${findings.length} vulnerabilit${findings.length == 1 ? 'y' : 'ies'}'
-            ' found across $vulnerable package${vulnerable == 1 ? '' : 's'}.',
+            '${findings.length} '
+            'vulnerabilit${findings.length == 1 ? 'y' : 'ies'} found across '
+            '$vulnerable package${vulnerable == 1 ? '' : 's'}.',
           ),
         ),
       )
       ..writeln('  ${severityBreakdown(findings)}$suppressed')
       ..writeln(
-        '${style.dim('Run ')}dart pub upgrade${style.dim(' to update dependencies, or pin a safe version in pubspec.yaml.')}',
+        '${style.dim('Run ')}dart pub upgrade'
+        '${style.dim(' to update dependencies, or pin a safe version in '
+        'pubspec.yaml.')}',
       );
   }
 }

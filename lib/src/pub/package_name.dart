@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:pub_semver/pub_semver.dart';
-
-import '../model/inspectra_exception.dart';
 
 /// Validates package names and versions before they are used in URLs or
 /// commands.
@@ -28,7 +27,7 @@ final class PackageName {
   const PackageName._();
 
   /// The grammar of valid Dart package names.
-  static final RegExp _pattern = RegExp(r'^[a-zA-Z_][a-zA-Z0-9_]*$');
+  static final _pattern = RegExp(r'^[a-zA-Z_][a-zA-Z0-9_]*$');
 
   /// Ensures [name] is a syntactically valid package name.
   ///

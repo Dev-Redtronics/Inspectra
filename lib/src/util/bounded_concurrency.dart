@@ -31,7 +31,7 @@ Future<List<R>> mapWithConcurrency<T, R>(
   int concurrency,
   Future<R> Function(T item) action,
 ) async {
-  final inputs = items.toList();
+  final List<T> inputs = items.toList();
   final results = List<R?>.filled(inputs.length, null);
   var nextIndex = 0;
   Future<void> worker() async {

@@ -16,11 +16,11 @@
 
 import 'dart:io';
 
-import '../host/host_platform.dart';
-import '../io/clock.dart';
-import '../io/environment.dart';
-import '../io/process_runner.dart';
-import '../io/system_process_runner.dart';
+import 'package:inspectra/src/host/host_platform.dart';
+import 'package:inspectra/src/io/clock.dart';
+import 'package:inspectra/src/io/environment.dart';
+import 'package:inspectra/src/io/process_runner.dart';
+import 'package:inspectra/src/io/system_process_runner.dart';
 
 /// Everything a command needs from the outside world.
 ///
@@ -49,19 +49,17 @@ final class CommandContext {
   /// Creates the context of the running process.
   ///
   /// Returns the production context.
-  factory CommandContext.system() {
-    return CommandContext(
-      environment: Environment.current(),
-      clock: const Clock.system(),
-      processRunner: const SystemProcessRunner(),
-      host: HostPlatform.current(),
-      workingDirectory: Directory.current.path,
-      out: stdout,
-      err: stderr,
-      outIsTerminal: stdout.hasTerminal,
-      supportsAnsi: stdout.supportsAnsiEscapes,
-    );
-  }
+  factory CommandContext.system() => CommandContext(
+    environment: Environment.current(),
+    clock: const Clock.system(),
+    processRunner: const SystemProcessRunner(),
+    host: HostPlatform.current(),
+    workingDirectory: Directory.current.path,
+    out: stdout,
+    err: stderr,
+    outIsTerminal: stdout.hasTerminal,
+    supportsAnsi: stdout.supportsAnsiEscapes,
+  );
 
   /// The environment variables.
   final Environment environment;

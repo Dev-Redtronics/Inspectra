@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'lockfile_entry.dart';
+import 'package:inspectra/src/pub/lockfile_entry.dart';
 
 /// A parsed `pubspec.lock` file.
 final class Lockfile {
@@ -28,7 +28,7 @@ final class Lockfile {
   final List<LockfileEntry> packages;
 
   /// The registry URLs considered public, which OSV.dev indexes.
-  static const Set<String> publicRegistries = <String>{
+  static const publicRegistries = <String>{
     'https://pub.dev',
     'https://pub.dartlang.org',
   };
@@ -43,7 +43,7 @@ final class Lockfile {
     if (hostedUrl == null) {
       return true;
     }
-    final normalised = hostedUrl.replaceAll(RegExp(r'/+$'), '');
+    final String normalised = hostedUrl.replaceAll(RegExp(r'/+$'), '');
     return publicRegistries.contains(normalised) || normalised == mirrorUrl;
   }
 

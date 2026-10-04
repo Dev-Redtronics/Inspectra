@@ -42,7 +42,7 @@ void main() {
   });
 
   test('reports the closest popular package', () {
-    final finding = TyposquatDetector().analyze(<String>[
+    final Finding finding = TyposquatDetector().analyze(<String>[
       'fluter_hooks',
     ], locate: (_) => const SourceLocation('pubspec.yaml')).single;
     expect(finding.attributes['matchedPublicPackage'], 'flutter_hooks');

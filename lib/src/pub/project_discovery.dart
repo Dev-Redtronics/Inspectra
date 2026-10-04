@@ -31,7 +31,7 @@ final class ProjectDiscovery {
   final String root;
 
   /// Directory names that never contain project sources.
-  static const Set<String> _skippedDirectories = <String>{
+  static const _skippedDirectories = <String>{
     'build',
     'node_modules',
     'Pods',
@@ -63,11 +63,11 @@ final class ProjectDiscovery {
       return;
     }
     for (final child in children) {
-      final name = p.basename(child.path);
+      final String name = p.basename(child.path);
       if (child is File && name == fileName) {
         matches.add(child.path);
       }
-      final skipped =
+      final bool skipped =
           name.startsWith('.') || _skippedDirectories.contains(name);
       if (child is Directory && !skipped) {
         _walk(child, fileName, matches);

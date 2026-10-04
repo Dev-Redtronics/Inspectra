@@ -38,19 +38,14 @@ void main() {
     Map<String, String> environment = const <String, String>{},
     Map<String, String> cli = const <String, String>{},
     String? configFile,
-  }) {
-    return loadConfig(
-      directory.path,
-      overrides: ConfigOverrides(
-        cli: cli,
-        environment: Environment(environment),
-      ),
-      configFile: configFile,
-    );
-  }
+  }) => loadConfig(
+    directory.path,
+    overrides: ConfigOverrides(cli: cli, environment: Environment(environment)),
+    configFile: configFile,
+  );
 
   test('uses defaults without a configuration file', () {
-    final config = load();
+    final InspectraConfig config = load();
     expect(config.packageName, 'demo');
     expect(config.trivy.mode, TrivyMode.auto);
     expect(config.trivy.version, TrivyConfig.pinnedVersion);
@@ -73,7 +68,7 @@ trivy:
 network:
   max_attempts: 5
 ''');
-    final config = load();
+    final InspectraConfig config = load();
     expect(config.failOn, Severity.high);
     expect(config.trivy.mode, TrivyMode.required);
     expect(config.trivy.version, '0.70.1');
@@ -92,7 +87,7 @@ network:
 
   test('environment variables override the file', () {
     writeConfig('trivy:\n  version: 0.70.1\n');
-    final config = load(
+    final InspectraConfig config = load(
       environment: <String, String>{
         'INSPECTRA_TRIVY_VERSION': '0.71.0',
         'INSPECTRA_TRIVY_DOWNLOAD_BASE_URL': 'https://mirror.corp/trivy/',
@@ -105,14 +100,14 @@ network:
   });
 
   test('INSPECTRA_TRIVY names the executable', () {
-    final config = load(
+    final InspectraConfig config = load(
       environment: <String, String>{'INSPECTRA_TRIVY': '/opt/trivy'},
     );
     expect(config.trivy.executable, '/opt/trivy');
   });
 
   test('command line overrides win over the environment', () {
-    final config = load(
+    final InspectraConfig config = load(
       environment: <String, String>{'INSPECTRA_TRIVY_MODE': 'required'},
       cli: <String, String>{'trivy.mode': 'disabled'},
     );
@@ -120,7 +115,7 @@ network:
   });
 
   test('PUB_HOSTED_URL becomes the default repository', () {
-    final config = load(
+    final InspectraConfig config = load(
       environment: <String, String>{'PUB_HOSTED_URL': 'https://pub.corp/'},
     );
     expect(config.network.pubHostedUrl, 'https://pub.corp');
@@ -174,7 +169,7 @@ ignore:
     reason: Not reachable.
     expires: 2027-01-31
 ''');
-    final rule = load().ignore.single;
+    final IgnoreRule rule = load().ignore.single;
     expect(rule.id, 'GHSA-1');
     expect(rule.package, 'http');
     expect(rule.expires, DateTime(2027, 1, 31));
@@ -201,7 +196,10 @@ ignore:
   test('works outside of a package when allowed', () {
     File('${directory.path}/pubspec.yaml').deleteSync();
     expect(load, throwsA(isA<FileSystemException>()));
-    final config = loadConfig(directory.path, requirePubspec: false);
+    final InspectraConfig config = loadConfig(
+      directory.path,
+      requirePubspec: false,
+    );
     expect(config.packageName, 'package');
   });
 }

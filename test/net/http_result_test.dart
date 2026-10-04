@@ -33,7 +33,7 @@ void main() {
       );
 
   test('parses Retry-After seconds and resolves redirects', () {
-    final redirect = result(
+    final HttpResult redirect = result(
       '',
       headers: <String, String>{'retry-after': '5', 'location': '/other'},
     );

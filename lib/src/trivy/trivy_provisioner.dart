@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-import '../config/trivy_config.dart';
-import '../config/trivy_mode.dart';
-import '../host/host_platform.dart';
-import '../model/inspectra_exception.dart';
-import '../net/http_transport.dart';
-import 'trivy_installer.dart';
-import 'trivy_locator.dart';
-import 'trivy_origin.dart';
-import 'trivy_provision.dart';
-import 'trivy_release_asset.dart';
+import 'package:inspectra/src/config/trivy_config.dart';
+import 'package:inspectra/src/config/trivy_mode.dart';
+import 'package:inspectra/src/host/host_platform.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/net/http_transport.dart';
+import 'package:inspectra/src/trivy/trivy_installer.dart';
+import 'package:inspectra/src/trivy/trivy_locator.dart';
+import 'package:inspectra/src/trivy/trivy_origin.dart';
+import 'package:inspectra/src/trivy/trivy_provision.dart';
+import 'package:inspectra/src/trivy/trivy_release_asset.dart';
 
 /// Decides which Trivy executable a scan uses, downloading one if needed.
 ///
@@ -77,9 +77,9 @@ final class TrivyProvisioner {
     if (config.mode == TrivyMode.disabled) {
       return const TrivyUnavailable('Trivy is disabled (trivy.mode).');
     }
-    final executable = config.executable;
+    final String? executable = config.executable;
     if (executable != null) {
-      final configured = await locator.configured(executable);
+      final TrivyAvailable? configured = await locator.configured(executable);
       return configured ??
           TrivyUnavailable(
             'The configured Trivy executable "$executable" '
@@ -87,24 +87,24 @@ final class TrivyProvisioner {
           );
     }
     if (config.useInstalled) {
-      final installed = await locator.installed();
+      final TrivyAvailable? installed = await locator.installed();
       if (installed != null) {
         return installed;
       }
     }
-    final online = await _isOnline();
-    final version = await _desiredVersion(online);
+    final bool online = await _isOnline();
+    final String? version = await _desiredVersion(online);
     if (version == null) {
       return const TrivyUnavailable(
         'Trivy is not installed and the latest '
         'version cannot be resolved without an internet connection.',
       );
     }
-    final cached = await locator.cached(version);
+    final TrivyAvailable? cached = await locator.cached(version);
     if (cached != null) {
       return cached;
     }
-    final exactInstalled = await _installedOfVersion(version);
+    final TrivyAvailable? exactInstalled = await _installedOfVersion(version);
     if (exactInstalled != null) {
       return exactInstalled;
     }
@@ -119,8 +119,8 @@ final class TrivyProvisioner {
     if (!config.download || transport.isOffline) {
       return false;
     }
-    final uri = Uri.parse(config.downloadBaseUrl);
-    final root = uri.replace(path: '/', query: '');
+    final Uri uri = Uri.parse(config.downloadBaseUrl);
+    final Uri root = uri.replace(path: '/', query: '');
     return transport.probe(root, config.connectivityTimeout);
   }
 
@@ -149,7 +149,7 @@ final class TrivyProvisioner {
     if (config.useInstalled) {
       return null;
     }
-    final installed = await locator.installed();
+    final TrivyAvailable? installed = await locator.installed();
     if (installed == null || installed.version != version) {
       return null;
     }
@@ -183,7 +183,7 @@ final class TrivyProvisioner {
         'was not downloaded.',
       );
     }
-    final asset = TrivyReleaseAsset.forHost(host, version);
+    final TrivyReleaseAsset? asset = TrivyReleaseAsset.forHost(host, version);
     if (asset == null) {
       return TrivyUnavailable(
         'Trivy publishes no build for $host; install '
@@ -192,7 +192,7 @@ final class TrivyProvisioner {
     }
     onStatus('Downloading Trivy $version (${asset.archiveName})...');
     try {
-      final path = await installer.install(
+      final String path = await installer.install(
         asset,
         config.downloadBaseUrl,
         locator.cachedPath(version),

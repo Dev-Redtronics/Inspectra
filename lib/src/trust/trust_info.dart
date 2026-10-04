@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
+import 'package:inspectra/src/model/finding.dart';
 
 /// The pub.dev trust assessment of one package version.
 final class TrustInfo {
@@ -84,31 +84,29 @@ final class TrustInfo {
   /// Serialises the assessment with the field names of `dart_audit`.
   ///
   /// Returns the JSON object.
-  Map<String, Object?> toJson() {
-    return <String, Object?>{
-      'package': package,
-      'version': version,
-      'latestVersion': latestVersion,
-      'createdAt': createdAt?.toIso8601String(),
-      'lastPublishedAt': publishedAt?.toIso8601String(),
-      'popularityScore': null,
-      'likeCount': likeCount,
-      'grantedPoints': grantedPoints,
-      'maxPoints': maxPoints,
-      'publisher': publisher,
-      'isVerifiedPublisher': isVerifiedPublisher,
-      'downloadCount30Days': downloadCount30Days,
-      'isDiscontinued': isDiscontinued,
-      'replacedBy': replacedBy,
-      'isRetracted': isRetracted,
-      'findings': <Object?>[
-        for (final finding in findings)
-          <String, Object?>{
-            'rule': finding.ruleId,
-            'severity': finding.severity.label,
-            'description': finding.title,
-          },
-      ],
-    };
-  }
+  Map<String, Object?> toJson() => <String, Object?>{
+    'package': package,
+    'version': version,
+    'latestVersion': latestVersion,
+    'createdAt': createdAt?.toIso8601String(),
+    'lastPublishedAt': publishedAt?.toIso8601String(),
+    'popularityScore': null,
+    'likeCount': likeCount,
+    'grantedPoints': grantedPoints,
+    'maxPoints': maxPoints,
+    'publisher': publisher,
+    'isVerifiedPublisher': isVerifiedPublisher,
+    'downloadCount30Days': downloadCount30Days,
+    'isDiscontinued': isDiscontinued,
+    'replacedBy': replacedBy,
+    'isRetracted': isRetracted,
+    'findings': <Object?>[
+      for (final finding in findings)
+        <String, Object?>{
+          'rule': finding.ruleId,
+          'severity': finding.severity.label,
+          'description': finding.title,
+        },
+    ],
+  };
 }

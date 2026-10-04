@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import '../model/source_location.dart';
+import 'package:inspectra/src/model/source_location.dart';
 
 /// Finds the line of a `pubspec.yaml` that declares [key].
 ///

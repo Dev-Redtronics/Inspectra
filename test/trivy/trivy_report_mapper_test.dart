@@ -22,7 +22,7 @@ import 'package:test/test.dart';
 /// Tests the translation of Trivy reports and command lines.
 void main() {
   test('maps every supported result section', () {
-    final findings = const TrivyReportMapper(pathPrefix: 'app')
+    final List<Finding> findings = const TrivyReportMapper(pathPrefix: 'app')
         .map(<String, Object?>{
           'Results': <Object?>[
             <String, Object?>{
@@ -94,7 +94,7 @@ void main() {
       ),
       processRunner: SystemProcessRunner(),
     );
-    final arguments = runner.arguments('/project');
+    final List<String> arguments = runner.arguments('/project');
     expect(arguments.first, 'fs');
     expect(arguments, containsAllInOrder(<String>['--exit-code', '0']));
     expect(

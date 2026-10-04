@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-import '../io/ansi_styler.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../report/command_report.dart';
-import '../report/severity_breakdown.dart';
-import 'scan_result.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/report/severity_breakdown.dart';
+import 'package:inspectra/src/scan/scan_result.dart';
 
 /// The report of the `scan` command, the default command.
 final class ScanReport implements CommandReport {
@@ -58,7 +58,7 @@ final class ScanReport implements CommandReport {
   /// Returns the JSON body.
   @override
   Map<String, Object?> toJson() {
-    final scanned = result.audits.fold<int>(
+    final int scanned = result.audits.fold<int>(
       0,
       (sum, audit) => sum + audit.scanned.length,
     );
@@ -86,8 +86,8 @@ final class ScanReport implements CommandReport {
   /// Writes the human readable report.
   @override
   void writeText(StringBuffer out, AnsiStyler style) {
-    final rule = style.dim('─' * 60);
-    final scanned = result.audits.fold<int>(
+    final String rule = style.dim('─' * 60);
+    final int scanned = result.audits.fold<int>(
       0,
       (sum, audit) => sum + audit.scanned.length,
     );
@@ -138,7 +138,7 @@ final class ScanReport implements CommandReport {
     }
     out.writeln(style.bold('$title (${sectionFindings.length}):'));
     for (final finding in sectionFindings) {
-      final package = finding.packageName == null
+      final String package = finding.packageName == null
           ? ''
           : ' ${finding.packageName} ${finding.packageVersion ?? ''}'
                 .trimRight();
@@ -149,7 +149,7 @@ final class ScanReport implements CommandReport {
           '${style.dim('[${finding.source.id}] ${finding.location ?? ''}')}',
         )
         ..writeln('    ${finding.title}');
-      final fixed = finding.fixedVersion;
+      final String? fixed = finding.fixedVersion;
       if (fixed != null) {
         out.writeln('    ${style.green('Fix:')} upgrade to $fixed');
       }
@@ -159,7 +159,7 @@ final class ScanReport implements CommandReport {
 
   /// Writes whether Trivy ran.
   void _writeTrivyStatus(StringBuffer out, AnsiStyler style) {
-    final trivy = result.trivy.toJson();
+    final Map<String, Object?> trivy = result.trivy.toJson();
     if (trivy['status'] == 'ran') {
       out.writeln(
         style.dim(
@@ -174,7 +174,7 @@ final class ScanReport implements CommandReport {
 
   /// Writes the closing summary.
   void _writeSummary(StringBuffer out, AnsiStyler style) {
-    final suppressed = suppressedCount == 0
+    final String suppressed = suppressedCount == 0
         ? ''
         : style.dim(' ($suppressedCount suppressed by ignore rules)');
     if (findings.isEmpty) {

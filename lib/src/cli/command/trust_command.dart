@@ -15,14 +15,15 @@
  */
 
 import 'package:args/args.dart';
-
-import '../../model/inspectra_exception.dart';
-import '../../model/severity.dart';
-import '../../pub/package_name.dart';
-import '../../report/command_report.dart';
-import '../../trust/trust_report.dart';
-import '../command_session.dart';
-import '../inspectra_command.dart';
+import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/inspectra_command.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
+import 'package:inspectra/src/pub/package_name.dart';
+import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/trust/trust_info.dart';
+import 'package:inspectra/src/trust/trust_report.dart';
 
 /// `inspectra trust <package> [version]`: prints the pub.dev trust
 /// assessment of a package version.
@@ -64,12 +65,12 @@ final class TrustCommand extends InspectraCommand {
         'argument.',
       );
     }
-    final name = PackageName.validate(results.rest[0]);
-    final version = results.rest.length > 1
+    final String name = PackageName.validate(results.rest[0]);
+    final String? version = results.rest.length > 1
         ? PackageName.validateExactVersion(results.rest[1])
         : null;
     session.console.info('Checking trust metadata for $name...');
-    final info = await session.trustAssessor().assessByName(
+    final TrustInfo? info = await session.trustAssessor().assessByName(
       name,
       version: version,
     );
@@ -79,7 +80,7 @@ final class TrustCommand extends InspectraCommand {
         '${session.config.network.pubHostedUrl}.',
       );
     }
-    final outcome = session.filter().apply(info.findings);
+    final FilterOutcome outcome = session.filter().apply(info.findings);
     return TrustReport(
       info: info,
       findings: outcome.kept,

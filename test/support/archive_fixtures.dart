@@ -24,10 +24,10 @@ import 'package:archive/archive.dart';
 /// Returns the compressed bytes.
 Uint8List buildTarGz(Map<String, String> files) {
   final archive = Archive();
-  for (final entry in files.entries) {
+  for (final MapEntry<String, String> entry in files.entries) {
     archive.addFile(ArchiveFile.bytes(entry.key, utf8.encode(entry.value)));
   }
-  final tar = TarEncoder().encodeBytes(archive);
+  final Uint8List tar = TarEncoder().encodeBytes(archive);
   return Uint8List.fromList(const GZipEncoder().encodeBytes(tar));
 }
 
@@ -36,10 +36,10 @@ Uint8List buildTarGz(Map<String, String> files) {
 /// Returns the compressed bytes.
 Uint8List buildBinaryTarGz(Map<String, List<int>> files) {
   final archive = Archive();
-  for (final entry in files.entries) {
+  for (final MapEntry<String, List<int>> entry in files.entries) {
     archive.addFile(ArchiveFile.bytes(entry.key, entry.value));
   }
-  final tar = TarEncoder().encodeBytes(archive);
+  final Uint8List tar = TarEncoder().encodeBytes(archive);
   return Uint8List.fromList(const GZipEncoder().encodeBytes(tar));
 }
 
@@ -48,7 +48,7 @@ Uint8List buildBinaryTarGz(Map<String, List<int>> files) {
 /// Returns the archive bytes.
 Uint8List buildZip(Map<String, List<int>> files) {
   final archive = Archive();
-  for (final entry in files.entries) {
+  for (final MapEntry<String, List<int>> entry in files.entries) {
     archive.addFile(ArchiveFile.bytes(entry.key, entry.value));
   }
   return Uint8List.fromList(ZipEncoder().encodeBytes(archive));

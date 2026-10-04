@@ -19,9 +19,10 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'src/style_checker.dart';
+import 'src/style_violation.dart';
 
 /// The directories whose Dart files are checked.
-const List<String> checkedDirectories = <String>['bin', 'lib', 'test', 'tool'];
+const checkedDirectories = <String>['bin', 'lib', 'test', 'tool'];
 
 /// Checks every Dart file of the repository against the code rules of
 /// `AGENTS.md` and exits with `1` when any rule is broken.
@@ -39,10 +40,8 @@ void main() {
             .where((path) => path.endsWith('.dart'))
             .where((path) => !p.split(path).contains('fixtures')),
   ]..sort();
-  final violations = files.expand(checker.checkFile).toList();
-  for (final violation in violations) {
-    stderr.writeln(violation);
-  }
+  final List<StyleViolation> violations =
+      files.expand(checker.checkFile).toList()..forEach(stderr.writeln);
   if (violations.isNotEmpty) {
     stderr.writeln(
       '\n${violations.length} style violation(s) in '

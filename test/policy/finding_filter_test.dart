@@ -15,6 +15,7 @@
  */
 
 import 'package:inspectra/inspectra.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
 import 'package:inspectra/src/policy/finding_filter.dart';
 import 'package:test/test.dart';
 
@@ -35,7 +36,7 @@ void main() {
       cliIgnores: const <String>[],
       now: DateTime.utc(2026),
     );
-    final outcome = filter.apply(<Finding>[
+    final FilterOutcome outcome = filter.apply(<Finding>[
       finding('a', Severity.critical),
       finding('b', Severity.medium),
     ]);
@@ -52,7 +53,7 @@ void main() {
       cliIgnores: const <String>['a'],
       now: DateTime.utc(2026),
     );
-    final outcome = filter.apply(<Finding>[
+    final FilterOutcome outcome = filter.apply(<Finding>[
       finding('a', Severity.low),
       finding('b', Severity.low),
       finding('c', Severity.low),

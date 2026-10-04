@@ -1,11 +1,29 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:build/build.dart';
 import 'package:glob/glob.dart';
 import 'package:inspectra/src/builders/build_step_config.dart';
-import 'package:inspectra/src/config/inspectra_config_exception.dart';
+import 'package:inspectra/src/builders/log_build_outcome.dart';
+import 'package:inspectra/src/builders/quality_outcome.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/quality/format_check.dart';
 import 'package:inspectra/src/quality/lint.dart';
 import 'package:inspectra/src/util/dart_tool.dart';
@@ -19,6 +37,8 @@ import 'package:path/path.dart' as p;
 /// package as it is after the build. Every Dart file is read through the
 /// build step, so the check reruns when one of them changes.
 sealed class QualityBuilder implements Builder {
+  /// Creates the builder of the check [_name], which reads only the build
+  /// sources [_inPackage] accepts.
   const QualityBuilder._(this._name, this._inPackage);
 
   /// The builder of the format check.
@@ -32,12 +52,17 @@ sealed class QualityBuilder implements Builder {
   const factory QualityBuilder.lint({bool Function(AssetId id) inPackage}) =
       _LintBuilder;
 
+  /// The name of the check, which names its report as well.
   final String _name;
 
+  /// Decides whether a build source is a file of the package, rather than an
+  /// output another builder keeps in the build cache.
   final bool Function(AssetId id) _inPackage;
 
+  /// The report the check writes, relative to the package root.
   String get _report => 'inspectra/$_name.json';
 
+  /// Writes the [_report] once per package.
   @override
   Map<String, List<String>> get buildExtensions => {
     r'$package$': [_report],
@@ -47,12 +72,15 @@ sealed class QualityBuilder implements Builder {
   bool _runsOnBuild(InspectraConfig config);
 
   /// Runs the check.
-  Future<_Outcome> _run(
+  Future<QualityOutcome> _run(
     BuildStep buildStep,
     InspectraConfig config,
     String packageRoot,
   );
 
+  /// Runs the check when it is enabled to run on build, writes its JSON report
+  /// and logs its outcome; configuration and tool errors are logged as severe
+  /// instead of failing the build with a stack trace.
   @override
   Future<void> build(BuildStep buildStep) async {
     try {
@@ -60,7 +88,7 @@ sealed class QualityBuilder implements Builder {
       if (!_runsOnBuild(config)) {
         return;
       }
-      final _Outcome outcome = await _run(
+      final QualityOutcome outcome = await _run(
         buildStep,
         config,
         Directory.current.path,
@@ -69,13 +97,11 @@ sealed class QualityBuilder implements Builder {
         AssetId(buildStep.inputId.package, _report),
         const JsonEncoder.withIndent('  ').convert(outcome.report),
       );
-      if (outcome.failed) {
-        log.severe(outcome.rendered);
-      } else if (outcome.hasFindings) {
-        log.warning(outcome.rendered);
-      } else {
-        log.fine(outcome.rendered);
-      }
+      logBuildOutcome(
+        outcome.rendered,
+        failed: outcome.failed,
+        findings: outcome.hasFindings,
+      );
     } on InspectraConfigException catch (error) {
       log.severe('$error');
     } on DartToolException catch (error) {
@@ -111,16 +137,23 @@ sealed class QualityBuilder implements Builder {
   }
 }
 
+/// Checks that the configured Dart files are formatted.
 final class _FormatBuilder extends QualityBuilder {
+  /// Creates the format builder; [inPackage] decides which build sources are
+  /// files of the package.
   const _FormatBuilder({bool Function(AssetId id) inPackage = isInPackage})
     : super._('format', inPackage);
 
+  /// The format check runs on build when it is enabled and its `run_on_build`
+  /// is set.
   @override
   bool _runsOnBuild(InspectraConfig config) =>
       config.format.enabled && config.format.runOnBuild;
 
+  /// Runs `dart format` over the configured files, which are read through
+  /// [buildStep] first so that changing one of them reruns the check.
   @override
-  Future<_Outcome> _run(
+  Future<QualityOutcome> _run(
     BuildStep buildStep,
     InspectraConfig config,
     String packageRoot,
@@ -131,7 +164,7 @@ final class _FormatBuilder extends QualityBuilder {
       packageRoot: packageRoot,
       files: await _track(buildStep, format.include, format.exclude),
     );
-    return _Outcome(
+    return QualityOutcome(
       report: result.toJson(),
       rendered: result.render(),
       failed: result.failed,
@@ -140,23 +173,28 @@ final class _FormatBuilder extends QualityBuilder {
   }
 }
 
+/// Runs the static analysis of the package.
 final class _LintBuilder extends QualityBuilder {
+  /// Creates the lint builder; [inPackage] decides which build sources are
+  /// files of the package.
   const _LintBuilder({bool Function(AssetId id) inPackage = isInPackage})
     : super._('lint', inPackage);
 
+  /// The lint check runs on build when it is enabled and its `run_on_build`
+  /// is set.
   @override
   bool _runsOnBuild(InspectraConfig config) =>
       config.lint.enabled && config.lint.runOnBuild;
 
+  /// Runs `dart analyze` over the package, after reading every Dart file and
+  /// `analysis_options.yaml` through [buildStep] so that a change reruns it.
   @override
-  Future<_Outcome> _run(
+  Future<QualityOutcome> _run(
     BuildStep buildStep,
     InspectraConfig config,
     String packageRoot,
   ) async {
     await _track(buildStep, const ['**.dart'], const []);
-    // Read through the build step when it is a source, so that a changed
-    // rule set reruns the analysis.
     final analysisOptions = AssetId(
       buildStep.inputId.package,
       'analysis_options.yaml',
@@ -168,26 +206,11 @@ final class _LintBuilder extends QualityBuilder {
       config: config.lint,
       packageRoot: packageRoot,
     );
-    return _Outcome(
+    return QualityOutcome(
       report: result.toJson(),
       rendered: result.render(),
       failed: result.failed,
       hasFindings: result.issues.isNotEmpty,
     );
   }
-}
-
-/// What a check produced, independent of which check it was.
-class _Outcome {
-  const _Outcome({
-    required this.report,
-    required this.rendered,
-    required this.failed,
-    required this.hasFindings,
-  });
-
-  final Map<String, Object?> report;
-  final String rendered;
-  final bool failed;
-  final bool hasFindings;
 }

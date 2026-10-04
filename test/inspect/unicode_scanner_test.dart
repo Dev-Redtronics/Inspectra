@@ -16,6 +16,7 @@
 
 import 'package:inspectra/src/archive/archive_entry_kind.dart';
 import 'package:inspectra/src/inspect/unicode_scanner.dart';
+import 'package:inspectra/src/model/finding.dart';
 import 'package:test/test.dart';
 
 import '../support/entries.dart';
@@ -60,7 +61,7 @@ void main() {
   });
 
   test('skips binary files', () {
-    final findings = const UnicodeScanner().scan([
+    final List<Finding> findings = const UnicodeScanner().scan([
       rawEntry(
         'a.png',
         ArchiveEntryKind.file,

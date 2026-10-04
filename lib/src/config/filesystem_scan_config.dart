@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'package:inspectra/src/config/scan_config.dart';
 import 'package:inspectra/src/config/yaml_reader.dart';
 import 'package:inspectra/src/model/severity.dart';
@@ -42,7 +58,7 @@ final class FilesystemScanConfig extends ScanConfig {
   }
 
   /// The settings when nothing is configured.
-  static const FilesystemScanConfig defaults = FilesystemScanConfig(
+  static const defaults = FilesystemScanConfig(
     enabled: false,
     failOnFindings: true,
     severity: defaultSeverity,
@@ -51,7 +67,7 @@ final class FilesystemScanConfig extends ScanConfig {
   );
 
   /// Every scanner Trivy offers for file system targets.
-  static const List<String> supportedScanners = <String>[
+  static const supportedScanners = <String>[
     'vuln',
     'secret',
     'misconfig',
@@ -60,14 +76,10 @@ final class FilesystemScanConfig extends ScanConfig {
 
   /// The scanners run by default. License scanning is opt-in because Trivy
   /// reports every detected license, including permissive ones.
-  static const List<String> defaultScanners = <String>[
-    'vuln',
-    'secret',
-    'misconfig',
-  ];
+  static const defaultScanners = <String>['vuln', 'secret', 'misconfig'];
 
   /// The severities reported by default.
-  static const List<Severity> defaultSeverity = <Severity>[
+  static const defaultSeverity = <Severity>[
     Severity.critical,
     Severity.high,
     Severity.medium,
@@ -75,11 +87,7 @@ final class FilesystemScanConfig extends ScanConfig {
   ];
 
   /// The directories skipped by default.
-  static const List<String> defaultSkipDirectories = <String>[
-    '.dart_tool',
-    'build',
-    '.git',
-  ];
+  static const defaultSkipDirectories = <String>['.dart_tool', 'build', '.git'];
 
   /// The Trivy scanners to run: `vuln`, `secret`, `misconfig` and `license`.
   ///

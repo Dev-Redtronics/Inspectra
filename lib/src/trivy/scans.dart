@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:io';
 
 import 'package:inspectra/src/config/inspectra_config.dart';
@@ -203,15 +219,7 @@ Future<ScanResult> scanVulnerabilities({
   PackageGraph? graph,
 }) {
   const scan = 'vulnerability';
-  final String scanned;
-  if (config.includeDevDependencies) {
-    scanned = lockContent;
-  } else {
-    if (graph == null) {
-      throw ArgumentError.notNull('graph');
-    }
-    scanned = graph.lock.retain(graph.reachable(includeDev: false));
-  }
+  final String scanned = _scannedLock(config, lockContent, graph);
 
   return _withStagingDirectory((staging) async {
     await File(p.join(staging, 'pubspec.lock')).writeAsString(scanned);
@@ -297,6 +305,7 @@ Future<ScanResult> scanFilesystem({
   );
 }
 
+/// Converts a Trivy [secret] found in [file] into a finding.
 ScanFinding _secretFinding(Map<String, Object?> secret, String file) =>
     ScanFinding(
       severity: trivySeverity(secret),
@@ -306,6 +315,8 @@ ScanFinding _secretFinding(Map<String, Object?> secret, String file) =>
       detail: 'line ${trivyString(secret, 'StartLine')}',
     );
 
+/// Converts a Trivy [vulnerability] into a finding, prefixing the target
+/// with the lock [file] it was found in, when given.
 ScanFinding _vulnerabilityFinding(
   Map<String, Object?> vulnerability, {
   String? file,
@@ -322,12 +333,37 @@ ScanFinding _vulnerabilityFinding(
     id: trivyString(vulnerability, 'VulnerabilityID'),
     title: trivyString(vulnerability, 'Title'),
     detail: [
-      if (fixed.isEmpty) 'no fix released' else 'fixed in $fixed',
+      if (fixed.isEmpty) 'no fix released',
+      if (fixed.isNotEmpty) 'fixed in $fixed',
       if (url.isNotEmpty) url,
     ].join(', '),
   );
 }
 
+/// The lock file the vulnerability scan reads: [lockContent] as is, or,
+/// without `include_dev_dependencies`, narrowed by [graph] to what the
+/// regular dependencies pull in.
+///
+/// Returns the lock file content.
+///
+/// Throws an [ArgumentError] when the lock must be narrowed without a
+/// [graph].
+String _scannedLock(
+  VulnerabilityScanConfig config,
+  String lockContent,
+  PackageGraph? graph,
+) {
+  if (config.includeDevDependencies) {
+    return lockContent;
+  }
+  if (graph == null) {
+    throw ArgumentError.notNull('graph');
+  }
+  return graph.lock.retain(graph.reachable(includeDev: false));
+}
+
+/// Every ID of [vulnerability], upper-cased: its own ID followed by its
+/// vendor IDs, so that an ignore rule may name either.
 Iterable<String> _vulnerabilityIds(Map<String, Object?> vulnerability) sync* {
   yield trivyString(vulnerability, 'VulnerabilityID').toUpperCase();
   final Object? vendorIds = vulnerability['VendorIDs'];
@@ -338,6 +374,8 @@ Iterable<String> _vulnerabilityIds(Map<String, Object?> vulnerability) sync* {
   }
 }
 
+/// Runs [body] with a fresh temporary directory and deletes the directory
+/// afterwards, whether [body] completes or throws.
 Future<T> _withStagingDirectory<T>(Future<T> Function(String path) body) async {
   final Directory staging = await Directory.systemTemp.createTemp(
     'inspectra_scan',

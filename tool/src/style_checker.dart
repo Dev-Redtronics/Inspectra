@@ -16,6 +16,7 @@
 
 import 'dart:io';
 
+import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
@@ -44,8 +45,8 @@ final class StyleChecker {
   ///
   /// Returns the violations found.
   List<StyleViolation> checkFile(String path) {
-    final content = File(path).readAsStringSync();
-    final displayed = p.split(p.relative(path)).join('/');
+    final String content = File(path).readAsStringSync();
+    final String displayed = p.split(p.relative(path)).join('/');
     final violations = <StyleViolation>[];
     if (!content.startsWith(licenseHeader)) {
       violations.add(
@@ -56,7 +57,7 @@ final class StyleChecker {
         ),
       );
     }
-    final parsed = parseString(
+    final ParseStringResult parsed = parseString(
       content: content,
       path: path,
       throwIfDiagnostics: false,
@@ -84,11 +85,11 @@ final class StyleChecker {
     while (token != null && !token.isEof) {
       Token? comment = token.precedingComments;
       while (comment != null) {
-        final lexeme = comment.lexeme;
-        final isDoc = lexeme.startsWith('///');
-        final isHeader = comment.offset == 0 && lexeme.startsWith('/*');
+        final String lexeme = comment.lexeme;
+        final bool isDoc = lexeme.startsWith('///');
+        final bool isHeader = comment.offset == 0 && lexeme.startsWith('/*');
         if (!isDoc && !isHeader) {
-          final line = lineInfo.getLocation(comment.offset).lineNumber;
+          final int line = lineInfo.getLocation(comment.offset).lineNumber;
           violations.add(
             StyleViolation(
               path,
@@ -123,7 +124,7 @@ final class StyleChecker {
       for (final (name, member) in types)
         if (member is ClassDeclaration && member.sealedKeyword != null) name,
     };
-    final primary = types
+    final List<(String, CompilationUnitMember)> primary = types
         .where((entry) => !_extendsAny(entry.$2, sealedRoots))
         .toList();
     final violations = <StyleViolation>[];
@@ -132,18 +133,20 @@ final class StyleChecker {
         StyleViolation(
           displayed,
           1,
-          'One top level type per file: found ${primary.map((e) => e.$1).join(', ')}.',
+          'One top level type per file: found '
+          '${primary.map((e) => e.$1).join(', ')}.',
         ),
       );
     }
-    final expected = _snakeCase(primary.first.$1);
-    final actual = p.basenameWithoutExtension(path);
+    final String expected = _snakeCase(primary.first.$1);
+    final String actual = p.basenameWithoutExtension(path);
     if (primary.length == 1 && expected != actual) {
       violations.add(
         StyleViolation(
           displayed,
           1,
-          'The file declaring ${primary.first.$1} must be named $expected.dart.',
+          'The file declaring ${primary.first.$1} must be named '
+          '$expected.dart.',
         ),
       );
     }
@@ -181,8 +184,8 @@ final class StyleChecker {
     if (member is! ClassDeclaration) {
       return false;
     }
-    final superclass = member.extendsClause?.superclass.name.lexeme;
-    final interfaces =
+    final String? superclass = member.extendsClause?.superclass.name.lexeme;
+    final Iterable<String> interfaces =
         member.implementsClause?.interfaces.map((type) => type.name.lexeme) ??
         const <String>[];
     return roots.contains(superclass) || interfaces.any(roots.contains);
@@ -192,7 +195,7 @@ final class StyleChecker {
   ///
   /// Returns the snake case name, for example `cvss_v3_calculator`.
   String _snakeCase(String name) {
-    final withBreaks = name
+    final String withBreaks = name
         .replaceAllMapped(
           RegExp('([a-z0-9])([A-Z])'),
           (match) => '${match[1]}_${match[2]}',

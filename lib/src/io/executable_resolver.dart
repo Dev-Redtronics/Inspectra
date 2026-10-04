@@ -16,10 +16,9 @@
 
 import 'dart:io';
 
+import 'package:inspectra/src/host/host_platform.dart';
+import 'package:inspectra/src/io/environment.dart';
 import 'package:path/path.dart' as p;
-
-import '../host/host_platform.dart';
-import 'environment.dart';
 
 /// Locates executables on the `PATH` and in additional directories.
 ///
@@ -39,14 +38,10 @@ final class ExecutableResolver {
   final HostPlatform host;
 
   /// The extensions tried on Windows when `PATHEXT` is not set.
-  static const List<String> _defaultWindowsExtensions = <String>[
-    '.exe',
-    '.cmd',
-    '.bat',
-  ];
+  static const _defaultWindowsExtensions = <String>['.exe', '.cmd', '.bat'];
 
   /// The POSIX permission bits granting execute access to anyone.
-  static const int _anyExecuteBits = 0x49;
+  static const _anyExecuteBits = 0x49;
 
   /// Resolves [command] on the `PATH`, then in [extraDirectories].
   ///
@@ -58,14 +53,14 @@ final class ExecutableResolver {
     if (p.isAbsolute(command) || command.contains(p.separator)) {
       return _executableOrNull(command);
     }
-    final separator = host.pathListSeparator;
+    final String separator = host.pathListSeparator;
     final directories = <String>[
       ...environment.pathEntries(separator),
       ...extraDirectories,
     ];
-    final names = candidateNames(command);
+    final List<String> names = candidateNames(command);
     for (final directory in directories) {
-      final match = _firstExecutable(directory, names);
+      final String? match = _firstExecutable(directory, names);
       if (match != null) {
         return match;
       }
@@ -81,11 +76,13 @@ final class ExecutableResolver {
     if (!host.isWindows) {
       return <String>[command];
     }
-    final declared = environment['PATHEXT'];
-    final extensions = declared == null
+    final String? declared = environment['PATHEXT'];
+    final List<String> extensions = declared == null
         ? _defaultWindowsExtensions
         : declared.split(';').where((e) => e.isNotEmpty).toList();
-    final withExtensions = extensions.map((e) => '$command${e.toLowerCase()}');
+    final Iterable<String> withExtensions = extensions.map(
+      (e) => '$command${e.toLowerCase()}',
+    );
     return <String>[...withExtensions, command];
   }
 
@@ -94,7 +91,7 @@ final class ExecutableResolver {
   /// Returns the absolute path of the match, or `null`.
   String? _firstExecutable(String directory, List<String> names) {
     for (final name in names) {
-      final candidate = _executableOrNull(p.join(directory, name));
+      final String? candidate = _executableOrNull(p.join(directory, name));
       if (candidate != null) {
         return candidate;
       }
@@ -106,11 +103,12 @@ final class ExecutableResolver {
   ///
   /// Returns the absolute path when it is, otherwise `null`.
   String? _executableOrNull(String path) {
-    final stat = FileStat.statSync(path);
+    final FileStat stat = FileStat.statSync(path);
     if (stat.type != FileSystemEntityType.file) {
       return null;
     }
-    final executable = host.isWindows || (stat.mode & _anyExecuteBits) != 0;
+    final bool executable =
+        host.isWindows || (stat.mode & _anyExecuteBits) != 0;
     if (!executable) {
       return null;
     }

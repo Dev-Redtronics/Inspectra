@@ -27,10 +27,10 @@ final class PreCommitScript {
 
   /// The marker that identifies hooks installed by Inspectra. Only hooks
   /// carrying it are ever replaced or removed.
-  static const String marker = '# Installed by inspectra hook';
+  static const marker = '# Installed by inspectra hook';
 
   /// The complete hook script.
-  static const String content =
+  static const content =
       '''
 #!/bin/sh
 $marker

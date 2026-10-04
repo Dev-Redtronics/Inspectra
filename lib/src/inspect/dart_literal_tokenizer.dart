@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'string_literal.dart';
+import 'package:inspectra/src/inspect/string_literal.dart';
 
 /// Extracts the string literals of a Dart source file.
 ///
@@ -32,13 +32,13 @@ final class DartLiteralTokenizer {
   final String _source;
 
   /// The current position.
-  int _index = 0;
+  var _index = 0;
 
   /// The current one-based line.
-  int _line = 1;
+  var _line = 1;
 
   /// The extracted literals.
-  final List<StringLiteral> _literals = <StringLiteral>[];
+  final _literals = <StringLiteral>[];
 
   /// Extracts every string literal.
   ///
@@ -52,14 +52,14 @@ final class DartLiteralTokenizer {
 
   /// Consumes the token at the current position.
   void _step() {
-    final char = _source[_index];
+    final String char = _source[_index];
     if (char == '\n') {
       _line++;
       _index++;
       return;
     }
     if (_source.startsWith('//', _index)) {
-      final end = _source.indexOf('\n', _index);
+      final int end = _source.indexOf('\n', _index);
       _index = end < 0 ? _source.length : end;
       return;
     }
@@ -84,12 +84,12 @@ final class DartLiteralTokenizer {
   /// Returns `true` when `r` is followed by a quote and not part of an
   /// identifier.
   bool _isRawStringStart() {
-    final next = _index + 1;
+    final int next = _index + 1;
     if (_source[_index] != 'r' || next >= _source.length) {
       return false;
     }
-    final quote = _source[next];
-    final previous = _index == 0 ? ' ' : _source[_index - 1];
+    final String quote = _source[next];
+    final String previous = _index == 0 ? ' ' : _source[_index - 1];
     return (quote == "'" || quote == '"') && !_isIdentifierChar(previous);
   }
 
@@ -118,23 +118,25 @@ final class DartLiteralTokenizer {
   ///
   /// [raw] disables escapes and interpolation.
   void _readString({required bool raw}) {
-    final quote = _source[_index];
-    final triple = _source.startsWith(quote * 3, _index);
-    final delimiter = triple ? quote * 3 : quote;
+    final String quote = _source[_index];
+    final bool triple = _source.startsWith(quote * 3, _index);
+    final String delimiter = triple ? quote * 3 : quote;
     _index += delimiter.length;
     final buffer = StringBuffer();
-    var startLine = _line;
+    int startLine = _line;
     while (_index < _source.length) {
       if (_source.startsWith(delimiter, _index)) {
         _index += delimiter.length;
         break;
       }
-      final char = _source[_index];
+      final String char = _source[_index];
       if (char == '\n' && !triple) {
         break;
       }
       if (!raw && char == r'\') {
-        final end = _index + 2 > _source.length ? _source.length : _index + 2;
+        final int end = _index + 2 > _source.length
+            ? _source.length
+            : _index + 2;
         buffer.write(_source.substring(_index, end));
         _advanceOne();
         if (_index < _source.length) {
@@ -162,7 +164,7 @@ final class DartLiteralTokenizer {
     if (_index < _source.length && _source[_index] == '{') {
       var depth = 0;
       while (_index < _source.length) {
-        final char = _source[_index];
+        final String char = _source[_index];
         if (char == "'" || char == '"') {
           _readString(raw: false);
           continue;

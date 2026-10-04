@@ -35,8 +35,8 @@ void main() {
   });
 
   test('doubles the back-off with jitter between half and full', () {
-    final first = policy.delayFor(1);
-    final third = policy.delayFor(3);
+    final Duration first = policy.delayFor(1);
+    final Duration third = policy.delayFor(3);
     expect(first.inMilliseconds, inInclusiveRange(500, 1000));
     expect(third.inMilliseconds, inInclusiveRange(2000, 4000));
   });

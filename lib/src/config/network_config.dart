@@ -44,7 +44,7 @@ final class NetworkConfig {
   /// values.
   factory NetworkConfig.fromYaml(YamlReader yaml) {
     const defaults = NetworkConfig();
-    final pubHosted =
+    final String pubHosted =
         yaml.overrides.environment['PUB_HOSTED_URL'] ?? defaults.pubHostedUrl;
     final config = NetworkConfig(
       offline: yaml.boolean('offline', fallback: defaults.offline),
@@ -76,10 +76,10 @@ final class NetworkConfig {
   static String _trimSlash(String url) => url.replaceAll(RegExp(r'/+$'), '');
 
   /// The public OSV.dev API endpoint.
-  static const String defaultOsvUrl = 'https://api.osv.dev';
+  static const defaultOsvUrl = 'https://api.osv.dev';
 
   /// The public pub.dev package repository.
-  static const String defaultPubHostedUrl = 'https://pub.dev';
+  static const defaultPubHostedUrl = 'https://pub.dev';
 
   /// When `true`, no network connection is opened at all.
   ///

@@ -1,23 +1,32 @@
-import 'dart:convert';
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:io';
 
 import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/trivy/trivy_exception.dart';
+import 'package:inspectra/src/trivy/trivy_report.dart';
 import 'package:path/path.dart' as p;
+
+export 'package:inspectra/src/trivy/trivy_exception.dart';
+export 'package:inspectra/src/trivy/trivy_report.dart';
+export 'package:inspectra/src/trivy/trivy_result.dart';
 
 /// The environment variable that overrides the configured Trivy executable.
 const trivyExecutableVariable = 'INSPECTRA_TRIVY';
-
-/// Thrown when Trivy is missing or fails, as opposed to reporting findings.
-class TrivyException implements Exception {
-  /// Creates the exception.
-  const TrivyException(this.message);
-
-  /// What went wrong.
-  final String message;
-
-  @override
-  String toString() => message;
-}
 
 /// Runs the Trivy command line.
 class Trivy {
@@ -101,61 +110,6 @@ class Trivy {
     } finally {
       await temporary.delete(recursive: true);
     }
-  }
-}
-
-/// The parts of a Trivy JSON report Inspectra reads.
-class TrivyReport {
-  /// Creates a report from its results.
-  const TrivyReport(this.results);
-
-  /// Parses the output of `trivy --format json`.
-  factory TrivyReport.parse(String json) {
-    final Object? decoded = jsonDecode(json);
-    final Object? results = decoded is Map ? decoded['Results'] : null;
-    return TrivyReport([
-      if (results is List)
-        for (final result in results)
-          if (result is Map<String, Object?>) TrivyResult(result),
-    ]);
-  }
-
-  /// One entry per scanned target.
-  final List<TrivyResult> results;
-}
-
-/// The findings for one target of a Trivy report.
-class TrivyResult {
-  /// Wraps the decoded JSON of one result.
-  const TrivyResult(this._json);
-
-  final Map<String, Object?> _json;
-
-  /// The scanned file, relative to the scan target.
-  String get target => trivyString(_json, 'Target');
-
-  /// The secrets found in [target].
-  List<Map<String, Object?>> get secrets => _entries('Secrets');
-
-  /// The vulnerabilities found in [target].
-  List<Map<String, Object?>> get vulnerabilities => _entries('Vulnerabilities');
-
-  /// The licenses found in [target].
-  List<Map<String, Object?>> get licenses => _entries('Licenses');
-
-  /// The misconfigurations found in [target].
-  List<Map<String, Object?>> get misconfigurations =>
-      _entries('Misconfigurations');
-
-  List<Map<String, Object?>> _entries(String key) {
-    final Object? value = _json[key];
-    if (value is! List) {
-      return const [];
-    }
-    return [
-      for (final entry in value)
-        if (entry is Map<String, Object?>) entry,
-    ];
   }
 }
 

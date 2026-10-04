@@ -28,7 +28,7 @@ final class CvssV3Calculator {
   const CvssV3Calculator();
 
   /// Weights of the attack vector metric.
-  static const Map<String, double> _attackVector = <String, double>{
+  static const _attackVector = <String, double>{
     'N': 0.85,
     'A': 0.62,
     'L': 0.55,
@@ -36,37 +36,27 @@ final class CvssV3Calculator {
   };
 
   /// Weights of the attack complexity metric.
-  static const Map<String, double> _attackComplexity = <String, double>{
-    'L': 0.77,
-    'H': 0.44,
-  };
+  static const _attackComplexity = <String, double>{'L': 0.77, 'H': 0.44};
 
   /// Weights of the privileges required metric with unchanged scope.
-  static const Map<String, double> _privilegesUnchanged = <String, double>{
+  static const _privilegesUnchanged = <String, double>{
     'N': 0.85,
     'L': 0.62,
     'H': 0.27,
   };
 
   /// Weights of the privileges required metric with changed scope.
-  static const Map<String, double> _privilegesChanged = <String, double>{
+  static const _privilegesChanged = <String, double>{
     'N': 0.85,
     'L': 0.68,
     'H': 0.5,
   };
 
   /// Weights of the user interaction metric.
-  static const Map<String, double> _userInteraction = <String, double>{
-    'N': 0.85,
-    'R': 0.62,
-  };
+  static const _userInteraction = <String, double>{'N': 0.85, 'R': 0.62};
 
   /// Weights of the confidentiality, integrity and availability metrics.
-  static const Map<String, double> _impact = <String, double>{
-    'H': 0.56,
-    'L': 0.22,
-    'N': 0,
-  };
+  static const _impact = <String, double>{'H': 0.56, 'L': 0.22, 'N': 0};
 
   /// Calculates the base score of [vector].
   ///
@@ -76,32 +66,34 @@ final class CvssV3Calculator {
     if (!vector.startsWith('CVSS:3.')) {
       return null;
     }
-    final metrics = _parse(vector);
+    final Map<String, String> metrics = _parse(vector);
     final scopeChanged = metrics['S'] == 'C';
-    final privileges = scopeChanged ? _privilegesChanged : _privilegesUnchanged;
-    final av = _attackVector[metrics['AV']];
-    final ac = _attackComplexity[metrics['AC']];
-    final pr = privileges[metrics['PR']];
-    final ui = _userInteraction[metrics['UI']];
-    final c = _impact[metrics['C']];
-    final i = _impact[metrics['I']];
-    final a = _impact[metrics['A']];
-    final scope = metrics['S'];
+    final Map<String, double> privileges = scopeChanged
+        ? _privilegesChanged
+        : _privilegesUnchanged;
+    final double? av = _attackVector[metrics['AV']];
+    final double? ac = _attackComplexity[metrics['AC']];
+    final double? pr = privileges[metrics['PR']];
+    final double? ui = _userInteraction[metrics['UI']];
+    final double? c = _impact[metrics['C']];
+    final double? i = _impact[metrics['I']];
+    final double? a = _impact[metrics['A']];
+    final String? scope = metrics['S'];
     if (av == null || ac == null || pr == null || ui == null) {
       return null;
     }
     if (c == null || i == null || a == null || scope == null) {
       return null;
     }
-    final iss = 1 - ((1 - c) * (1 - i) * (1 - a));
-    final impact = scopeChanged
+    final double iss = 1 - ((1 - c) * (1 - i) * (1 - a));
+    final double impact = scopeChanged
         ? 7.52 * (iss - 0.029) - 3.25 * pow(iss - 0.02, 15)
         : 6.42 * iss;
     if (impact <= 0) {
       return 0;
     }
-    final exploitability = 8.22 * av * ac * pr * ui;
-    final combined = scopeChanged
+    final double exploitability = 8.22 * av * ac * pr * ui;
+    final double combined = scopeChanged
         ? 1.08 * (impact + exploitability)
         : impact + exploitability;
     return roundUp(min(combined, 10));
@@ -113,7 +105,7 @@ final class CvssV3Calculator {
   ///
   /// Returns the rounded value.
   static double roundUp(double value) {
-    final scaled = (value * 100000).round();
+    final int scaled = (value * 100000).round();
     if (scaled % 10000 == 0) {
       return scaled / 100000;
     }
@@ -125,8 +117,8 @@ final class CvssV3Calculator {
   /// Returns the metrics; malformed parts are ignored.
   static Map<String, String> _parse(String vector) {
     final metrics = <String, String>{};
-    for (final part in vector.split('/').skip(1)) {
-      final pair = part.split(':');
+    for (final String part in vector.split('/').skip(1)) {
+      final List<String> pair = part.split(':');
       if (pair.length == 2) {
         metrics[pair.first] = pair.last;
       }

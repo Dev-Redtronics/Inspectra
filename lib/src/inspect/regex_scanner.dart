@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
-import '../archive/archive_entry.dart';
-import '../archive/archive_entry_filter.dart';
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/source_location.dart';
-import '../report/snippet_sanitizer.dart';
-import 'dart_literal_tokenizer.dart';
-import 'regex_rule.dart';
-import 'regex_rules.dart';
+import 'package:inspectra/src/archive/archive_entry.dart';
+import 'package:inspectra/src/archive/archive_entry_filter.dart';
+import 'package:inspectra/src/inspect/dart_literal_tokenizer.dart';
+import 'package:inspectra/src/inspect/regex_rule.dart';
+import 'package:inspectra/src/inspect/regex_rules.dart';
+import 'package:inspectra/src/inspect/string_literal.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/report/snippet_sanitizer.dart';
 
 /// Matches the [RegexRules] against the files of a package.
 ///
@@ -43,7 +44,7 @@ final class RegexScanner {
 
   /// Reserved top level domains that never resolve on the internet
   /// (RFC 2606 and RFC 6761).
-  static const Set<String> _reservedTopLevelDomains = <String>{
+  static const _reservedTopLevelDomains = <String>{
     'invalid',
     'test',
     'example',
@@ -52,7 +53,7 @@ final class RegexScanner {
   };
 
   /// Hosts that the URL rule never reports, including their subdomains.
-  static const Set<String> _builtInTrustedHosts = <String>{
+  static const _builtInTrustedHosts = <String>{
     'pub.dev',
     'dart.dev',
     'flutter.dev',
@@ -74,20 +75,20 @@ final class RegexScanner {
   final Set<String> _trustedHosts;
 
   /// The pattern extracting the host of a URL match.
-  static final RegExp _hostPattern = RegExp(r'^https?://([^/:?#@\s]+)');
+  static final _hostPattern = RegExp(r'^https?://([^/:?#@\s]+)');
 
   /// Scans every regular file of [entries].
   ///
   /// Returns the findings ordered by severity, file and line.
   List<Finding> scan(List<ArchiveEntry> entries) {
     final findings = <Finding>[];
-    final candidates = entries.where(
+    final Iterable<ArchiveEntry> candidates = entries.where(
       (entry) =>
           entry.isText && !isInExcludedDirectory(entry, excludedDirectories),
     );
     for (final entry in candidates) {
-      final extension = _extension(entry.baseName);
-      final rules = RegexRules.all.where(
+      final String extension = _extension(entry.baseName);
+      final Iterable<RegexRule> rules = RegexRules.all.where(
         (rule) => rule.extensions.contains(extension),
       );
       for (final rule in rules) {
@@ -95,7 +96,7 @@ final class RegexScanner {
       }
     }
     return findings..sort((a, b) {
-      final bySeverity = a.severity.rank.compareTo(b.severity.rank);
+      final int bySeverity = a.severity.rank.compareTo(b.severity.rank);
       if (bySeverity != 0) {
         return bySeverity;
       }
@@ -114,13 +115,13 @@ final class RegexScanner {
       return _applyToLiterals(rule, entry);
     }
     final findings = <Finding>[];
-    final lines = entry.text.split('\n');
+    final List<String> lines = entry.text.split('\n');
     for (var index = 0; index < lines.length; index++) {
-      final line = lines[index];
+      final String line = lines[index];
       if (rule.checksHost && _isCommentLine(line)) {
         continue;
       }
-      final match = _firstRelevantMatch(rule, line);
+      final Match? match = _firstRelevantMatch(rule, line);
       if (match != null) {
         findings.add(_finding(rule, entry, index + 1, line));
       }
@@ -134,16 +135,20 @@ final class RegexScanner {
   /// Returns at most one finding per line.
   List<Finding> _applyToLiterals(RegexRule rule, ArchiveEntry entry) {
     final findings = <int, Finding>{};
-    final lines = entry.text.split('\n');
-    for (final literal in DartLiteralTokenizer(entry.text).extract()) {
-      final match = _firstRelevantMatch(rule, literal.value);
+    final List<String> lines = entry.text.split('\n');
+    for (final StringLiteral literal in DartLiteralTokenizer(
+      entry.text,
+    ).extract()) {
+      final Match? match = _firstRelevantMatch(rule, literal.value);
       if (match == null || findings.containsKey(literal.line)) {
         continue;
       }
       if (_isProse(literal.value, match)) {
         continue;
       }
-      final line = literal.line <= lines.length ? lines[literal.line - 1] : '';
+      final String line = literal.line <= lines.length
+          ? lines[literal.line - 1]
+          : '';
       findings[literal.line] = _finding(rule, entry, literal.line, line);
     }
     return findings.values.toList();
@@ -156,8 +161,8 @@ final class RegexScanner {
   ///
   /// Returns `true` for URLs embedded in prose.
   bool _isProse(String literal, Match match) {
-    final hasWhitespace = RegExp(r'\s').hasMatch(literal.trim());
-    final startsWithUrl = literal.trimLeft().startsWith(match[0] ?? '');
+    final bool hasWhitespace = RegExp(r'\s').hasMatch(literal.trim());
+    final bool startsWithUrl = literal.trimLeft().startsWith(match[0] ?? '');
     return hasWhitespace && !startsWithUrl;
   }
 
@@ -165,11 +170,15 @@ final class RegexScanner {
   ///
   /// Returns one finding per match, located at the starting line.
   List<Finding> _applyToFile(RegexRule rule, ArchiveEntry entry) {
-    final text = entry.text;
+    final String text = entry.text;
     final findings = <Finding>[];
-    for (final match in rule.pattern.allMatches(text)) {
-      final line = '\n'.allMatches(text.substring(0, match.start)).length + 1;
-      final excerpt = text.substring(match.start, match.end).split('\n').first;
+    for (final RegExpMatch match in rule.pattern.allMatches(text)) {
+      final int line =
+          '\n'.allMatches(text.substring(0, match.start)).length + 1;
+      final String excerpt = text
+          .substring(match.start, match.end)
+          .split('\n')
+          .first;
       findings.add(_finding(rule, entry, line, excerpt));
     }
     return findings;
@@ -180,7 +189,7 @@ final class RegexScanner {
   ///
   /// Returns the match, or `null`.
   Match? _firstRelevantMatch(RegexRule rule, String line) {
-    final matches = rule.pattern.allMatches(line);
+    final Iterable<RegExpMatch> matches = rule.pattern.allMatches(line);
     if (!rule.checksHost) {
       return matches.firstOrNull;
     }
@@ -191,7 +200,7 @@ final class RegexScanner {
   ///
   /// Returns `true` for trusted hosts.
   bool _isTrusted(String url) {
-    final host = _hostPattern.firstMatch(url)?[1]?.toLowerCase();
+    final String? host = _hostPattern.firstMatch(url)?[1]?.toLowerCase();
     if (host == null) {
       return false;
     }
@@ -207,7 +216,7 @@ final class RegexScanner {
   ///
   /// Returns `true` for comment lines.
   bool _isCommentLine(String line) {
-    final trimmed = line.trimLeft();
+    final String trimmed = line.trimLeft();
     return trimmed.startsWith('//') ||
         trimmed.startsWith('*') ||
         trimmed.startsWith('/*') ||
@@ -218,20 +227,19 @@ final class RegexScanner {
   /// Creates the finding of [rule] at [line] of [entry].
   ///
   /// Returns the finding.
-  Finding _finding(RegexRule rule, ArchiveEntry entry, int line, String text) {
-    return Finding(
-      ruleId: rule.id,
-      source: FindingSource.regex,
-      severity: rule.severity,
-      title: rule.description,
-      location: SourceLocation(entry.path, line: line),
-      snippet: SnippetSanitizer.sanitize(text),
-    );
-  }
+  Finding _finding(RegexRule rule, ArchiveEntry entry, int line, String text) =>
+      Finding(
+        ruleId: rule.id,
+        source: FindingSource.regex,
+        severity: rule.severity,
+        title: rule.description,
+        location: SourceLocation(entry.path, line: line),
+        snippet: SnippetSanitizer.sanitize(text),
+      );
 
   /// Returns the lower case extension of [fileName], including the dot.
   String _extension(String fileName) {
-    final dot = fileName.lastIndexOf('.');
+    final int dot = fileName.lastIndexOf('.');
     return dot < 0 ? '' : fileName.substring(dot).toLowerCase();
   }
 }

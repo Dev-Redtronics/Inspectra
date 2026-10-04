@@ -17,7 +17,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'archive_entry_kind.dart';
+import 'package:inspectra/src/archive/archive_entry_kind.dart';
 
 /// One entry of an archive, held entirely in memory.
 ///
@@ -65,7 +65,7 @@ final class ArchiveEntry {
   bool get isFile => kind == ArchiveEntryKind.file;
 
   /// The number of leading bytes inspected by [isText].
-  static const int _textProbeLength = 8192;
+  static const _textProbeLength = 8192;
 
   /// Whether this entry is a regular file that looks like text.
   ///
@@ -88,7 +88,7 @@ final class ArchiveEntry {
   ///
   /// Returns the normalised name.
   static String _normalise(String raw) {
-    final slashed = raw.replaceAll(r'\', '/');
+    final String slashed = raw.replaceAll(r'\', '/');
     return slashed.replaceFirst(RegExp(r'^(\./)+'), '');
   }
 }

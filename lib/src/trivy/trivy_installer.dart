@@ -19,16 +19,17 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:inspectra/src/archive/archive_entry.dart';
+import 'package:inspectra/src/archive/archive_limits.dart';
+import 'package:inspectra/src/archive/archive_reader.dart';
+import 'package:inspectra/src/host/host_platform.dart';
+import 'package:inspectra/src/io/process_outcome.dart';
+import 'package:inspectra/src/io/process_runner.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/net/http_result.dart';
+import 'package:inspectra/src/net/http_transport.dart';
+import 'package:inspectra/src/trivy/trivy_release_asset.dart';
 import 'package:path/path.dart' as p;
-
-import '../archive/archive_entry.dart';
-import '../archive/archive_limits.dart';
-import '../archive/archive_reader.dart';
-import '../host/host_platform.dart';
-import '../io/process_runner.dart';
-import '../model/inspectra_exception.dart';
-import '../net/http_transport.dart';
-import 'trivy_release_asset.dart';
 
 /// Downloads, verifies and installs a Trivy release.
 ///
@@ -72,14 +73,15 @@ final class TrivyInstaller {
   ///
   /// Throws an [UnavailableException] when the redirect is missing.
   Future<String> resolveLatest(String latestUrl) async {
-    final result = await transport.get(
+    final HttpResult result = await transport.get(
       Uri.parse(latestUrl),
       followRedirects: false,
       maxBytes: 1024 * 1024,
     );
-    final location = result.location?.toString() ?? '';
-    final match = RegExp(r'/tag/v?([0-9][^/?#]*)').firstMatch(location);
-    final version = match?[1];
+    final String location = result.location?.toString() ?? '';
+    final RegExpMatch? match = RegExp('/tag/v?([0-9][^/?#]*)')
+        .firstMatch(location);
+    final String? version = match?[1];
     if (version == null) {
       throw UnavailableException(
         'Could not determine the latest Trivy release from $latestUrl.',
@@ -100,9 +102,12 @@ final class TrivyInstaller {
     String baseUrl,
     String targetPath,
   ) async {
-    final expected = await _expectedChecksum(asset, baseUrl);
-    final archiveUri = asset.archiveUri(baseUrl);
-    final download = await transport.get(archiveUri, maxBytes: maxArchiveBytes);
+    final String expected = await _expectedChecksum(asset, baseUrl);
+    final Uri archiveUri = asset.archiveUri(baseUrl);
+    final HttpResult download = await transport.get(
+      archiveUri,
+      maxBytes: maxArchiveBytes,
+    );
     if (!download.isSuccess) {
       throw UnavailableException(
         'Downloading $archiveUri failed with HTTP ${download.statusCode}.',
@@ -116,7 +121,7 @@ final class TrivyInstaller {
         'discarded and not executed.',
       );
     }
-    final binary = _extractBinary(asset, download.bodyBytes);
+    final Uint8List binary = _extractBinary(asset, download.bodyBytes);
     await _writeAtomically(binary, targetPath);
     return targetPath;
   }
@@ -130,16 +135,16 @@ final class TrivyInstaller {
     TrivyReleaseAsset asset,
     String baseUrl,
   ) async {
-    final uri = asset.checksumsUri(baseUrl);
-    final result = await transport.get(uri, maxBytes: 1024 * 1024);
+    final Uri uri = asset.checksumsUri(baseUrl);
+    final HttpResult result = await transport.get(uri, maxBytes: 1024 * 1024);
     if (!result.isSuccess) {
       throw UnavailableException(
         'Downloading $uri failed with HTTP ${result.statusCode}.',
       );
     }
-    for (final line in result.text.split('\n')) {
-      final parts = line.trim().split(RegExp(r'\s+'));
-      final matches =
+    for (final String line in result.text.split('\n')) {
+      final List<String> parts = line.trim().split(RegExp(r'\s+'));
+      final bool matches =
           parts.length == 2 &&
           parts.last.replaceFirst('*', '') == asset.archiveName;
       if (matches) {
@@ -166,7 +171,7 @@ final class TrivyInstaller {
     final List<ArchiveEntry> entries = asset.isZip
         ? reader.readZip(bytes)
         : reader.readTarGz(bytes);
-    final binary = entries
+    final ArchiveEntry? binary = entries
         .where((entry) => entry.isFile && entry.path == asset.binaryName)
         .firstOrNull;
     if (binary == null) {
@@ -184,7 +189,7 @@ final class TrivyInstaller {
   /// made executable.
   Future<void> _writeAtomically(Uint8List bytes, String targetPath) async {
     final directory = Directory(p.dirname(targetPath));
-    final suffix = Random.secure().nextInt(1 << 32).toRadixString(16);
+    final String suffix = Random.secure().nextInt(1 << 32).toRadixString(16);
     final temporary = File(p.join(directory.path, '.trivy-$pid-$suffix.tmp'));
     try {
       directory.createSync(recursive: true);
@@ -211,7 +216,10 @@ final class TrivyInstaller {
     if (host.isWindows) {
       return;
     }
-    final outcome = await processRunner.run('chmod', <String>['755', path]);
+    final ProcessOutcome outcome = await processRunner.run('chmod', <String>[
+      '755',
+      path,
+    ]);
     if (!outcome.succeeded) {
       throw FileSystemException('chmod failed: ${outcome.stderr}', path);
     }

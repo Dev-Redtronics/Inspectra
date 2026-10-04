@@ -1,11 +1,28 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:build/build.dart';
 import 'package:glob/glob.dart';
 import 'package:inspectra/src/builders/build_step_config.dart';
-import 'package:inspectra/src/config/inspectra_config_exception.dart';
+import 'package:inspectra/src/builders/log_build_outcome.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/trivy/finding.dart';
 import 'package:inspectra/src/trivy/package_graph.dart';
 import 'package:inspectra/src/trivy/scans.dart';
@@ -25,6 +42,7 @@ import 'package:path/path.dart' as p;
 /// The filesystem scan has no builder: it reads the whole package, most of
 /// which build_runner cannot see.
 sealed class TrivyBuilder implements Builder {
+  /// Creates the builder that runs [scan].
   const TrivyBuilder._(this.scan);
 
   /// The builder of the secret scan.
@@ -43,8 +61,10 @@ sealed class TrivyBuilder implements Builder {
   /// The scan this builder runs.
   final TrivyScan scan;
 
+  /// The report the scan writes, relative to the package root.
   String get _report => 'inspectra/trivy/${scan.name}.json';
 
+  /// Writes the [_report] once per package.
   @override
   Map<String, List<String>> get buildExtensions => {
     r'$package$': [_report],
@@ -61,6 +81,10 @@ sealed class TrivyBuilder implements Builder {
     String packageRoot,
   );
 
+  /// Runs [scan] when Trivy and the scan are enabled and the scan runs on
+  /// build, writes its JSON report and logs its outcome; configuration, Trivy
+  /// and file system errors are logged as severe instead of failing the build
+  /// with a stack trace.
   @override
   Future<void> build(BuildStep buildStep) async {
     try {
@@ -86,13 +110,11 @@ sealed class TrivyBuilder implements Builder {
         AssetId(buildStep.inputId.package, _report),
         const JsonEncoder.withIndent('  ').convert(result.toJson()),
       );
-      if (result.failed) {
-        log.severe(result.render());
-      } else if (result.findings.isNotEmpty) {
-        log.warning(result.render());
-      } else {
-        log.fine(result.render());
-      }
+      logBuildOutcome(
+        result.render(),
+        failed: result.failed,
+        findings: result.findings.isNotEmpty,
+      );
     } on InspectraConfigException catch (error) {
       log.severe('$error');
     } on TrivyException catch (error) {
@@ -109,25 +131,34 @@ sealed class TrivyBuilder implements Builder {
     if (await buildStep.canRead(id)) {
       return buildStep.readAsString(id);
     }
-    // In a pub workspace the lock file lives in the workspace root.
     return findUpwards(Directory.current.path, 'pubspec.lock')?.readAsString();
   }
 
+  /// The result of a scan that needs `pubspec.lock` in a package that has
+  /// not been resolved yet.
   ScanResult _noLock() => ScanResult.skipped(
     scan: scan.name,
     reason: 'no pubspec.lock found; run "dart pub get".',
   );
 }
 
+/// Runs the Trivy secret scan over the configured files of the package.
 final class _SecretScanBuilder extends TrivyBuilder {
+  /// Creates the secret scan builder; [inPackage] decides which build
+  /// sources are files of the package.
   const _SecretScanBuilder({this.inPackage = isInPackage})
     : super._(TrivyScan.secret);
 
+  /// Decides whether a build source is a file of the package, rather than an
+  /// output another builder keeps in the build cache.
   final bool Function(AssetId id) inPackage;
 
+  /// The settings of the secret scan.
   @override
   BuildScanConfig _select(TrivyConfig config) => config.secret;
 
+  /// Scans the configured files for secrets, reading them and the custom
+  /// secret configuration through [buildStep] so that a change reruns it.
   @override
   Future<ScanResult> _run(
     BuildStep buildStep,
@@ -141,8 +172,6 @@ final class _SecretScanBuilder extends TrivyBuilder {
       secret.config,
     );
     if (secretConfig != null) {
-      // Read through the build step so that editing the rules reruns the
-      // scan - provided the file is one of the package's build sources.
       final id = AssetId(
         buildStep.inputId.package,
         posixRelative(secretConfig, from: packageRoot),
@@ -159,6 +188,8 @@ final class _SecretScanBuilder extends TrivyBuilder {
     );
   }
 
+  /// Reads every build source matching [include] and none of [exclude]
+  /// through [buildStep], keyed by its path relative to the package root.
   Future<Map<String, List<int>>> _collect(
     BuildStep buildStep,
     List<String> include,
@@ -184,12 +215,17 @@ final class _SecretScanBuilder extends TrivyBuilder {
   }
 }
 
+/// Runs the Trivy license scan over the resolved dependencies.
 final class _LicenseScanBuilder extends TrivyBuilder {
+  /// Creates the license scan builder.
   const _LicenseScanBuilder() : super._(TrivyScan.license);
 
+  /// The settings of the license scan.
   @override
   BuildScanConfig _select(TrivyConfig config) => config.license;
 
+  /// Scans the licenses of the dependencies locked in `pubspec.lock`, or
+  /// skips the scan when the package has not been resolved.
   @override
   Future<ScanResult> _run(
     BuildStep buildStep,
@@ -209,12 +245,18 @@ final class _LicenseScanBuilder extends TrivyBuilder {
   }
 }
 
+/// Runs the Trivy vulnerability scan over the locked dependencies.
 final class _VulnerabilityScanBuilder extends TrivyBuilder {
+  /// Creates the vulnerability scan builder.
   const _VulnerabilityScanBuilder() : super._(TrivyScan.vulnerability);
 
+  /// The settings of the vulnerability scan.
   @override
   BuildScanConfig _select(TrivyConfig config) => config.vulnerability;
 
+  /// Scans the dependencies locked in `pubspec.lock` for known
+  /// vulnerabilities, or skips the scan when the package has not been
+  /// resolved.
   @override
   Future<ScanResult> _run(
     BuildStep buildStep,

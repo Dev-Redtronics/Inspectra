@@ -24,8 +24,9 @@ import '../support/entries.dart';
 void main() {
   /// Scans one Dart file with [content] and returns the rule ids.
   List<String> rulesFor(String content, {String path = 'lib/a.dart'}) {
-    final findings = RegexScanner(excludedDirectories: const <String>['test'])
-        .scan([textEntry(path, content)]);
+    final List<Finding> findings = RegexScanner(
+      excludedDirectories: const <String>['test'],
+    ).scan([textEntry(path, content)]);
     return findings.map((f) => f.ruleId).toList();
   }
 
@@ -77,7 +78,7 @@ final iso = await Isolate.spawn(run, bytes);
   });
 
   test('sanitises snippets', () {
-    final findings = RegexScanner().scan([
+    final List<Finding> findings = RegexScanner().scan([
       textEntry('lib/a.dart', "Process.run('sh'); \u202E"),
     ]);
     expect(findings.first.snippet, contains(r'\u{202E}'));

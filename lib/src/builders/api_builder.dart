@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:io';
 
 import 'package:analyzer/dart/element/element.dart';
@@ -6,9 +22,9 @@ import 'package:glob/glob.dart';
 import 'package:inspectra/src/api/api_diff.dart';
 import 'package:inspectra/src/api/api_renderer.dart';
 import 'package:inspectra/src/builders/build_step_config.dart';
-import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/config/config_loader.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:path/path.dart' as p;
 
 /// Writes the public API of the root package to its committed dump.
@@ -32,7 +48,6 @@ class ApiBuilder implements Builder {
     try {
       return ApiBuilder(loadConfig(Directory.current.path).api.output);
     } on Object {
-      // The build step reports a broken configuration with its location.
       return ApiBuilder('api/${p.basename(Directory.current.path)}.api');
     }
   }
@@ -40,11 +55,14 @@ class ApiBuilder implements Builder {
   /// The dump file, relative to the package root.
   final String output;
 
+  /// Writes the API dump [output] once per package.
   @override
   Map<String, List<String>> get buildExtensions => {
     r'$package$': [output],
   };
 
+  /// Renders the public API of the package and writes it to [output] when
+  /// the API check is enabled; a configuration error is logged, not thrown.
   @override
   Future<void> build(BuildStep buildStep) async {
     final InspectraConfig config;

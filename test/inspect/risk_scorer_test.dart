@@ -31,7 +31,7 @@ void main() {
       );
 
   test('uses the dart_audit weights and counts each rule and file once', () {
-    final score = const RiskScorer().score(<Finding>[
+    final int score = const RiskScorer().score(<Finding>[
       finding(FindingSource.regex, Severity.high, 'a.dart'),
       finding(FindingSource.regex, Severity.high, 'a.dart'),
       finding(FindingSource.entropy, Severity.medium, 'b.dart'),

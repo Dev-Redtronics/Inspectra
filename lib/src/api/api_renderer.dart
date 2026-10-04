@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/element.dart';
 
@@ -22,7 +38,7 @@ String renderApi(
   Iterable<LibraryElement> libraries, {
   Iterable<String> nonPublicAnnotations = const [],
 }) {
-  final renderer = _ApiRenderer(nonPublicAnnotations.toSet());
+  final renderer = ApiRenderer(nonPublicAnnotations.toSet());
   final List<LibraryElement> sorted = libraries.toList()
     ..sort((a, b) => '${a.uri}'.compareTo('${b.uri}'));
   final buffer = StringBuffer(apiDumpHeader);
@@ -34,13 +50,24 @@ String renderApi(
   return buffer.toString();
 }
 
-class _ApiRenderer {
-  _ApiRenderer(this._nonPublicAnnotations);
+/// Renders libraries, types and members into the lines of an API dump.
+///
+/// One renderer is created per dump, so that the set of annotations that
+/// hide a declaration is resolved once and shared by every library.
+class ApiRenderer {
+  /// Creates a renderer that leaves out every declaration annotated with one
+  /// of the [_nonPublicAnnotations].
+  ApiRenderer(this._nonPublicAnnotations);
 
+  /// The indentation of a member below its type.
   static const _indent = '  ';
 
+  /// The names of the annotations that keep a declaration out of the dump,
+  /// such as `internal` or `visibleForTesting`.
   final Set<String> _nonPublicAnnotations;
 
+  /// Renders the export namespace of [library]: a `library` line followed by
+  /// every public declaration, sorted by name and separated by blank lines.
   String library(LibraryElement library) {
     final buffer = StringBuffer()..writeln('library ${library.uri}');
     final Map<String, Element> namespace =
@@ -62,16 +89,17 @@ class _ApiRenderer {
     return buffer.toString();
   }
 
+  /// Whether [element] belongs to the API: its name is public and none of its
+  /// annotations is one of the [_nonPublicAnnotations].
   bool _isPublic(Element element) {
     if (element.isPrivate) {
       return false;
     }
     for (final ElementAnnotation annotation in element.metadata.annotations) {
       final Element? annotationElement = annotation.element;
-      final String? name = switch (annotationElement) {
-        ConstructorElement(:final enclosingElement) => enclosingElement.name,
-        _ => annotationElement?.name,
-      };
+      final String? name = annotationElement is ConstructorElement
+          ? annotationElement.enclosingElement.name
+          : annotationElement?.name;
       if (name != null && _nonPublicAnnotations.contains(name)) {
         return false;
       }
@@ -79,6 +107,8 @@ class _ApiRenderer {
     return true;
   }
 
+  /// Renders the top-level [element], or returns `null` when it is rendered
+  /// as part of another declaration, as the setter of a top-level variable is.
   String? _topLevel(Element element) => switch (element) {
     InterfaceElement() => _type(element),
     ExtensionElement() => _type(element),
@@ -88,6 +118,8 @@ class _ApiRenderer {
     Element() => '${_deprecated(element)}${_executable(element)};',
   };
 
+  /// Renders the type or extension [element] with its public members, one
+  /// member per line and indented by [_indent].
   String _type(InstanceElement element) {
     final List<String> members = _members(element);
     final header = '${_deprecated(element)}${element.displayString()}';
@@ -104,6 +136,9 @@ class _ApiRenderer {
     return buffer.toString();
   }
 
+  /// The rendered public members of [element], grouped and sorted so that
+  /// the order is stable: enum constants, fields, constructors, accessors and
+  /// methods.
   List<String> _members(InstanceElement element) {
     final constants = <String>[];
     final fields = <String>[];
@@ -117,8 +152,9 @@ class _ApiRenderer {
       }
       if (field.isEnumConstant) {
         constants.add('${_deprecated(field)}${field.name}');
-      } else if (field.isOriginDeclaration &&
-          !_isRepresentation(element, field)) {
+        continue;
+      }
+      if (field.isOriginDeclaration && !_isRepresentation(element, field)) {
         fields.add('${_deprecated(field)}${_variable(field)};');
       }
     }
@@ -154,9 +190,13 @@ class _ApiRenderer {
     ];
   }
 
+  /// Whether [field] is the representation field of the extension type
+  /// [element], which is already part of its rendered header.
   bool _isRepresentation(InstanceElement element, FieldElement field) =>
       element is ExtensionTypeElement && element.representation == field;
 
+  /// Renders [constructor] with its `external`, `const` and `factory`
+  /// modifiers.
   String _constructor(ConstructorElement constructor) {
     final modifiers = [
       if (constructor.isExternal) 'external',
@@ -166,6 +206,8 @@ class _ApiRenderer {
     return [...modifiers, constructor.displayString()].join(' ');
   }
 
+  /// Renders [variable] with its modifiers and, for a constant, its value,
+  /// since changing a constant value changes the API.
   String _variable(PropertyInducingElement variable) {
     final modifiers = [
       if (variable is FieldElement && variable.isExternal) 'external',
@@ -175,20 +217,22 @@ class _ApiRenderer {
       if (variable.isStatic && variable is FieldElement) 'static',
       if (variable is FieldElement && variable.isCovariant) 'covariant',
       if (variable.isLate) 'late',
-      if (variable.isConst) 'const' else if (variable.isFinal) 'final',
+      if (variable.isConst) 'const',
+      if (!variable.isConst && variable.isFinal) 'final',
     ];
     final String declaration = [
       ...modifiers,
       variable.displayString(),
     ].join(' ');
-    // The value of a constant is part of the API: consumers can use it in
-    // constant expressions and patterns, which break when it changes.
     final Expression? value = variable.isConst
         ? variable.constantInitializer
         : null;
     return value == null ? declaration : '$declaration = ${value.toSource()}';
   }
 
+  /// Renders the function, method or accessor [element] with its `external`,
+  /// `static` and `abstract` modifiers; an operator gets its `operator`
+  /// keyword back, which the analyzer leaves out of the display string.
   String _executable(Element element) {
     if (element is! ExecutableElement) {
       return element.displayString();
@@ -209,9 +253,13 @@ class _ApiRenderer {
     return [...modifiers, signature].join(' ');
   }
 
+  /// The `@Deprecated` prefix when [element] is deprecated, otherwise an
+  /// empty string.
   String _deprecated(Element element) =>
       element.metadata.hasDeprecated ? '@Deprecated ' : '';
 
+  /// Compares the rendered members [a] and [b] by their name, see
+  /// [_sortKey].
   static int _byName(String a, String b) => _sortKey(a).compareTo(_sortKey(b));
 
   /// Sorts members by name rather than by their leading modifiers or type,

@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 Redtronics
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import 'dart:io';
 
 import 'package:glob/glob.dart';
@@ -53,14 +69,15 @@ List<String> listFiles(
     )..sort((a, b) => a.path.compareTo(b.path));
     for (final entry in entries) {
       final String relative = posixRelative(entry.path, from: root);
-      if (entry is Directory) {
-        // A directory is skipped when everything below it would be excluded.
-        if (!excluded('$relative/.inspectra')) {
-          visit(entry);
-        }
-      } else if (entry is File &&
+      final bool skipsDirectory = excluded('$relative/.inspectra');
+      if (entry is Directory && !skipsDirectory) {
+        visit(entry);
+      }
+      final bool selected =
+          entry is File &&
           !excluded(relative) &&
-          includes.any((glob) => glob.matches(relative))) {
+          includes.any((glob) => glob.matches(relative));
+      if (selected) {
         files.add(relative);
       }
     }

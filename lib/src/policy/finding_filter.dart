@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import '../config/ignore_rule.dart';
-import '../model/finding.dart';
-import '../model/severity.dart';
-import 'filter_outcome.dart';
+import 'package:inspectra/src/config/ignore_rule.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
 
 /// Applies the reporting policy to raw findings.
 ///
@@ -50,16 +50,20 @@ final class FindingFilter {
   ///
   /// Returns the kept and suppressed findings plus expired rules.
   FilterOutcome apply(List<Finding> findings) {
-    final active = rules.where((rule) => !rule.isExpired(now)).toList();
-    final expired = rules.where((rule) => rule.isExpired(now)).toList();
+    final List<IgnoreRule> active = rules
+        .where((rule) => !rule.isExpired(now))
+        .toList();
+    final List<IgnoreRule> expired = rules
+        .where((rule) => rule.isExpired(now))
+        .toList();
     final kept = <Finding>[];
     final suppressed = <Finding>[];
     for (final finding in findings) {
       if (!finding.severity.isAtLeast(minSeverity)) {
         continue;
       }
-      final ignoredByFlag = cliIgnores.any(finding.identifiers.contains);
-      final ignoredByRule = active.any((rule) => rule.matches(finding));
+      final bool ignoredByFlag = cliIgnores.any(finding.identifiers.contains);
+      final bool ignoredByRule = active.any((rule) => rule.matches(finding));
       if (ignoredByFlag || ignoredByRule) {
         suppressed.add(finding);
         continue;

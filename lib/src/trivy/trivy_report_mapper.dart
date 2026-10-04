@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
-import '../model/finding_source.dart';
-import '../model/severity.dart';
-import '../model/source_location.dart';
-import '../report/snippet_sanitizer.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/model/source_location.dart';
+import 'package:inspectra/src/report/snippet_sanitizer.dart';
 
 /// Converts Trivy's JSON report into Inspectra findings.
 ///
@@ -37,7 +37,7 @@ final class TrivyReportMapper {
   ///
   /// Returns the findings.
   List<Finding> map(Map<String, Object?> report) {
-    final results = _maps(report['Results']);
+    final List<Map<String, Object?>> results = _maps(report['Results']);
     return <Finding>[for (final result in results) ..._mapResult(result)];
   }
 
@@ -45,7 +45,7 @@ final class TrivyReportMapper {
   ///
   /// Returns its findings.
   List<Finding> _mapResult(Map<String, Object?> result) {
-    final target = _path('${result['Target'] ?? ''}');
+    final String target = _path('${result['Target'] ?? ''}');
     return <Finding>[
       for (final vuln in _maps(result['Vulnerabilities']))
         _vulnerability(vuln, target),
@@ -61,7 +61,7 @@ final class TrivyReportMapper {
   ///
   /// Returns the finding.
   Finding _vulnerability(Map<String, Object?> json, String target) {
-    final id = _string(json['VulnerabilityID']) ?? 'UNKNOWN';
+    final String id = _string(json['VulnerabilityID']) ?? 'UNKNOWN';
     return Finding(
       ruleId: id,
       source: FindingSource.trivy,
@@ -82,7 +82,7 @@ final class TrivyReportMapper {
   ///
   /// Returns the finding.
   Finding _secret(Map<String, Object?> json, String target) {
-    final match = _string(json['Match']);
+    final String? match = _string(json['Match']);
     return Finding(
       ruleId: _string(json['RuleID']) ?? 'secret',
       source: FindingSource.trivy,
@@ -101,8 +101,8 @@ final class TrivyReportMapper {
   ///
   /// Returns the finding.
   Finding _misconfiguration(Map<String, Object?> json, String target) {
-    final cause = json['CauseMetadata'];
-    final line = cause is Map<String, Object?>
+    final Object? cause = json['CauseMetadata'];
+    final int? line = cause is Map<String, Object?>
         ? _int(cause['StartLine'])
         : null;
     return Finding(
@@ -125,9 +125,9 @@ final class TrivyReportMapper {
   ///
   /// Returns the finding.
   Finding _license(Map<String, Object?> json, String target) {
-    final name = _string(json['Name']) ?? 'unknown';
-    final category = _string(json['Category']) ?? 'unknown';
-    final file = _string(json['FilePath']);
+    final String name = _string(json['Name']) ?? 'unknown';
+    final String category = _string(json['Category']) ?? 'unknown';
+    final String? file = _string(json['FilePath']);
     return Finding(
       ruleId: 'LICENSE:$name',
       source: FindingSource.trivy,

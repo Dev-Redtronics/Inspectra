@@ -17,7 +17,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '../model/inspectra_exception.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
 
 /// A fully received HTTP response.
 final class HttpResult {
@@ -55,7 +55,7 @@ final class HttpResult {
   /// The delay requested by a `Retry-After` header given in seconds, or
   /// `null` when the header is absent or uses the HTTP date format.
   Duration? get retryAfter {
-    final seconds = int.tryParse(headers['retry-after'] ?? '');
+    final int? seconds = int.tryParse(headers['retry-after'] ?? '');
     if (seconds == null || seconds < 0) {
       return null;
     }
@@ -65,7 +65,7 @@ final class HttpResult {
   /// The target of a redirect response, resolved against [uri], or `null`
   /// when there is no `Location` header.
   Uri? get location {
-    final value = headers['location'];
+    final String? value = headers['location'];
     if (value == null) {
       return null;
     }

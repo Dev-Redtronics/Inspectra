@@ -18,6 +18,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:inspectra/inspectra.dart';
+import 'package:inspectra/src/archive/archive_entry.dart';
 import 'package:inspectra/src/archive/archive_entry_kind.dart';
 import 'package:inspectra/src/archive/archive_limits.dart';
 import 'package:inspectra/src/archive/archive_reader.dart';
@@ -34,7 +35,7 @@ void main() {
   );
 
   test('reads every tar.gz entry with its content', () {
-    final entries = const ArchiveReader(
+    final List<ArchiveEntry> entries = const ArchiveReader(
       limits,
     ).readTarGz(buildTarGz(<String, String>{'lib/a.dart': 'void main() {}'}));
     expect(entries.single.path, 'lib/a.dart');
@@ -47,19 +48,22 @@ void main() {
     final archive = Archive()
       ..addFile(ArchiveFile.string('lib/a.dart', 'one'))
       ..addFile(ArchiveFile.string('lib/b.dart', 'two'));
-    final tar = TarEncoder().encodeBytes(archive);
+    final Uint8List tar = TarEncoder().encodeBytes(archive);
     final duplicated = <int>[...tar.sublist(0, tar.length - 1024)];
-    final second = TarEncoder().encodeBytes(
+    final Uint8List second = TarEncoder().encodeBytes(
       Archive()..addFile(ArchiveFile.string('lib/a.dart', 'evil')),
     );
     duplicated.addAll(second);
     final gz = Uint8List.fromList(const GZipEncoder().encodeBytes(duplicated));
-    final entries = const ArchiveReader(limits).readTarGz(gz);
+    final List<ArchiveEntry> entries = const ArchiveReader(limits)
+        .readTarGz(gz);
     expect(entries.where((e) => e.path == 'lib/a.dart'), hasLength(2));
   });
 
   test('rejects decompression bombs', () {
-    final bomb = buildTarGz(<String, String>{'big.txt': '0' * (2 << 20)});
+    final Uint8List bomb = buildTarGz(<String, String>{
+      'big.txt': '0' * (2 << 20),
+    });
     expect(
       () => const ArchiveReader(limits).readTarGz(bomb),
       throwsA(isA<InvalidInputException>()),
@@ -67,7 +71,7 @@ void main() {
   });
 
   test('rejects archives with too many entries', () {
-    final many = buildTarGz(<String, String>{
+    final Uint8List many = buildTarGz(<String, String>{
       for (var i = 0; i < 150; i++) 'f$i.txt': '$i',
     });
     expect(
@@ -88,7 +92,7 @@ void main() {
   });
 
   test('reads zip archives', () {
-    final entries = const ArchiveReader(limits).readZip(
+    final List<ArchiveEntry> entries = const ArchiveReader(limits).readZip(
       buildZip(<String, List<int>>{
         'trivy.exe': <int>[0x4D, 0x5A, 0],
       }),

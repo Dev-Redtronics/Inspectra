@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import 'ansi_styler.dart';
-import 'verbosity.dart';
+import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/io/verbosity.dart';
 
 /// The single channel through which Inspectra talks to its user.
 ///
