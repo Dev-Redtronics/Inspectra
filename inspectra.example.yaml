@@ -1,0 +1,69 @@
+# Inspectra configuration. Copy to inspectra.yaml in your project root.
+#
+# Precedence (highest first): command line flags and --set key=value,
+# INSPECTRA_<SECTION>_<KEY> environment variables (e.g. INSPECTRA_TRIVY_VERSION),
+# this file, built-in defaults. Unknown keys are rejected.
+
+# Minimum severity that makes a command exit with 1. Default: the command's own
+# (any finding for audit/scan/trivy, high for typosquat, critical for trust).
+# failOn: high
+
+# Findings below this severity are not reported at all.
+# minSeverity: low
+
+# Documented suppressions. A reason is mandatory; expired rules stop matching.
+ignore:
+  - id: GHSA-xxxx-yyyy-zzzz        # rule id, advisory id or alias (CVE)
+    package: http                  # optional: only for this package
+    reason: Not reachable, we never parse untrusted multipart bodies.
+    expires: 2027-01-31            # optional: revisit after this day
+
+network:
+  offline: false                   # true: never open a connection
+  timeout: 30s
+  maxAttempts: 3                   # retries with back-off and Retry-After
+  retryBaseDelay: 1s
+  concurrency: 8
+  # proxy: http://proxy.corp:3128  # default: HTTPS_PROXY / HTTP_PROXY / NO_PROXY
+  # caCertificates: certs/corp-ca.pem
+  osvUrl: https://api.osv.dev
+  # pubHostedUrl: https://pub.dev  # default: PUB_HOSTED_URL or https://pub.dev
+
+inspect:
+  failScore: 30                    # risk score at which inspect fails and add blocks
+  maxArchiveBytes: 67108864
+  maxExtractedBytes: 268435456
+  maxEntries: 20000
+  entropyExcludes: [.g.dart, .freezed.dart, .mocks.dart, .pb.dart, .gr.dart]
+  excludeDirectories: [test, integration_test, example, benchmark, doc, docs, tool, extension]
+  trustedHosts: []                 # extra hosts the URL rule never reports
+
+trust:
+  freshPackageDays: 7
+  youngPackageDays: 30
+  freshReleaseHours: 24
+  minLikes: 5
+  minDownloads: 100
+  minPointsRatio: 0.5
+
+typosquat:
+  allow: []                        # names never reported
+  popular: []                      # extra names to protect, e.g. internal packages
+
+trivy:
+  mode: auto                       # auto | required | disabled
+  version: 0.75.0                  # exact version or "latest"
+  useInstalled: true               # use an installed Trivy even if its version differs
+  download: true                   # download Trivy when missing (only when online)
+  # executable: /opt/trivy/trivy   # use exactly this binary
+  # installDirectory: .tools/trivy # default: <user cache>/inspectra/trivy
+  downloadBaseUrl: https://github.com/aquasecurity/trivy/releases/download
+  latestReleaseUrl: https://github.com/aquasecurity/trivy/releases/latest
+  scanners: [vuln, secret, misconfig]   # add license to scan licenses
+  severities: [UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL]
+  skipDbUpdate: false
+  # dbRepository: registry.corp/aquasecurity/trivy-db
+  # cacheDirectory: .cache/trivy
+  timeout: 10m
+  connectivityTimeout: 3s
+  extraArgs: []
