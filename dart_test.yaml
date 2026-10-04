@@ -2,6 +2,6 @@ tags:
   # Runs the real Trivy binary; skipped when it is not installed.
   trivy:
     timeout: 5m
-  # Runs "dart test" in a generated package.
+  # Runs real external tools: "dart test" in a generated package, or git.
   slow:
     timeout: 3m

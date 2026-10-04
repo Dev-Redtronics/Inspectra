@@ -18,6 +18,8 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:inspectra/src/api/api_command.dart';
+import 'package:inspectra/src/changelog/changelog_check.dart';
+import 'package:inspectra/src/changelog/changelog_check_result.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/cli/exit_code.dart';
@@ -113,6 +115,17 @@ abstract class PackageCheckCommand extends Command<int> {
     packageRoot,
     overrides: ConfigOverrides(environment: context.environment),
   );
+
+  /// Validates the changelog and prints the outcome.
+  ///
+  /// Returns whether the changelog is valid.
+  ///
+  /// Throws an `InvalidInputException` when `pubspec.yaml` is malformed.
+  Future<bool> runChangelogCheck(InspectraConfig config) async {
+    final ChangelogCheckResult result = checkChangelog(config, packageRoot);
+    out.writeln(result.render());
+    return !result.failed;
+  }
 
   /// Runs the API check and reports whether it passed.
   ///

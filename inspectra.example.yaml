@@ -145,3 +145,36 @@ coverage:
   exclude: ['**.g.dart', '**.freezed.dart', '**.mocks.dart']
   # min_line_coverage: 80            # unset: report only
   test_arguments: []
+
+# ---------------------------------------------------------------------------
+# Changelog: changelog generate, changelog check (also run by check when
+# enabled), changelog notes
+# ---------------------------------------------------------------------------
+
+changelog:
+  enabled: false                     # whether check validates the changelog
+  file: CHANGELOG.md
+  tag_prefix: v                      # release tags look like v1.2.3; '' for 1.2.3
+  # Section of each Conventional Commits type: added, changed, deprecated,
+  # removed, fixed, security or hidden. Listed keys replace the defaults
+  # below; types that are not listed are hidden. Breaking changes are always
+  # listed.
+  types:
+    feat: added
+    fix: fixed
+    perf: changed
+    refactor: changed
+    revert: changed
+    deprecate: deprecated
+    remove: removed
+    security: security
+    docs: hidden
+    style: hidden
+    test: hidden
+    build: hidden
+    ci: hidden
+    chore: hidden
+  unconventional: hidden             # section of commits without a type
+  # repository: https://github.com/acme/demo   # unset: repository of pubspec.yaml
+  commit_url: '{repository}/commit/{hash}'
+  compare_url: '{repository}/compare/{from}...{to}'

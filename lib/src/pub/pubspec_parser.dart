@@ -70,6 +70,8 @@ final class PubspecParser {
     return Pubspec(
       path: path,
       name: _stringOrNull(document['name']),
+      version: _stringOrNull(document['version']),
+      repository: _stringOrNull(document['repository']),
       dependencies: _section(document, 'dependencies', path),
       devDependencies: _section(document, 'dev_dependencies', path),
       dependencyOverrides: _section(document, 'dependency_overrides', path),

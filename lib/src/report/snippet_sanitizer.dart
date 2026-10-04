@@ -32,15 +32,24 @@ final class SnippetSanitizer {
   ///
   /// Returns the printable text.
   static String sanitize(String text) {
-    final buffer = StringBuffer();
-    for (final int rune in text.runes) {
-      buffer.write(_isUnsafe(rune) ? _escape(rune) : String.fromCharCode(rune));
-    }
-    final String result = buffer.toString().trim();
+    final String result = escape(text).trim();
     if (result.length <= maxLength) {
       return result;
     }
     return '${result.substring(0, maxLength)}…';
+  }
+
+  /// Replaces every unsafe character of [text] by its visible notation,
+  /// without trimming or truncating it, for text such as commit messages
+  /// that is shown in full.
+  ///
+  /// Returns the printable text.
+  static String escape(String text) {
+    final buffer = StringBuffer();
+    for (final int rune in text.runes) {
+      buffer.write(_isUnsafe(rune) ? _escape(rune) : String.fromCharCode(rune));
+    }
+    return buffer.toString();
   }
 
   /// Whether [rune] must not be printed verbatim.

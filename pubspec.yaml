@@ -65,3 +65,5 @@ inspectra:
   coverage:
     enabled: true
     min_line_coverage: 90
+  changelog:
+    enabled: true

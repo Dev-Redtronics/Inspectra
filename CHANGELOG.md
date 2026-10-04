@@ -20,6 +20,20 @@ All notable changes to this project are documented in this file. The format foll
 - A strict lint preset, `package:inspectra/lints/strict.yaml`.
 - Writerside documentation in `docs/`, published to GitHub Pages.
 
+### Changelog
+
+- `inspectra changelog generate` writes the section of the next release from the Conventional Commits
+  since the latest release tag, in the Keep a Changelog layout: breaking changes first, then Added,
+  Changed, Deprecated, Removed, Fixed and Security, with commit and comparison links. It suggests the
+  next semantic version, drops commits reverted within the release, and with `--write` adds the section
+  to `CHANGELOG.md` without touching existing sections. `--from`, `--to`, `--release`, `--date`.
+- `inspectra changelog check`, also part of `check` with `changelog.enabled`, validates the changelog
+  and fails when the version of `pubspec.yaml` is not documented.
+- `inspectra changelog notes [version]` prints the section of a release; the release workflow uses it
+  as the description of the GitHub release.
+- The `changelog:` configuration section: `enabled`, `file`, `tag_prefix`, `types`, `unconventional`,
+  `repository`, `commit_url`, `compare_url`; `checkChangelog` in the library API.
+
 ### Supply-chain security
 
 Every command of `dart_audit` 0.3.1 with the same names, flags, rule ids, JSON fields and the exit

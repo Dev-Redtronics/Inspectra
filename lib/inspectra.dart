@@ -22,13 +22,17 @@
 /// wants to run the checks programmatically: the command line itself
 /// (`InspectraCommandRunner`), the configuration model, the normalised
 /// finding model of the supply-chain commands, the Trivy scans, the public
-/// API dump, the format and lint checks and the coverage gate.
+/// API dump, the format and lint checks, the coverage gate and the
+/// changelog check.
 library;
 
 export 'src/api/api_command.dart'
     show ApiCheckResult, checkApi, dumpApi, renderPackageApi;
 export 'src/api/api_diff.dart' show diffApi;
 export 'src/api/api_renderer.dart' show apiDumpHeader, renderApi;
+export 'src/changelog/changelog_check.dart' show checkChangelog;
+export 'src/changelog/changelog_check_result.dart';
+export 'src/changelog/changelog_problem.dart';
 export 'src/cli/command_context.dart';
 export 'src/cli/exit_code.dart';
 export 'src/cli/inspectra_command_runner.dart';

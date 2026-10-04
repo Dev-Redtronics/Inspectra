@@ -124,6 +124,12 @@ final class YamlReader {
     );
   }
 
+  /// The keys of this mapping as written in the file, in file order, for
+  /// sections whose keys are names chosen by the user.
+  List<String> get fileKeys => List<String>.unmodifiable(<String>[
+    for (final Object? key in _map.keys) '$key',
+  ]);
+
   /// Returns the raw value at [key] for structured options, such as the
   /// `ignore` list, that only the file can express.
   Object? structured(String key) => _fileValue(key);

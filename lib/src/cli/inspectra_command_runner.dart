@@ -19,6 +19,7 @@ import 'package:args/command_runner.dart';
 import 'package:inspectra/src/cli/command/add_command.dart';
 import 'package:inspectra/src/cli/command/api_command.dart';
 import 'package:inspectra/src/cli/command/audit_command.dart';
+import 'package:inspectra/src/cli/command/changelog_command.dart';
 import 'package:inspectra/src/cli/command/check_command.dart';
 import 'package:inspectra/src/cli/command/coverage_command.dart';
 import 'package:inspectra/src/cli/command/format_command.dart';
@@ -38,11 +39,11 @@ import 'package:inspectra/src/version.dart';
 /// Running `inspectra` without a command, or with options only, runs
 /// `scan`. The supply-chain commands are `scan`, `audit`, `inspect`,
 /// `trust`, `typosquat`, `add`, `hook` and `trivy`; the package checks are
-/// `check`, `format`, `lint`, `api` and `coverage`. The global
-/// `--directory` option selects the package to work on. Usage errors exit
-/// with `64`; unexpected internal errors are caught, reported and exit with
-/// `70` instead of crashing with a stack trace (set `INSPECTRA_DEBUG=1` to
-/// print it).
+/// `check`, `format`, `lint`, `api` and `coverage`; `changelog` generates,
+/// checks and prints the changelog. The global `--directory` option
+/// selects the package to work on. Usage errors exit with `64`; unexpected
+/// internal errors are caught, reported and exit with `70` instead of
+/// crashing with a stack trace (set `INSPECTRA_DEBUG=1` to print it).
 final class InspectraCommandRunner extends CommandRunner<int> {
   /// Creates the command line for [context].
   InspectraCommandRunner(this.context)
@@ -75,6 +76,7 @@ final class InspectraCommandRunner extends CommandRunner<int> {
     addCommand(LintCommand(context));
     addCommand(ApiCommand(context));
     addCommand(CoverageCommand(context));
+    addCommand(ChangelogCommand(context));
   }
 
   /// The outside world.

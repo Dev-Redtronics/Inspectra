@@ -30,8 +30,8 @@ final class CheckCommand extends PackageCheckCommand {
   /// The one line description.
   @override
   String get description =>
-      'Run every enabled package check: format, lint, API, Trivy scans and '
-      'coverage.';
+      'Run every enabled package check: format, lint, API, changelog, Trivy '
+      'scans and coverage.';
 
   /// Runs the enabled checks one after the other.
   ///
@@ -43,6 +43,7 @@ final class CheckCommand extends PackageCheckCommand {
       (config.format.enabled, () => runFormat(config)),
       (config.lint.enabled, () => runLintGate(config)),
       (config.api.enabled, () => runApiCheck(config)),
+      (config.changelog.enabled, () => runChangelogCheck(config)),
       (config.trivy.enabled, () => runScans(config)),
       (config.coverage.enabled, () => runCoverageGate(config)),
     ];
@@ -51,8 +52,8 @@ final class CheckCommand extends PackageCheckCommand {
         .toList();
     if (enabled.isEmpty) {
       out.writeln(
-        'Nothing is enabled. Enable "format", "lint", "api", "trivy" or '
-        '"coverage" in the Inspectra configuration.',
+        'Nothing is enabled. Enable "format", "lint", "api", "changelog", '
+        '"trivy" or "coverage" in the Inspectra configuration.',
       );
       return true;
     }

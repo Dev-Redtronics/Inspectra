@@ -24,12 +24,15 @@ import 'package:inspectra/src/host/cache_directory.dart';
 import 'package:inspectra/src/inspect/package_inspector.dart';
 import 'package:inspectra/src/io/console.dart';
 import 'package:inspectra/src/io/executable_resolver.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/net/http_transport.dart';
 import 'package:inspectra/src/osv/osv_cache.dart';
 import 'package:inspectra/src/osv/osv_client.dart';
 import 'package:inspectra/src/policy/finding_filter.dart';
 import 'package:inspectra/src/pub/package_archive_downloader.dart';
 import 'package:inspectra/src/pub/pub_repository_client.dart';
+import 'package:inspectra/src/pub/pubspec.dart';
+import 'package:inspectra/src/pub/pubspec_parser.dart';
 import 'package:inspectra/src/trivy/trivy_installer.dart';
 import 'package:inspectra/src/trivy/trivy_locator.dart';
 import 'package:inspectra/src/trivy/trivy_provisioner.dart';
@@ -113,6 +116,19 @@ final class CommandSession {
 
   /// Returns [path] as shown in reports.
   String display(String path) => displayPath(path, workingDirectory);
+
+  /// Reads the `pubspec.yaml` of the project.
+  ///
+  /// Returns the pubspec, or `null` when the project has none.
+  ///
+  /// Throws an [InvalidInputException] when it is malformed.
+  Pubspec? pubspec() {
+    final String path = resolve('pubspec.yaml');
+    if (!File(path).existsSync()) {
+      return null;
+    }
+    return const PubspecParser().parseFile(path);
+  }
 
   /// The per-user cache directory, falling back to the temp directory.
   String get cacheRoot {

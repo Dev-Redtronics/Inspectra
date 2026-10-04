@@ -15,6 +15,7 @@
  */
 
 import 'package:inspectra/src/config/api_config.dart';
+import 'package:inspectra/src/config/changelog_config.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/coverage_config.dart';
 import 'package:inspectra/src/config/format_config.dart';
@@ -30,8 +31,10 @@ import 'package:inspectra/src/config/yaml_reader.dart';
 import 'package:inspectra/src/model/severity.dart';
 import 'package:yaml/yaml.dart';
 
+export 'package:inspectra/src/changelog/changelog_section.dart';
 export 'package:inspectra/src/config/api_config.dart';
 export 'package:inspectra/src/config/build_scan_config.dart';
+export 'package:inspectra/src/config/changelog_config.dart';
 export 'package:inspectra/src/config/coverage_config.dart';
 export 'package:inspectra/src/config/coverage_runner.dart';
 export 'package:inspectra/src/config/filesystem_scan_config.dart';
@@ -65,11 +68,11 @@ const pubspecSectionKey = 'inspectra';
 /// [ConfigOverrides]).
 ///
 /// The quality features (`format`, `lint`, `api`, `trivy` scans,
-/// `coverage`) are opt-in. The supply-chain commands (`scan`, `audit`,
-/// `inspect`, `trust`, `typosquat`, `add`, `hook`) work without any
-/// configuration and are tuned by `fail_on`, `min_severity`, `ignore`,
-/// `network`, `inspect`, `trust`, `typosquat` and the provisioning keys of
-/// `trivy`.
+/// `coverage`, `changelog`) are opt-in. The supply-chain commands (`scan`,
+/// `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`) and changelog
+/// generation work without any configuration; the supply-chain commands
+/// are tuned by `fail_on`, `min_severity`, `ignore`, `network`, `inspect`,
+/// `trust`, `typosquat` and the provisioning keys of `trivy`.
 final class InspectraConfig {
   /// Creates a configuration from its parts.
   const InspectraConfig({
@@ -79,6 +82,7 @@ final class InspectraConfig {
     required this.trivy,
     required this.api,
     required this.coverage,
+    this.changelog = const ChangelogConfig(),
     this.failOn,
     this.minSeverity = Severity.unknown,
     this.ignore = const <IgnoreRule>[],
@@ -119,6 +123,7 @@ final class InspectraConfig {
       trivy: TrivyConfig.fromYaml(root.section('trivy')),
       api: ApiConfig.fromYaml(root.section('api'), packageName),
       coverage: CoverageConfig.fromYaml(root.section('coverage')),
+      changelog: ChangelogConfig.fromYaml(root.section('changelog')),
       failOn: root.choice('fail_on', severities, fallback: null),
       minSeverity:
           root.choice('min_severity', severities, fallback: null) ??
@@ -215,6 +220,9 @@ final class InspectraConfig {
 
   /// The test coverage gate.
   final CoverageConfig coverage;
+
+  /// Changelog generation and validation.
+  final ChangelogConfig changelog;
 
   /// The minimum severity that makes a supply-chain command exit with `1`,
   /// or `null` to use the command's own default (any finding for `audit`

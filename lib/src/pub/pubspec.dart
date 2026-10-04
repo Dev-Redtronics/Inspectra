@@ -22,6 +22,8 @@ final class Pubspec {
   const Pubspec({
     required this.path,
     this.name,
+    this.version,
+    this.repository,
     this.dependencies = const <String, DependencySpec>{},
     this.devDependencies = const <String, DependencySpec>{},
     this.dependencyOverrides = const <String, DependencySpec>{},
@@ -34,6 +36,12 @@ final class Pubspec {
 
   /// The package name, if declared.
   final String? name;
+
+  /// The `version`, if declared, as written in the file.
+  final String? version;
+
+  /// The `repository` URL, if declared.
+  final String? repository;
 
   /// The `dependencies` section.
   final Map<String, DependencySpec> dependencies;
