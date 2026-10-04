@@ -1,0 +1,92 @@
+# AGENTS.md
+
+Binding rules for every agent and every person working in this repository. Inspectra is a
+supply-chain security scanner for Dart and Flutter, and it is built to the standard it checks.
+
+## Repository
+
+| Path | Purpose |
+|---|---|
+| `bin/inspectra.dart` | Entry point; only starts `InspectraCommandRunner` and exits with its code |
+| `lib/inspectra.dart` | The public API: runner, configuration and finding model |
+| `lib/src/` | Everything else; private to the package |
+| `test/` | Unit tests mirroring `lib/src/`, `test/e2e/` drives the whole CLI in-process |
+| `tool/` | `verify.dart` and the AST based `style_check.dart` |
+
+## Verify
+
+```bash
+dart run tool/verify.dart
+```
+
+Runs, in order: `dart format --set-exit-if-changed`, `dart analyze --fatal-infos`,
+`tool/style_check.dart` and `dart test`. Nothing is done until it is green. CI runs exactly this on
+Linux, macOS and Windows, plus a coverage gate of 90 %:
+
+```bash
+dart pub global activate coverage
+dart pub global run coverage:test_with_coverage --fail-under 90
+```
+
+## Architecture
+
+- `cli/`: `InspectraCommandRunner` registers one `InspectraCommand` per command in `cli/command/`.
+  The base class owns the life cycle: shared options, configuration, rendering, exit code.
+  `CommandSession` is the composition root that wires every service.
+- Each feature is a package below `lib/src/`: `audit`, `inspect`, `trust`, `typosquat`, `add`,
+  `hook`, `trivy`, `scan`. A feature returns a `CommandReport` with its own text and JSON layout.
+- Shared building blocks: `model` (`Finding`, `Severity`, `InspectraException`), `config`
+  (layered `ConfigSource`, `ConfigLoader`), `net` (`HttpTransport`), `io` (`Console`,
+  `ProcessRunner`, `Environment`, `Clock`), `host`, `archive`, `pub`, `osv`, `report`, `policy`.
+- Every side effect goes through an injected abstraction: `HttpTransport`, `ProcessRunner`,
+  `Environment`, `Clock`, the sinks of `CommandContext`. No global state, no `print`.
+- Expected failures are `InspectraException` subtypes; `ExitCode.of` maps them exhaustively:
+  usage `64`, input `65`, unavailable `69`. Anything else is an internal error, `70`.
+- Command names, flags, rule ids, JSON field names and exit codes are the consumer contract and
+  change only in a major version. The `dart_audit` compatible names must never change.
+
+## Code rules
+
+Enforced by `dart analyze --fatal-infos` with the rules in `analysis_options.yaml` and by
+`tool/style_check.dart`, without exceptions or ignore comments.
+
+- No `else`. Return early. A `switch` over an enum or sealed type is exhaustive and has neither
+  `default` nor a wildcard `_` case.
+- No comments: no `//`, no `/* */`. The license header is the only exception.
+- A `///` documentation comment on **every** declaration, including private ones: classes, enums
+  and their values, constructors, fields, methods, getters, top level functions and variables.
+  Document purpose, parameters, the return value (`Returns ...`) and failures (`Throws ...`).
+- Every file starts with the Apache-2.0 license header from `tool/src/license_header.dart`.
+- One top level type per file, named after it in snake case. A sealed class and its direct subtypes
+  share one file. A file of functions is named after its role.
+- `strict-casts`, `strict-inference` and `strict-raw-types` are on. No `dynamic` calls, no `!`
+  unless the value is provably present, no broad `catch` without `on`.
+- Name intermediate results and computed conditions instead of nesting calls.
+- Runtime dependencies are limited to `args`, `yaml`, `crypto`, `path`, `pub_semver` and
+  `archive`. HTTP uses `dart:io`. Adding a dependency needs a maintainer's approval.
+
+## Security rules
+
+- Never execute or install anything that was not verified: package archives are checked against
+  `archive_sha256`, Trivy downloads against the official `checksums.txt`. These checks are not
+  configurable.
+- Package archives are read in memory within `ArchiveLimits` and never extracted to disk.
+- Untrusted text is passed through `SnippetSanitizer` before it reaches a terminal or report.
+- An incomplete verification is never reported as clean and is never hidden by `--exit-zero`.
+
+## Tests
+
+`package:test` only, with hand written fakes from `test/support/` (`FakeProcessRunner`, the
+loopback `FakeHttpServer`, `TestHarness`). No mocking library, no real network, no real external
+tools. Tests mirror the production package. Every change ships with its tests; every fixed bug gets
+a regression test.
+
+## Public API
+
+`lib/inspectra.dart` is the contract. A deliberate change to an exported declaration, a command,
+a flag, a rule id or a JSON field gets a `CHANGELOG.md` entry.
+
+## Git
+
+Work on `develop`, release from `main`. Conventional commits with the feature as scope
+(`feat(trivy): ...`, `fix(audit): ...`). Commit only when asked. No agent co-author trailers.
