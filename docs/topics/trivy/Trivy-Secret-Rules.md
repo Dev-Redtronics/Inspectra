@@ -137,7 +137,7 @@ allow-rules:
 Paths are regular expressions matched against the path Trivy reports, which for %product%'s secret scan is the path
 relative to the package root.
 
-### Trivy's built-in allow rules
+### Trivy's built-in allow rules {id="built-in-allow-rules"}
 
 Trivy suppresses findings in some paths out of the box. For a Dart package the relevant ones are:
 

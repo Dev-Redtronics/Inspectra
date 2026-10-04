@@ -144,7 +144,7 @@ It downloads the Trivy database, about 120 MB. Later scans reuse it. In CI, cach
 ### A secret in test/ or example/ is not reported {collapsible="true"}
 
 Trivy's built-in allow rules suppress findings in test and example directories and in Markdown files. Disable them in
-`%secret_config%` - see [Secret rules](Trivy-Secret-Rules.md#trivy-s-built-in-allow-rules).
+`%secret_config%` - see [Secret rules](Trivy-Secret-Rules.md#built-in-allow-rules).
 
 ### The license scan reports UNKNOWN for a well-known package {collapsible="true"}
 

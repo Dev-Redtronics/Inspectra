@@ -109,12 +109,12 @@ rules:
 The built-in allow rule for test directories stays on: Inspectra's own tests contain deliberately fake tokens to test
 the secret scan.
 
-## CI
+## CI {id="ci"}
 
 Four workflows run in GitHub Actions. Every action is pinned to a commit SHA, and every job starts with no
 permissions beyond the ones it declares.
 
-### CI
+### The CI workflow {id="ci-workflow"}
 
 The `CI` workflow runs on every push, on pull requests to `main` and `develop`, and weekly, so a vulnerability
 published for one of Inspectra's dependencies is noticed without a push. It has three jobs:
