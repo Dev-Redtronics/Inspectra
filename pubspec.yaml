@@ -54,6 +54,9 @@ inspectra:
     enabled: true
     license:
       run_on_build: true
+      # package:archive bundles a decoder under the permissive bzip2-1.0.6
+      # license (BSD-style), which Trivy cannot classify.
+      ignored_licenses: [bzip2]
     vulnerability:
       run_on_build: true
     filesystem:
