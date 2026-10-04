@@ -43,7 +43,7 @@ dart run tool/verify.dart
 ```
 
 That is exactly what CI runs on Linux, macOS and Windows: formatting, the analyzer with infos as
-errors, the style check and the test suite. CI additionally enforces 90 % line coverage.
+errors, `inspectra style` with the `strict` preset and the test suite. CI additionally enforces 90 % line coverage.
 
 ### Code style
 
@@ -56,8 +56,9 @@ errors, the style check and the test suite. CI additionally enforces 90 % line c
 - **One top-level type per file**, named after it.
 - **No new runtime dependencies** without a maintainer's approval.
 
-`tool/style_check.dart` enforces these rules on the syntax tree, so a violation fails the build
-with the file and line.
+Inspectra enforces these rules on itself: `inspectra style` with the `strict` preset and the
+header of `tool/license_header.txt`, configured in `pubspec.yaml`, so a violation fails the build
+with the file, line and rule.
 
 ### Package structure
 
@@ -65,7 +66,7 @@ with the file and line.
 |---|---|
 | `lib/src/cli` | Command runner, shared options, commands, composition root |
 | `lib/src/<feature>` | `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`, `trivy`, `scan` |
-| `lib/src/{quality,api,coverage}` | The package checks: format and lint, the public API dump, the coverage gate |
+| `lib/src/{quality,style,api,coverage,changelog}` | The package checks: format and lint, the style rules, the public API dump, the coverage gate, the changelog |
 | `lib/src/builders` | The `build_runner` builders of `lib/builder.dart` |
 | `lib/src/{model,config,net,io,host,archive,pub,osv,report,policy,util}` | Shared building blocks |
 

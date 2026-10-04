@@ -48,6 +48,13 @@ inspectra:
   lint:
     enabled: true
     run_on_build: true
+  # The code rules of AGENTS.md: every built-in rule, and the Apache-2.0
+  # header of tool/license_header.txt.
+  style:
+    enabled: true
+    run_on_build: true
+    preset: strict
+    license_header: tool/license_header.txt
   api:
     enabled: true
   trivy:

@@ -21,7 +21,7 @@ import 'dart:io';
 const steps = <(String, List<String>)>[
   ('Format', <String>['format', '--output=none', '--set-exit-if-changed', '.']),
   ('Analyze', <String>['analyze', '--fatal-infos']),
-  ('Style', <String>['run', 'tool/style_check.dart']),
+  ('Style', <String>['run', 'bin/inspectra.dart', 'style']),
   ('Test', <String>['test']),
 ];
 

@@ -11,12 +11,13 @@ standard it checks.
 | `bin/inspectra.dart` | Entry point; only starts `InspectraCommandRunner` and exits with its code |
 | `lib/inspectra.dart` | The public API: runner, configuration, checks and finding model |
 | `lib/builder.dart` | The build_runner builders declared in `build.yaml` |
+| `lib/style.dart` | The API for custom style rules: `StyleRule`, `StyleChecker`, `runStyleHost` |
 | `lib/lints/strict.yaml` | The lint preset consumers include; this repository includes it too |
 | `lib/src/` | Everything else; private to the package |
 | `api/inspectra.api` | The recorded public API; `inspectra api check` compares against it |
 | `docs/` | The Writerside documentation |
 | `test/` | Unit tests, mostly mirroring `lib/src/` (the quality-gate, builder and Trivy scan tests sit at the top level); `test/e2e/` drives the whole CLI in-process |
-| `tool/` | `verify.dart` and the AST based `style_check.dart` |
+| `tool/` | `verify.dart` and `license_header.txt`, the header template of the style check |
 
 ## Verify
 
@@ -25,7 +26,7 @@ dart run tool/verify.dart
 ```
 
 Runs, in order: `dart format --set-exit-if-changed`, `dart analyze --fatal-infos`,
-`tool/style_check.dart` and `dart test`. Nothing is done until it is green. CI runs exactly this on
+`inspectra style` and `dart test`. Nothing is done until it is green. CI runs exactly this on
 Linux, macOS and Windows, and then Inspectra on itself:
 
 ```bash
@@ -33,8 +34,8 @@ dart run build_runner build --only-check
 dart run inspectra check
 ```
 
-`check` runs the format, lint and API checks, every Trivy scan and the 90 % coverage gate configured
-in the `inspectra:` section of `pubspec.yaml`. After a deliberate API change, record it with
+`check` runs the format, lint, style, API and changelog checks, every Trivy scan and the 90 %
+coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a deliberate API change, record it with
 `dart run inspectra api dump`.
 
 ## Architecture
@@ -47,7 +48,11 @@ in the `inspectra:` section of `pubspec.yaml`. After a deliberate API change, re
   text and JSON layout.
 - The package checks `check`, `format`, `lint`, `api`, `coverage` and `changelog check` extend
   `PackageCheckCommand`; their logic lives in `quality`, `api`, `coverage` and `changelog`, and
-  `builders` runs the same checks and the Trivy scans from build_runner.
+  `builders` runs the same checks and the Trivy scans from build_runner. `style` is an
+  `InspectraCommand`, so that its findings can be rendered as SARIF.
+- `style` runs structural rules on the syntax tree: the built-in rules in `style/rules`, selected by
+  presets and switches, and custom rules of a package, which a generated program runs with `dart run`
+  (`StyleHost`). Inspectra holds itself to the `strict` preset.
 - `changelog` generates the changelog from Conventional Commits (`changelog generate`), validates it
   (`changelog check`) and prints release notes (`changelog notes`). It reads the history with the
   `git` command line through `ProcessRunner` (`GitHistory`); it has no dependency of its own.
@@ -65,7 +70,8 @@ in the `inspectra:` section of `pubspec.yaml`. After a deliberate API change, re
 ## Code rules
 
 Enforced by `dart analyze --fatal-infos` with the rules in `analysis_options.yaml` and by
-`tool/style_check.dart`, without exceptions or ignore comments.
+`inspectra style` with the `strict` preset (`style:` in `pubspec.yaml`), without exceptions or ignore
+comments.
 
 - No `else`. Return early. A `switch` over an enum or sealed type is exhaustive and has neither
   `default` nor a wildcard `_` case.
@@ -73,7 +79,7 @@ Enforced by `dart analyze --fatal-infos` with the rules in `analysis_options.yam
 - A `///` documentation comment on **every** declaration, including private ones: classes, enums
   and their values, constructors, fields, methods, getters, top level functions and variables.
   Document purpose, parameters, the return value (`Returns ...`) and failures (`Throws ...`).
-- Every file starts with the Apache-2.0 license header from `tool/src/license_header.dart`.
+- Every file starts with the Apache-2.0 license header of `tool/license_header.txt`.
 - One top level type per file, named after it in snake case. A sealed class and its direct subtypes
   share one file. A file of functions is named after its role.
 - `strict-casts`, `strict-inference` and `strict-raw-types` are on. No `dynamic` calls, no `!`
@@ -100,7 +106,7 @@ the loopback `FakeHttpServer`, `TestHarness`). No mocking library and no real ne
 use fakes instead of real external tools; the only exceptions are the integration test tagged
 `trivy` (`@Tags(['trivy'])`), which runs the real Trivy and is skipped when Trivy is not installed,
 the tests tagged `slow` (a generated package under `dart test`, a real Git repository, skipped
-without Git), and the quality tests that run the real `dart format` and `dart analyze` in
+without Git, custom style rules run through `dart run`), and the quality tests that run the real `dart format` and `dart analyze` in
 temporary packages. Tests follow the production packages where practical. Every change ships with
 its tests; every fixed bug gets a regression test.
 
