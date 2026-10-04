@@ -13,7 +13,7 @@
 
 <tldr>
 <p><b>Enable</b>: <code>trivy: { enabled: true }</code></p>
-<p><b>Requires</b>: the Trivy executable</p>
+<p><b>Requires</b>: Trivy, installed or downloaded by the command line</p>
 <p><b>Runs on build</b>: the secret scan; the others on request</p>
 <p><b>Command</b>: <code>dart run %package% trivy [secret|license|vulnerability|filesystem]</code></p>
 </tldr>
@@ -64,7 +64,7 @@ dart run build_runner watch      # ... and again on every change
     </tab>
     <tab title="Command line" group-key="cli">
         <code-block lang="bash"><![CDATA[
-dart run inspectra trivy                       # every enabled scan
+dart run inspectra trivy                       # every enabled scan (a filesystem scan when trivy.enabled is false)
 dart run inspectra trivy secret license        # these scans, even if disabled
 dart run inspectra check                       # every enabled scan, plus API and coverage
 ]]></code-block>
@@ -106,10 +106,16 @@ file is not noticed by an incremental build, though - which is why CI should run
 | Findings, `fail_on_findings: false` | `WARNING` with the findings | Findings printed with *(not failing)*, exit code `0` |
 | No findings | Logged at `FINE` only | `no findings.` |
 | Nothing to scan | Skipped, with the reason in the report | `Trivy <scan> scan skipped: <reason>` |
-| Trivy is missing, crashes or cannot download its database | `SEVERE` with Trivy's error | Exit code `2` with Trivy's error |
+| Trivy is missing, crashes or cannot download its database | `SEVERE` with Trivy's error | Exit code `69` with Trivy's error |
 
 A scan never passes because Trivy failed: findings are read from Trivy's JSON report, and any non-zero exit of Trivy
-is reported as an error, not as a result.
+is reported as an error, not as a result. `--exit-zero` does not hide it.
+
+<tip>
+<code>inspectra scan</code> runs a Trivy filesystem scan as part of the supply-chain checks, independent of
+<code>trivy.enabled</code>. Its <code>trivy.mode</code> decides whether a missing Trivy is skipped with a warning or is
+an error - see <a href="Trivy-Installation.md#provisioning">Provisioning</a>.
+</tip>
 
 <seealso>
     <category ref="security">

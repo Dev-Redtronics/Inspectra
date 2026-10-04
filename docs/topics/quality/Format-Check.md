@@ -146,7 +146,7 @@ fires; when it does, the editor was not set up - which is worth knowing.
 
 ## Errors
 
-A file `dart format` cannot parse is not a formatting finding but an error: the command exits with `2` and prints the
+A file `dart format` cannot parse is not a formatting finding but an error: the command exits with `69` and prints the
 formatter's message, and the builder logs it as `SEVERE`. Fix the syntax error first; the [lint check](Lint-Check.md)
 reports it with its position.
 

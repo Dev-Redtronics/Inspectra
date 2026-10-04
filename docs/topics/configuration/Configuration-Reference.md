@@ -10,7 +10,12 @@
 <card-summary>The complete list of options, section by section, with defaults.</card-summary>
 
 Keys are shown as they appear under `%pubspec_key%:` in `pubspec.yaml`, or at the top level of `%config_file%`. Paths
-and globs are relative to the package root and use `/` on every platform.
+and globs are relative to the package root and use `/` on every platform. Durations are written as `500ms`, `30s`,
+`10m` or `1h`.
+
+Every key except `ignore` can also be set with `--set <path>=<value>` or an `INSPECTRA_<PATH>` environment variable,
+for example `--set trivy.version=latest` or `INSPECTRA_NETWORK_PROXY`. See
+[Overriding options](Configuration-Overview.md#overrides).
 
 ## Complete example with defaults {collapsible="true" default-state="expanded"}
 
@@ -19,6 +24,43 @@ configuration means.
 
 ```yaml
 inspectra:
+  # fail_on: high                  # unset: the command's own default
+  min_severity: unknown
+
+  ignore: []                       # entries: id, package, reason, expires
+
+  network:
+    offline: false
+    timeout: 30s
+    max_attempts: 3
+    retry_base_delay: 1s
+    concurrency: 8
+    # proxy: http://proxy.corp:3128   # unset: HTTPS_PROXY / HTTP_PROXY / NO_PROXY
+    # ca_certificates: certs/corp-ca.pem
+    osv_url: https://api.osv.dev
+    # pub_hosted_url: https://pub.dev # unset: PUB_HOSTED_URL, else https://pub.dev
+
+  inspect:
+    fail_score: 30
+    max_archive_bytes: 67108864
+    max_extracted_bytes: 268435456
+    max_entries: 20000
+    entropy_excludes: [.g.dart, .freezed.dart, .mocks.dart, .pb.dart, .gr.dart]
+    exclude_directories: [test, integration_test, example, benchmark, doc, docs, tool, extension]
+    trusted_hosts: []
+
+  trust:
+    fresh_package_days: 7
+    young_package_days: 30
+    fresh_release_hours: 24
+    min_likes: 5
+    min_downloads: 100
+    min_points_ratio: 0.5
+
+  typosquat:
+    allow: []
+    popular: []
+
   format:
     enabled: false
     run_on_build: false
@@ -40,8 +82,21 @@ inspectra:
 
   trivy:
     enabled: false
-    # executable: trivy            # unset: "trivy" from the PATH
+    mode: auto                     # auto, required or disabled
+    version: 0.75.0                # an exact version or latest
+    use_installed: true
+    download: true
+    # executable: /opt/trivy/trivy # unset: installed, cached or downloaded
+    # install_directory: .tools/trivy   # unset: <user cache>/inspectra/trivy
+    download_base_url: https://github.com/aquasecurity/trivy/releases/download
+    latest_release_url: https://github.com/aquasecurity/trivy/releases/latest
     report_directory: .dart_tool/inspectra/trivy
+    skip_db_update: false
+    # db_repository: registry.corp/aquasecurity/trivy-db
+    # cache_directory: .cache/trivy
+    timeout: 10m
+    connectivity_timeout: 3s
+    extra_args: []
 
     secret:
       enabled: true
@@ -87,6 +142,91 @@ inspectra:
     test_arguments: []
 ```
 
+## fail_on and min_severity {id="severity-thresholds"}
+
+Thresholds of the supply-chain commands and of the Trivy filesystem scan of `scan` and `trivy`. Severities are
+`critical`, `high`, `medium`, `low` and `unknown`, case-insensitive.
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `fail_on` | severity | unset | The minimum severity that makes a command exit with `1`. Unset: the command's own default - any finding for `scan`, `audit` and `trivy`, `high` for `typosquat`, `critical` for `trust`. `inspect` and `add` decide by `inspect.fail_score` instead. `--fail-on` overrides it. |
+| `min_severity` | severity | `unknown` | Findings below this severity are not reported at all. `--min-severity` overrides it. |
+
+## ignore {id="ignore"}
+
+Documented suppressions of findings of the supply-chain commands and of the Trivy filesystem scan of `scan` and
+`trivy`. The configured Trivy scans have their own `ignored_*` lists.
+
+```yaml
+inspectra:
+  ignore:
+    - id: GHSA-xxxx-yyyy-zzzz          # rule id, advisory id or alias (CVE)
+      package: http                    # optional: only for this package
+      reason: Not reachable, we never parse untrusted multipart bodies.
+      expires: 2027-01-31              # optional: revisit after this day
+```
+
+| Key | Type | Required | Description |
+|:--|:--|:--|:--|
+| `id` | string | yes | The rule id, advisory id or alias to suppress, such as `GHSA-…`, `CVE-…` or `HARDCODED_URL`. |
+| `reason` | string | yes | Why the finding is acceptable. An entry without it is an error, so every suppression is auditable. |
+| `package` | string | no | Restricts the entry to findings of this package. |
+| `expires` | date, `YYYY-MM-DD` | no | The last day on which the entry applies. Afterwards it stops matching and every run warns about it. |
+
+`ignore` can only be written in the file. `--ignore <ID>` suppresses an id for one run, without a reason.
+
+## network {id="network"}
+
+Settings for every connection %product% opens: OSV.dev, the pub repository and Trivy downloads.
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `offline` | boolean | `false` | Never open a connection. Commands that need the network exit with `69`; optional steps such as downloading Trivy are skipped. `--offline` sets it. |
+| `timeout` | duration | `30s` | The timeout for connecting and for each response. |
+| `max_attempts` | whole number, 1 to 100 | `3` | How often a request is attempted before giving up. |
+| `retry_base_delay` | duration | `1s` | The first back-off delay; it doubles with every retry. |
+| `concurrency` | whole number, 1 to 256 | `8` | The maximum number of concurrent requests to one service. |
+| `proxy` | string | unset | An explicit proxy such as `http://proxy.corp:3128`. Unset: `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` apply. |
+| `ca_certificates` | string | unset | A PEM file with additional trusted certificate authorities, for proxies that intercept TLS. |
+| `osv_url` | string | `https://api.osv.dev` | An OSV.dev compatible API, for example an internal mirror. |
+| `pub_hosted_url` | string | `PUB_HOSTED_URL`, else `https://pub.dev` | The pub repository. |
+
+## inspect {id="inspect"}
+
+The source inspection of `inspect` and `add`.
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `fail_score` | whole number, 1 to 100 | `30` | The risk score from which `inspect` exits with `1` and `add` refuses to install. |
+| `max_archive_bytes` | whole number | `67108864` (64 MiB) | The largest package archive that is downloaded. |
+| `max_extracted_bytes` | whole number | `268435456` (256 MiB) | The largest total size of all archive entries, which stops decompression bombs. |
+| `max_entries` | whole number | `20000` | The largest number of archive entries. |
+| `entropy_excludes` | list of strings | `[.g.dart, .freezed.dart, .mocks.dart, .pb.dart, .gr.dart]` | File name suffixes of generated code that the entropy scanner skips. |
+| `exclude_directories` | list of strings | `[test, integration_test, example, benchmark, doc, docs, tool, extension]` | Top level directories skipped by the code pattern and entropy scanners. Unicode and archive checks still cover every file. |
+| `trusted_hosts` | list of strings | `[]` | Host names the hard-coded URL rule never reports, on top of the built-in Dart, Flutter and GitHub hosts. |
+
+## trust {id="trust"}
+
+Thresholds of the pub.dev trust assessment of `trust`, `inspect` and `add`.
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `fresh_package_days` | whole number | `7` | A package first published less than this many days ago is `CRITICAL`. |
+| `young_package_days` | whole number | `30` | A package first published less than this many days ago is `MEDIUM`. |
+| `fresh_release_hours` | whole number | `24` | A version published less than this many hours ago is `CRITICAL`. |
+| `min_likes` | whole number | `5` | Fewer likes are reported as low endorsement. |
+| `min_downloads` | whole number | `100` | Fewer downloads in 30 days are reported as low usage. |
+| `min_points_ratio` | number, 0 to 1 | `0.5` | A lower ratio of pub points is reported as low quality. |
+
+## typosquat {id="typosquat"}
+
+The typosquatting detector of `typosquat`, `scan`, `add` and the pre-commit hook.
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `allow` | list of strings | `[]` | Package names that are never reported, for example internal packages that resemble popular ones. |
+| `popular` | list of strings | `[]` | Additional names to protect, for example your most used internal packages. |
+
 ## format {id="format"}
 
 The format check. See [Format check](Format-Check.md).
@@ -127,13 +267,34 @@ Details: [API configuration](API-Configuration.md).
 
 ## trivy {id="trivy"}
 
-Settings shared by all scans. See [Security and compliance](Trivy-Overview.md).
+The configured scans, and how Trivy is provisioned for every command that runs it. See
+[Security and compliance](Trivy-Overview.md) and [Installing Trivy](Trivy-Installation.md).
 
 | Key | Type | Default | Description |
 |:--|:--|:--|:--|
-| `enabled` | boolean | `false` | Whether any scan runs. The scans' own `enabled` switches apply on top of it. |
-| `executable` | string | unset | The Trivy executable: a name on the `PATH` or a path. Unset means `trivy`. The environment variable `%trivy_env%` overrides it. |
+| `enabled` | boolean | `false` | Whether the configured scans run in `check`, `trivy` and the builders. The scans' own `enabled` switches apply on top of it. `scan` runs Trivy regardless. |
+| `mode` | `auto`, `required` or `disabled` | `auto` | `auto`: an unavailable Trivy is skipped with a warning. `required`: it is an error, exit code `69`. `disabled`: Trivy is never located, downloaded or run. |
+| `version` | string | `0.75.0` | The Trivy version to download, or `latest`. The default is pinned per %product% release. |
+| `use_installed` | boolean | `true` | Use an installed Trivy whatever its version. `false` accepts only exactly `version`. |
+| `download` | boolean | `true` | Allow downloading Trivy when it is not installed; only when online. |
+| `executable` | string | unset | The Trivy executable: a name on the `PATH` or a path relative to the package root. Disables every other lookup. The environment variable `%trivy_env%` overrides it. |
+| `install_directory` | string | `<user cache>/inspectra/trivy` | Where downloaded Trivy binaries are stored, one directory per version. |
+| `download_base_url` | string | `https://github.com/aquasecurity/trivy/releases/download` | The release assets, or a mirror providing them under `<base>/v<version>/`. |
+| `latest_release_url` | string | `https://github.com/aquasecurity/trivy/releases/latest` | The redirect that resolves `version: latest`. |
 | `report_directory` | string | `%report_dir%` | Where the command line writes the JSON report of each scan. The builders write theirs to the artifact tree instead. |
+| `skip_db_update` | boolean | `false` | Pass `--skip-db-update`, for a pre-seeded `cache_directory`. |
+| `db_repository` | string | unset | Pass `--db-repository`, an OCI mirror of the Trivy database. |
+| `cache_directory` | string | unset | Pass `--cache-dir`. |
+| `timeout` | duration | `10m` | The maximum run time of one Trivy scan. |
+| `connectivity_timeout` | duration | `3s` | How long the download host may take to answer before Trivy is not downloaded. |
+| `extra_args` | list of strings | `[]` | Arguments appended verbatim to the Trivy command line. |
+| `secret` | mapping | | [Secret scan](#trivy-secret) |
+| `license` | mapping | | [License scan](#trivy-license) |
+| `vulnerability` | mapping | | [Vulnerability scan](#trivy-vulnerability) |
+| `filesystem` | mapping | | [Filesystem scan](#trivy-filesystem) |
+
+`skip_db_update`, `db_repository`, `cache_directory`, `timeout` and `extra_args` apply to the Trivy filesystem scan of
+`scan` and of `trivy` without configured scans.
 | `secret` | mapping | | [Secret scan](#trivy-secret) |
 | `license` | mapping | | [License scan](#trivy-license) |
 | `vulnerability` | mapping | | [Vulnerability scan](#trivy-vulnerability) |
@@ -202,7 +363,8 @@ Details: [Vulnerability scan](Trivy-Vulnerability-Scan.md).
 | `scanners` | list | `[vuln, secret, misconfig]` | The Trivy scanners to run: one or more of `vuln`, `secret`, `misconfig`, `license`. |
 | `skip_dirs` | list of strings | `[.dart_tool, build, .git]` | Directories Trivy skips, passed as `--skip-dirs`. Replaces the default when set. |
 
-There is no `run_on_build`: the filesystem scan has no builder. Details: [Filesystem scan](Trivy-Filesystem-Scan.md).
+There is no `run_on_build`: the filesystem scan has no builder. `scanners`, `severity` and `skip_dirs` also configure the
+Trivy part of `scan`, and of `trivy` without configured scans. Details: [Filesystem scan](Trivy-Filesystem-Scan.md).
 
 ## coverage {id="coverage"}
 

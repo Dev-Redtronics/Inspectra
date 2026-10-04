@@ -16,7 +16,7 @@ flowchart LR
     config["pubspec.yaml (inspectra:)<br/>or inspectra.yaml"]
     subgraph entry["Entry points"]
         builders["build_runner builders<br/>inspectra:api, :secret_scan,<br/>:license_scan, :vulnerability_scan"]
-        cli["dart run inspectra<br/>check, format, lint, api, trivy, coverage"]
+        cli["inspectra<br/>scan, audit, inspect, trust, typosquat, add, hook<br/>check, format, lint, api, trivy, coverage"]
         library["package:inspectra<br/>your own tooling"]
     end
     subgraph checks["Checks"]
@@ -118,12 +118,18 @@ system:
 - It runs the checks the builders cannot: the filesystem scan and the coverage gate.
 - It applies fixes: `format --fix` and `lint --fix`.
 - `check` runs everything enabled in a fixed order: format, lint, API, Trivy scans, coverage.
+- It runs the supply-chain commands - `scan` (the default), `audit`, `inspect`, `trust`, `typosquat`, `add` and
+  `hook` - which have no builders.
 
 The API commands render the API with the analyzer's `AnalysisContextCollection` instead of the build resolver. The
 renderer is the same, so the dump is byte for byte what the builder writes - which is why `api check` from the command
 line and `--only-check` agree.
 
 ## Trivy
+
+The command line provisions Trivy before it runs: the configured executable, else an installed Trivy, else a cached
+download, else a pinned, checksum-verified download - see [Installing Trivy](Trivy-Installation.md#provisioning). The
+builders use an installed Trivy only.
 
 Every scan runs `trivy fs` with `--format json` and reads the report. %product% never parses Trivy's console output,
 and treats any non-zero exit code as a failure of Trivy itself rather than as findings: findings are decided from the
@@ -172,9 +178,12 @@ wrote:
 |:--|:--|:--|
 | A check fails | `SEVERE` log, the build fails | Exit code `1` |
 | Findings that do not fail | `WARNING` log, the build passes | Listed as *(not failing)*, exit `0` |
-| Broken configuration | `SEVERE` log with the key path | Exit code `2` with the key path |
-| Trivy missing or crashing | `SEVERE` log with the reason | Exit code `2` with the reason |
-| Package not resolved | `SEVERE` log: run `dart pub get` | Exit code `2`: run `dart pub get` |
+| Broken configuration | `SEVERE` log with the key path | Exit code `65` with the key path |
+| Package not resolved | `SEVERE` log: run `dart pub get` | Exit code `65`: run `dart pub get` |
+| Trivy missing or crashing | `SEVERE` log with the reason | Exit code `69` with the reason |
+| A `dart` tool or the test run failing | `SEVERE` log with the reason | Exit code `69` with the reason |
+
+The command line follows the `sysexits` convention; see [Exit codes](CLI-Reference.md#exit-codes).
 
 <seealso>
     <category ref="start">

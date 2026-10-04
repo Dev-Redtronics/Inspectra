@@ -23,7 +23,7 @@
         Off until enabled in the configuration.
     </secondary-label>
     <secondary-label id="requires-trivy" name="Requires Trivy" color="tangerine">
-        Needs the Trivy executable on the PATH, in trivy.executable or in INSPECTRA_TRIVY.
+        Needs Trivy: installed, named by trivy.executable or INSPECTRA_TRIVY, or downloaded by the command line.
     </secondary-label>
     <secondary-label id="database" name="Downloads data" color="purple">
         Downloads the Trivy vulnerability database on its first run, and when it is outdated.

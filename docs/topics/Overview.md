@@ -18,16 +18,27 @@ gate to Dart and Flutter packages, run by build_runner and configured in pubspec
 every CI run:
 
 1. **Is the code formatted and free of analyzer findings?**
-2. **Is anything unsafe in this repository?** A credential pasted into a source file, a dependency with a
+2. **Can I trust my dependencies?** A package with a known vulnerability, a typosquat, a name that collides with a
+   private package, or a release whose source does something it should not.
+3. **Is anything unsafe in this repository?** A credential pasted into a source file, a dependency with a
    published vulnerability, a dependency whose license you may not ship.
-3. **Did the public API change, and did somebody mean to change it?**
-4. **Is the code tested well enough to merge?**
+4. **Did the public API change, and did somebody mean to change it?**
+5. **Is the code tested well enough to merge?**
 
-It answers them with five features, each of which you enable on its own.
+It answers them with supply-chain commands that work without configuration, and five package checks, each of which you
+enable on its own.
 
 ## Features
 
 <deflist type="wide">
+    <def title="Supply-chain security" id="feature-supply-chain">
+        <code>inspectra scan</code>, the default command, audits <code>pubspec.lock</code> against OSV.dev, checks
+        <code>pubspec.yaml</code> for risky sources, typosquatting and dependency confusion, and runs a Trivy filesystem
+        scan. <code>audit</code>, <code>inspect</code>, <code>trust</code>, <code>typosquat</code>, <code>add</code> and
+        <code>hook</code> run each part on its own, vet a package before you add it, and guard commits. They keep the
+        commands, flags, rule ids, JSON fields and exit codes of <code>dart_audit</code>. See the
+        <a href="CLI-Reference.md#scan">command line reference</a>.
+    </def>
     <def title="Format check" id="feature-format">
         <code>dart format</code> over every Dart file of the package, generated code left out, failing on any
         unformatted file - or formatting them with <code>--fix</code>. See <a href="Format-Check.md">Format
@@ -89,13 +100,16 @@ These decisions shape how every feature behaves. When something surprises you, i
 
 <deflist type="medium" collapsible="true">
     <def title="Everything is opt-in" id="principle-opt-in">
-        A package that configures nothing gets no scans, no dump and no gate. Each feature has an
-        <code>enabled</code> switch that defaults to <code>false</code>, and enabling one never enables another.
+        A package that configures nothing gets no package scans, no dump and no gate. Each package check has an
+        <code>enabled</code> switch that defaults to <code>false</code>, and enabling one never enables another. The
+        supply-chain commands only run when you call them, and need no configuration.
     </def>
     <def title="Only the Dart toolchain and Trivy" id="principle-dependencies">
         %product% depends on <code>analyzer</code> for the API dump, <code>build</code> for the builders and
         <code>coverage</code> for the gate. <code>args</code>, <code>glob</code>, <code>path</code> and
-        <code>yaml</code> are already dependencies of those. Everything else is done by Trivy or by the SDK's own
+        <code>yaml</code> are already dependencies of those; <code>archive</code>, <code>crypto</code> and
+        <code>pub_semver</code> read archives, verify checksums and compare versions. HTTP uses
+        <code>dart:io</code>. Everything else is done by Trivy or by the SDK's own
         tools: <code>dart format</code>, <code>dart analyze</code>, <code>dart fix</code> and <code>dart test</code>.
     </def>
     <def title="A typo is an error, not a silent no-op" id="principle-strict">
@@ -104,8 +118,9 @@ These decisions shape how every feature behaves. When something surprises you, i
         See <a href="Configuration-Overview.md#validation">Validation</a>.
     </def>
     <def title="A finding is not an error, and an error is not a finding" id="principle-exit-codes">
-        A scan that finds something exits with 1; Trivy failing to run - not installed, crashed, no network - exits
-        with 2 and says so. A broken scanner can never look like a clean result. See
+        A scan that finds something exits with 1; a check that cannot complete - Trivy not installed or crashed,
+        OSV.dev unreachable, no network - exits with 69 and says so, and <code>--exit-zero</code> never hides it. A
+        broken scanner can never look like a clean result. See
         <a href="CLI-Reference.md#exit-codes">Exit codes</a>.
     </def>
     <def title="Report what you ship" id="principle-shipped">

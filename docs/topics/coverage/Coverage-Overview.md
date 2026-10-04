@@ -128,8 +128,8 @@ untested lines show up as 0% instead of being invisible.
 | No threshold set | `0` | The table, without a verdict |
 | At or above the threshold | `0` | `Line coverage 91.30% meets the required 85.00%.` |
 | Below the threshold | `1` | `Line coverage 33.33% is below the required 90.00%.` |
-| A test failed | `2` | `"dart test --coverage=…" failed with exit code 1; see its output above.` |
-| The runner could not start | `2` | `Could not start "flutter": …` |
+| A test failed | `69` | `"dart test --coverage=…" failed with exit code 1; see its output above.` |
+| The runner could not start | `69` | `Could not start "flutter": …` |
 
 A failing test is an error, not a low coverage: coverage of a broken test suite means nothing.
 

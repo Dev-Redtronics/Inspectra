@@ -44,9 +44,10 @@
 
     <snippet id="trivy-required">
         <note>
-            This scan runs the Trivy executable. Install it first - see
-            <a href="Trivy-Installation.md">Installing Trivy</a>. Without it, the scan fails with an explanation and
-            exit code 2 rather than passing silently.
+            This scan runs the Trivy executable. The command line finds an installed Trivy or downloads a pinned,
+            checksum-verified release; the builders need an installed one - see
+            <a href="Trivy-Installation.md">Installing Trivy</a>. When Trivy is missing or fails, the scan fails with
+            an explanation and exit code 69 rather than passing silently.
         </note>
     </snippet>
 
@@ -63,19 +64,30 @@
     </snippet>
 
     <snippet id="exit-codes">
+        <p>%product% follows the <code>sysexits</code> convention, so a script can tell a finding from a problem
+            with the environment:</p>
         <table>
             <tr><td>Exit code</td><td>Meaning</td></tr>
-            <tr><td><code>0</code></td><td>Every check that ran passed, or nothing was enabled.</td></tr>
-            <tr><td><code>1</code></td><td>A check failed: unformatted files, diagnostics at or above
-                <code>lint.fail_on</code>, findings in a scan that fails on findings, an API that differs from its dump
-                or has none, or coverage below the threshold.</td></tr>
-            <tr><td><code>2</code></td><td>Inspectra could not run a check: a broken configuration, a missing or
-                failing Trivy, a <code>dart format</code>, <code>dart analyze</code> or <code>dart fix</code> that could not
-                run, failing tests in the coverage run, an unresolved package or another file system
-                error.</td></tr>
-            <tr><td><code>64</code></td><td>The command line was used incorrectly: an unknown command, option or scan
-                name, or an invalid <code>--min</code>.</td></tr>
+            <tr><td><code>0</code></td><td>Passed: no finding reached the threshold, every check that ran passed, or
+                nothing was enabled.</td></tr>
+            <tr><td><code>1</code></td><td>Findings at or above the threshold, or a failed check: unformatted files,
+                diagnostics at or above <code>lint.fail_on</code>, findings in a scan that fails on findings, an API
+                that differs from its dump or has none, coverage below the threshold, a package that
+                <code>inspect</code> or <code>add</code> rates at or above <code>inspect.fail_score</code>.</td></tr>
+            <tr><td><code>64</code></td><td>Usage error: an unknown command, option or scan name, a missing argument,
+                a malformed <code>--set</code>, or an invalid <code>--min</code>.</td></tr>
+            <tr><td><code>65</code></td><td>Invalid input or configuration: a broken configuration key, a named
+                configuration file that does not exist, a missing or unreadable <code>pubspec.yaml</code>,
+                <code>pubspec.lock</code> or <code>.dart_tool/package_config.json</code>.</td></tr>
+            <tr><td><code>69</code></td><td>Unavailable, so the check is incomplete: Trivy missing, crashing, or
+                required but not provisionable; <code>dart format</code>, <code>dart analyze</code>,
+                <code>dart fix</code> or the test run of the coverage gate failing; OSV.dev or pub.dev unreachable;
+                a report that cannot be written.</td></tr>
+            <tr><td><code>70</code></td><td>Internal error. Set <code>INSPECTRA_DEBUG=1</code> to print the stack
+                trace, and report it.</td></tr>
         </table>
+        <p><code>--exit-zero</code> turns <code>1</code> into <code>0</code> and never hides <code>64</code>,
+            <code>65</code>, <code>69</code> or <code>70</code>.</p>
     </snippet>
 
 </topic>

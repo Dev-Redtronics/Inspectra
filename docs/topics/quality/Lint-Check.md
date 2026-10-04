@@ -162,7 +162,7 @@ so that a changed rule set reruns the builder - see <a href="Build-Sources.md">B
 ## Errors
 
 `dart analyze` exits with 0 to 3 for a completed analysis; anything else - the SDK cannot be started, the analysis
-crashed - is an error: the command exits with `2`, and the builder logs `SEVERE`. A failing `dart fix --apply` is an
+crashed - is an error: the command exits with `69`, and the builder logs `SEVERE`. A failing `dart fix --apply` is an
 error as well.
 
 <seealso>

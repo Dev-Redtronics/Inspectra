@@ -15,14 +15,20 @@
 A key is misspelled or at the wrong level. The message lists the valid keys at that position:
 
 ```text
-Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Known options here: enabled, executable, filesystem, license, report_directory, secret, vulnerability.
+Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Known options here: cache_directory, connectivity_timeout, db_repository, download, download_base_url, enabled, executable, extra_args, filesystem, install_directory, latest_release_url, license, mode, report_directory, secret, skip_db_update, timeout, use_installed, version, vulnerability.
 ```
 
-Here `secrets` should be `secret`. See the [configuration reference](Configuration-Reference.md).
+Here `secrets` should be `secret`. See the [configuration reference](Configuration-Reference.md). The command exits
+with `65`.
+
+### Invalid Inspectra configuration at "…": unknown option given on the command line {collapsible="true"}
+
+A `--set` key is misspelled. `--set` takes the dotted path of an option, such as `--set trivy.version=latest`.
 
 ### expected true or false, got "yes" {collapsible="true"}
 
-YAML 1.2 reads `yes`, `no`, `on` and `off` as strings. Write `true` and `false`.
+YAML 1.2 reads `yes`, `no`, `on` and `off` as strings. Write `true` and `false` in the file; only `--set` and
+`INSPECTRA_*` variables also accept `yes`, `no`, `on`, `off`, `1` and `0`.
 
 ### Undefined alias {collapsible="true"}
 
@@ -34,8 +40,13 @@ An unquoted glob starting with `*` is read as a YAML alias. Quote it: `'**.dart'
 
 ### My settings in pubspec.yaml are ignored {collapsible="true"}
 
-An `%config_file%` exists in the package root. It takes precedence entirely; the two are not merged. Move everything
-into one of them.
+An `%config_file%` exists in the package root, or `--config` or `INSPECTRA_CONFIG` names another file. It takes
+precedence entirely; the two are not merged. Move everything into one of them.
+
+### A setting has no effect {collapsible="true"}
+
+An `INSPECTRA_*` environment variable or a `--set` value overrides the file. Check the environment of the process, for
+example with `env | grep INSPECTRA_`. See [Overriding options](Configuration-Overview.md#overrides).
 
 ## build_runner
 
@@ -68,7 +79,7 @@ A new SDK can change `dart format`'s output, and a changed `formatter: page_widt
 
 ### "dart format" failed with exit code 65 {collapsible="true"}
 
-A file does not parse; the formatter's message names the file, line and column. Fix the syntax error - the lint check
+The command exits with `69`: a file does not parse; the formatter's message names the file, line and column. Fix the syntax error - the lint check
 reports it too.
 
 ### The format check complains about generated code {collapsible="true"}
@@ -88,11 +99,28 @@ Disable a rule of an included file with the map form, `rule_name: false`; listin
 
 ## Trivy
 
+`dart run %package% trivy --where` shows which Trivy the command line would use and where it comes from.
+
+### Trivy skipped: Trivy is not installed and … {collapsible="true"}
+
+The command line found no Trivy and could not download one. The message says why:
+
+| Message | Fix |
+|:--|:--|
+| `… downloading is disabled (trivy.download: false).` | Install Trivy, or allow the download |
+| `… cannot be downloaded in offline mode.` | Run once without `--offline`, or install Trivy |
+| `… github.com is not reachable, so it was not downloaded.` | Allow the host, set `network.proxy`, or point `trivy.download_base_url` at a mirror |
+| `The configured Trivy executable "…" (trivy.executable) cannot be run.` | Fix `trivy.executable` or `%trivy_env%`, which disable every other lookup |
+| `Trivy publishes no build for …` | Install Trivy manually and set `trivy.executable` |
+
+In `auto` mode `scan` continues without Trivy; in `required` mode, and for the configured scans of `trivy` and
+`check`, the command exits with `69`. See [Installing Trivy](Trivy-Installation.md#provisioning).
+
 ### Could not start Trivy ("trivy"): No such file or directory {collapsible="true"}
 
-Trivy is not installed or not on the `PATH` of the process running %product%. Install it, or set
-`trivy.executable` or `%trivy_env%`. In IDEs started from a desktop launcher, the `PATH` may differ from your shell's.
-See [Installing Trivy](Trivy-Installation.md#lookup).
+A builder could not start Trivy: it is not installed or not on the `PATH` of the process running `build_runner`.
+Install it, or set `trivy.executable` or `%trivy_env%`. In IDEs started from a desktop launcher, the `PATH` may differ
+from your shell's. See [Installing Trivy](Trivy-Installation.md#builder-lookup).
 
 ### Trivy did not finish scanning …: it exited with 1 {collapsible="true"}
 
@@ -137,7 +165,7 @@ is out of scope for you.
 
 ### "dart test --coverage=…" failed with exit code 1 {collapsible="true"}
 
-A test failed; its output is above the message. Coverage is not measured for a failing suite - fix the test first.
+A test failed; its output is above the message, and the command exits with `69`. Coverage is not measured for a failing suite - fix the test first.
 
 ### A file is listed as "not loaded by any test" {collapsible="true"}
 

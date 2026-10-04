@@ -5,22 +5,28 @@
 
 <show-structure for="chapter" depth="2"/>
 
-<link-summary>The two places the configuration can live, which one wins, and how it is validated.</link-summary>
+<link-summary>Where the configuration can live, which one wins, how options are overridden, and how it is validated.</link-summary>
 
-<card-summary>pubspec.yaml or inspectra.yaml, strict validation, and error messages that name the key.</card-summary>
+<card-summary>pubspec.yaml or inspectra.yaml, --set and INSPECTRA_* overrides, strict validation, and error messages that name the key.</card-summary>
 
 <tldr>
 <p><b>Recommended</b>: an <code>%pubspec_key%:</code> section in <code>pubspec.yaml</code></p>
 <p><b>Alternative</b>: <code>%config_file%</code> in the package root, same keys without the <code>%pubspec_key%:</code> level</p>
 <p><b>Precedence</b>: <code>%config_file%</code> wins when it exists</p>
+<p><b>Overrides</b>: <code>--set key=value</code> and flags, then <code>INSPECTRA_&lt;PATH&gt;</code> variables, then the file</p>
 <p><b>Validation</b>: unknown keys and wrong types are errors</p>
 </tldr>
 
 ## Two locations, one format
 
-The whole configuration of %product% is one YAML mapping with five sections: `format`, `lint`, `api`, `trivy` and
-`coverage`. It can
-live in either of two places.
+The whole configuration of %product% is one YAML mapping with snake_case keys:
+
+- the supply-chain commands (`scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`) are tuned by `fail_on`,
+  `min_severity`, `ignore`, `network`, `inspect`, `trust` and `typosquat`;
+- the package checks are configured in `format`, `lint`, `api`, `trivy` and `coverage`; `trivy` also decides how
+  Trivy is provisioned for every command that runs it.
+
+It can live in either of two places.
 
 <tabs group="config-location">
     <tab title="pubspec.yaml" group-key="pubspec">
@@ -60,10 +66,13 @@ does not know, so the section in `pubspec.yaml` does not disturb `dart pub get` 
 
 ### Which one wins
 
-1. If `%config_file%` exists in the package root, it is the whole configuration. The `%pubspec_key%:` section of
+1. A file named with `--config <path>`, or else with the environment variable `INSPECTRA_CONFIG`, relative to the
+   package root. It must exist.
+2. If `%config_file%` exists in the package root, it is the whole configuration. The `%pubspec_key%:` section of
    `pubspec.yaml` is then ignored entirely - the two are not merged.
-2. Otherwise the `%pubspec_key%:` section of `pubspec.yaml` is used.
-3. Without either, every default applies, which means every feature is off.
+3. Otherwise the `%pubspec_key%:` section of `pubspec.yaml` is used.
+4. Without either, every default applies: every package check is off, and the supply-chain commands run with their
+   defaults.
 
 The package name always comes from `pubspec.yaml`; it is used for the default name of the API dump.
 
@@ -99,6 +108,40 @@ The command line always reads the current files, so <code>dart run %package% che
 applies to <code>dart run build_runner build</code> and <code>watch</code> only.
 </warning>
 
+## Overriding options {id="overrides"}
+
+Every option can be set without editing the file. For each key, the first of these that defines it wins:
+
+1. **The command line**: `--set <path>=<value>`, repeatable, and the dedicated flags `--fail-on`, `--min-severity`,
+   `--offline`, `--trivy-mode`, `--trivy-version`, `--trivy-executable`, `--[no-]trivy-download` and
+   `--[no-]trivy-use-installed`. Only the commands with [shared options](CLI-Reference.md#shared-options) accept them.
+2. **The environment**: `INSPECTRA_` followed by the dotted path in upper case, with dots turned into underscores.
+3. **The configuration file**.
+4. **The built-in default**.
+
+| Key | Command line | Environment variable |
+|:--|:--|:--|
+| `trivy.version` | `--set trivy.version=latest`, `--trivy-version latest` | `INSPECTRA_TRIVY_VERSION=latest` |
+| `trivy.download_base_url` | `--set trivy.download_base_url=https://…` | `INSPECTRA_TRIVY_DOWNLOAD_BASE_URL=https://…` |
+| `network.proxy` | `--set network.proxy=http://proxy.corp:3128` | `INSPECTRA_NETWORK_PROXY=http://proxy.corp:3128` |
+| `network.offline` | `--offline` | `INSPECTRA_NETWORK_OFFLINE=true` |
+| `fail_on` | `--fail-on high` | `INSPECTRA_FAIL_ON=high` |
+| `trivy.filesystem.scanners` | `--set trivy.filesystem.scanners=vuln,secret` | `INSPECTRA_TRIVY_FILESYSTEM_SCANNERS=vuln,secret` |
+
+```bash
+INSPECTRA_TRIVY_VERSION=latest inspectra scan
+inspectra scan --set trivy.mode=required --set network.timeout=60s
+INSPECTRA_TRIVY_ENABLED=true dart run inspectra check
+```
+
+- A list is written comma-separated. A boolean accepts `true`, `yes`, `1`, `on` and `false`, `no`, `0`, `off`.
+  Durations are written as `500ms`, `30s`, `10m` or `1h`.
+- Overridden values are validated like the file: `--set trivy.mode=sometimes` is an error.
+- A `--set` key that is not an option is an error; an `INSPECTRA_*` variable that matches no option is ignored.
+- The `ignore` list can only be written in the file, and sections cannot be replaced as a whole.
+- `INSPECTRA_TRIVY` sets `trivy.executable`, and wins over the file, for compatibility.
+- `check`, `format`, `lint`, `api` and `coverage` take no `--set`; the environment variables apply to them as well.
+
 ## Defaults
 
 Every option has a default, and the defaults are chosen so that the smallest useful configuration is one line per
@@ -111,6 +154,9 @@ feature:
 | `api` | `enabled: false` | The API builder writes the dump; `api check` and `check` verify it |
 | `trivy` | `enabled: false` | The secret, license and vulnerability scans run; the filesystem scan stays off |
 | `coverage` | `enabled: false` | `check` runs the coverage gate; there is no threshold until you set one |
+
+The supply-chain sections need no switch: `scan`, `audit` and the other supply-chain commands work without any
+configuration, and the sections only tune them.
 
 Within `trivy`, the secret, license and vulnerability scans default to `enabled: true` - they are off only because
 `trivy.enabled` is. The filesystem scan defaults to `enabled: false`, because it overlaps with the other three and
@@ -146,12 +192,17 @@ Each error names the key by its full path, starting at `%pubspec_key%` for the `
 level for `%config_file%`. List elements are addressed by index:
 
 ```text
-Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Known options here: enabled, executable, filesystem, license, report_directory, secret, vulnerability.
+Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Known options here: cache_directory, connectivity_timeout, db_repository, download, download_base_url, enabled, executable, extra_args, filesystem, install_directory, latest_release_url, license, mode, report_directory, secret, skip_db_update, timeout, use_installed, version, vulnerability.
 Invalid Inspectra configuration at "inspectra.trivy.enabled": expected true or false, got "yes please".
 Invalid Inspectra configuration at "inspectra.trivy.vulnerability.severity[1]": expected one of CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN, got "SEVERE".
 Invalid Inspectra configuration at "inspectra.coverage.min_line_coverage": expected a number between 0.0 and 100.0, got 120.
+Invalid Inspectra configuration at "inspectra.fail_on": expected one of critical, high, medium, low, unknown, got "severe".
+Invalid Inspectra configuration at "inspectra.network.timeout": expected a duration such as 30s, 10m or 1h, got "5 minutes".
 Invalid Inspectra configuration at "inspectra.yaml": line 2, column 1: While parsing a flow sequence, expected ',' or ']'.
+Invalid Inspectra configuration at "trivy.secrets": unknown option given on the command line.
 ```
+
+An `ignore` entry without `id` or `reason` is rejected as well: every suppression must be justified.
 
 <note>
 The strictness is deliberate. A misspelled <code>secrets:</code> instead of <code>secret:</code> would otherwise leave
@@ -164,7 +215,7 @@ found only after a credential leaked.
 | Run | Effect of a broken configuration |
 |:--|:--|
 | `dart run build_runner build` | Every %product% builder logs the error as `SEVERE`; the build fails |
-| `dart run %package% …` | The error is printed to standard error; exit code `2` |
+| `dart run %package% …` | The error is printed to standard error; exit code `65` |
 | `package:%package%` | `loadConfig` and `InspectraConfig.parse` throw `InspectraConfigException` |
 
 ## YAML notes

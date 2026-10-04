@@ -65,7 +65,9 @@ Differences worth knowing:
   See [Secret rules](Trivy-Secret-Rules.md).
 - **One Trivy process per scan.** Kreate's secret scan runs Trivy per file; %product% stages the selected files and
   scans them in one run.
-- **Explicit errors.** Trivy failing is exit code `2` with Trivy's message, never a pass.
+- **Explicit errors.** Trivy failing is exit code `69` with Trivy's message, never a pass.
+- **Trivy is provisioned.** The command line uses an installed Trivy or downloads a pinned, checksum-verified release;
+  see [Installing Trivy](Trivy-Installation.md#provisioning).
 
 ## API validation
 

@@ -109,7 +109,11 @@ dart run inspectra lint
         <p>Install Trivy and check that %product% can find it:</p>
         <code-block lang="bash"><![CDATA[
             trivy --version
+            dart run inspectra trivy --where
         ]]></code-block>
+        <p>Without an installed Trivy, the command line downloads a pinned, checksum-verified release when the
+            network is available; the secret scan on build needs an installed one. See
+            <a href="Trivy-Installation.md">Installing Trivy</a>.</p>
     </step>
     <step>
         <p>Enable the scans:</p>

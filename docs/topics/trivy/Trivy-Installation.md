@@ -6,18 +6,20 @@
 
 <show-structure for="chapter,procedure" depth="2"/>
 
-<link-summary>Installing Trivy, how Inspectra finds it, and how to run it offline or behind a mirror.</link-summary>
+<link-summary>How Inspectra finds or downloads Trivy, how to install it yourself, and how to run it offline or behind a mirror.</link-summary>
 
-<card-summary>Installation, executable lookup, working directory, environment variables and offline use.</card-summary>
+<card-summary>Provisioning, checksum-verified downloads, executable lookup, working directory, environment variables and offline use.</card-summary>
 
 <tldr>
-<p><b>Lookup order</b>: <code>%trivy_env%</code>, then <code>trivy.executable</code>, then <code>trivy</code> on the <code>PATH</code></p>
-<p><b>Tested with</b>: Trivy %tested_trivy%</p>
+<p><b>Command line</b>: <code>trivy.executable</code> or <code>%trivy_env%</code>, else an installed Trivy, else a cached download, else a download</p>
+<p><b>Builders</b>: <code>%trivy_env%</code>, then <code>trivy.executable</code>, then <code>trivy</code> on the <code>PATH</code></p>
+<p><b>Default version</b>: 0.75.0, SHA-256 verified; tested with Trivy %tested_trivy%</p>
 <p><b>Working directory</b>: the package root</p>
 </tldr>
 
-%product% does not bundle Trivy. It runs whatever Trivy you install, which keeps the scanner and its database under
-your control and lets you update Trivy without waiting for a %product% release.
+%product% does not bundle Trivy. The command line uses an installed Trivy when there is one, and otherwise downloads a
+pinned, checksum-verified release from GitHub - only when the network is available. Installing Trivy yourself keeps the
+scanner under your control and is what the `build_runner` builders need.
 
 ## Installing
 
@@ -61,15 +63,78 @@ docker run --rm aquasec/trivy:%tested_trivy% --version
     </tab>
 </tabs>
 
-Other methods are listed in [Trivy's installation guide](%trivy_install%). Check the result:
+Other methods are listed in [Trivy's installation guide](%trivy_install%). Check the result, and which Trivy
+%product% would use:
 
 ```bash
 trivy --version
+dart run inspectra trivy --where
 ```
 
 ## How Inspectra finds Trivy {id="lookup"}
 
-%product% decides which executable to start in this order:
+### Provisioning on the command line {id="provisioning"}
+
+Every command that runs Trivy - `scan`, `trivy` and `check` - resolves it in this order:
+
+1. **`trivy.executable`**, or the environment variable **`%trivy_env%`**, which overrides it. Nothing else is
+   considered: an executable that cannot be run makes Trivy unavailable.
+2. With `use_installed: true` (the default), **an installed Trivy**, whatever its version: on the `PATH`, or in a
+   well-known directory - `/usr/local/bin`, `/usr/bin`, `/opt/homebrew/bin`, `/home/linuxbrew/.linuxbrew/bin`,
+   `/snap/bin`, `~/.local/bin`, `~/bin`, `~/scoop/shims`, `$env:LOCALAPPDATA\Programs\trivy`,
+   `$env:LOCALAPPDATA\Microsoft\WinGet\Links` and `C:\ProgramData\chocolatey\bin`.
+3. **A cached download** of the configured `version` in `<install directory>/<version>/`.
+4. With `use_installed: false`, an installed Trivy of exactly the configured `version`.
+5. **A download** of the configured `version` - only when `download: true`, not in `--offline` mode, the download host
+   answers within `connectivity_timeout`, and Trivy publishes a build for the platform.
+
+`version: latest` is resolved through the redirect of `latest_release_url` when online; offline, it falls back to the
+newest cached version. `mode: disabled` skips the lookup entirely.
+
+```bash
+dart run inspectra trivy --where                       # which Trivy, and where it comes from
+dart run inspectra trivy --install                     # provision it now, e.g. to warm a CI cache
+inspectra scan --trivy-version latest --no-trivy-use-installed
+```
+
+What happens when no Trivy can be provisioned depends on the command and on `trivy.mode`:
+
+| Situation | `auto` (default) | `required` |
+|:--|:--|:--|
+| The Trivy part of `scan`, and `trivy` without configured scans | Skipped with a warning; the other checks still run | Exit code `69` |
+| The configured scans of `trivy` and `check` | Exit code `69` | Exit code `69` |
+
+### Downloads {id="download"}
+
+A download takes `trivy_<version>_<platform>.tar.gz` (`.zip` on Windows) and `trivy_<version>_checksums.txt` from
+`<download_base_url>/v<version>/`:
+
+| Platform | Release asset |
+|:--|:--|
+| Linux x64, ARM64, ARM, x86 | `Linux-64bit`, `Linux-ARM64`, `Linux-ARM`, `Linux-32bit` |
+| macOS x64, ARM64 | `macOS-64bit`, `macOS-ARM64` |
+| Windows x64 | `windows-64bit` (zip); Windows on ARM runs it through the built-in emulation |
+
+- The archive's SHA-256 must match its entry in the release's checksums file. This check cannot be disabled, so an
+  unverified binary is never executed.
+- Only the `trivy` executable is taken from the archive, which is read in memory.
+- The binary is written to a temporary file, made executable and atomically renamed to
+  `<install directory>/<version>/trivy`, so concurrent CI jobs never see a half written file. Later runs reuse it.
+
+The install directory is `trivy.install_directory`, by default `<user cache>/inspectra/trivy`:
+
+| Host | User cache |
+|:--|:--|
+| Linux | `$XDG_CACHE_HOME`, else `~/.cache` |
+| macOS | `~/Library/Caches` |
+| Windows | `$env:LOCALAPPDATA` |
+
+`INSPECTRA_CACHE_DIR` replaces `<user cache>/inspectra`. To cache Trivy in CI, cache that directory and run
+`inspectra trivy --install` once.
+
+### The builders {id="builder-lookup"}
+
+The `build_runner` builders never download anything. They start, in this order:
 
 1. The environment variable **`%trivy_env%`**, if it is set.
 2. **`trivy.executable`** from the configuration, if it is set.
@@ -94,7 +159,7 @@ INSPECTRA_TRIVY=/opt/trivy/bin/trivy dart run inspectra trivy
 The environment variable exists for CI images that keep Trivy somewhere else than developer machines: it overrides
 the configuration without editing it.
 
-When the executable cannot be started, the scan fails with:
+When a builder cannot start the executable, the scan fails with:
 
 ```text
 Could not start Trivy ("trivy"): No such file or directory
@@ -142,6 +207,17 @@ repository root. Each package of a monorepo uses its own <code>.trivyignore</cod
 
 ## Offline and air-gapped use
 
+`--offline` (or `network.offline: true`) guarantees that %product% opens no connection: it never downloads Trivy, and
+uses an installed or cached one. For the download itself, point `trivy.download_base_url` at a mirror of the release
+assets; it must provide the archives and the checksums file under `<base>/v<version>/`.
+
+```yaml
+inspectra:
+  trivy:
+    download_base_url: https://artifactory.corp/github/aquasecurity/trivy/releases/download
+    db_repository: registry.corp/aquasecurity/trivy-db
+```
+
 Only the vulnerability scan - and the filesystem scan with the `vuln` scanner - needs the
 <tooltip term="Trivy database">Trivy database</tooltip>. The secret and license scans work without network access.
 
@@ -164,6 +240,9 @@ TRIVY_CACHE_DIR=./trivy-cache TRIVY_SKIP_DB_UPDATE=true TRIVY_OFFLINE_SCAN=true 
     </step>
 </procedure>
 
+For the Trivy run of `scan` and of `trivy` without configured scans, `trivy.skip_db_update`, `trivy.db_repository`
+and `trivy.cache_directory` pass the same settings as flags.
+
 <warning>
 A database that is never updated never learns about new vulnerabilities. Refresh it on a schedule; Trivy's database is
 rebuilt every few hours upstream.
@@ -173,12 +252,13 @@ rebuilt every few hours upstream.
 
 %product% uses Trivy's stable command line: `trivy fs`, `--scanners`, `--severity`, `--format json`, `--output`,
 `--secret-config`, `--skip-dirs`, `--ignore-unfixed` and `--license-full`, and reads the `Results` of the JSON report.
-It is tested with Trivy %tested_trivy%; any release since Trivy introduced `--scanners` should work. See
-[Compatibility](Compatibility.md).
+It is tested with Trivy %tested_trivy%, and downloads 0.75.0 unless `trivy.version` says otherwise; any release since
+Trivy introduced `--scanners` should work. See [Compatibility](Compatibility.md).
 
 <seealso>
     <category ref="security">
         <a href="Trivy-Overview.md">Security and compliance</a>
+        <a href="Trivy-Configuration-Reference.md">Trivy configuration reference</a>
         <a href="Trivy-Secret-Rules.md">Secret rules</a>
     </category>
     <category ref="operations">
