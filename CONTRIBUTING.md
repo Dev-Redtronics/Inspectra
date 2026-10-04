@@ -65,6 +65,8 @@ with the file and line.
 |---|---|
 | `lib/src/cli` | Command runner, shared options, commands, composition root |
 | `lib/src/<feature>` | `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`, `trivy`, `scan` |
+| `lib/src/{quality,api,coverage}` | The package checks: format and lint, the public API dump, the coverage gate |
+| `lib/src/builders` | The `build_runner` builders of `lib/builder.dart` |
 | `lib/src/{model,config,net,io,host,archive,pub,osv,report,policy,util}` | Shared building blocks |
 
 ### Testing

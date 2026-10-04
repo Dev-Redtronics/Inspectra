@@ -53,4 +53,7 @@ The following are **not** vulnerabilities in Inspectra:
   within size, entry and expansion limits; nothing is extracted to disk.
 - Trivy downloads are verified against the official `checksums.txt`; the check cannot be disabled.
 - All snippets are sanitised before they are printed.
-- `--offline` guarantees that no network connection is opened.
+- `--offline` (or `network.offline: true`) makes Inspectra send no HTTP request and download no
+  Trivy, and starts Trivy with `--skip-db-update --offline-scan`, so Trivy does not fetch its
+  database either. Without a cached database the Trivy part of `scan` is skipped in
+  `trivy.mode: auto` and exits with `69` in `required`.

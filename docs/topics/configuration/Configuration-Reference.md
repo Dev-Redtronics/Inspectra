@@ -181,7 +181,7 @@ Settings for every connection %product% opens: OSV.dev, the pub repository and T
 
 | Key | Type | Default | Description |
 |:--|:--|:--|:--|
-| `offline` | boolean | `false` | Never open a connection. Commands that need the network exit with `69`; optional steps such as downloading Trivy are skipped. `--offline` sets it. |
+| `offline` | boolean | `false` | Never open a connection. Commands that need the network exit with `69`; optional steps such as downloading Trivy are skipped, and Trivy runs with `--skip-db-update --offline-scan`. `--offline` sets it. |
 | `timeout` | duration | `30s` | The timeout for connecting and for each response. |
 | `max_attempts` | whole number, 1 to 100 | `3` | How often a request is attempted before giving up. |
 | `retry_base_delay` | duration | `1s` | The first back-off delay; it doubles with every retry. |
@@ -295,10 +295,6 @@ The configured scans, and how Trivy is provisioned for every command that runs i
 
 `skip_db_update`, `db_repository`, `cache_directory`, `timeout` and `extra_args` apply to the Trivy filesystem scan of
 `scan` and of `trivy` without configured scans.
-| `secret` | mapping | | [Secret scan](#trivy-secret) |
-| `license` | mapping | | [License scan](#trivy-license) |
-| `vulnerability` | mapping | | [Vulnerability scan](#trivy-vulnerability) |
-| `filesystem` | mapping | | [Filesystem scan](#trivy-filesystem) |
 
 ### Shared scan options {id="scan-options"}
 

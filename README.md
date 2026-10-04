@@ -82,14 +82,19 @@ dart run inspectra check                    # every enabled package gate
 
 Every command that runs Trivy — `scan`, `trivy`, `check` — resolves it in this order:
 
-1. `trivy.executable` or the `INSPECTRA_TRIVY` environment variable — nothing else is considered;
-2. an installed Trivy on the `PATH` or in a package manager directory (Homebrew, Scoop, WinGet,
+1. `trivy.mode: disabled` — Trivy is never located, downloaded or run;
+2. `trivy.executable` or the `INSPECTRA_TRIVY` environment variable — nothing else is considered;
+3. an installed Trivy on the `PATH` or in a package manager directory (Homebrew, Scoop, WinGet,
    Chocolatey, `~/.local/bin`), whatever its version (`use_installed: true`);
-3. a previously downloaded Trivy of the configured version in Inspectra's cache;
-4. **a download** of the configured version from the official GitHub release (or your mirror) — only
+4. a previously downloaded Trivy of the configured version in Inspectra's cache;
+5. with `use_installed: false`, an installed Trivy of exactly the configured version;
+6. **a download** of the configured version from the official GitHub release (or your mirror) — only
    when `download: true`, not in `--offline` mode, the download host answers within
    `connectivity_timeout` and Trivy publishes a build for the platform (Linux x64/arm64/arm/386,
    macOS x64/arm64, Windows x64/arm64).
+
+The `build_runner` builders never download Trivy: they use `INSPECTRA_TRIVY`, then
+`trivy.executable`, then `trivy` on the `PATH`; `inspectra trivy --install` provides one to put there.
 
 Every download is verified against the release's `checksums.txt`; this check cannot be disabled, so an
 unverified binary is never executed. The binary is installed atomically to
@@ -151,7 +156,10 @@ ignore:
 
 Proxies come from `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` or `network.proxy`; additional certificate
 authorities from `network.ca_certificates`; private pub repositories from `PUB_HOSTED_URL`; an internal
-OSV mirror from `network.osv_url`. `--offline` guarantees that no connection is opened at all.
+OSV mirror from `network.osv_url`. `--offline` (or `network.offline: true`) makes Inspectra send no
+HTTP request and download no Trivy, and starts Trivy with `--skip-db-update --offline-scan`, so Trivy
+does not fetch its database either. Without a cached Trivy database the Trivy part of `scan` is then
+skipped in `trivy.mode: auto` and exits with `69` in `required`.
 
 ## Output and exit codes
 
@@ -197,15 +205,19 @@ The pre-commit hook (`inspectra hook`) audits the **staged** `pubspec.lock` and 
 ### How it fits into build_runner
 
 Inspectra's builders apply to the root package automatically and do nothing until a feature is enabled.
+They read the configuration only from `pubspec.yaml` or `inspectra.yaml`: `--set` and the
+`INSPECTRA_*` overrides do not apply to them, except `INSPECTRA_TRIVY`, which names the Trivy
+executable.
 
-- **`inspectra:format`** and **`inspectra:lint`** run `dart format` and `dart analyze` when their
-  `run_on_build` is set, after every code generator.
+- **`inspectra:format`** and **`inspectra:lint`** run `dart format` and `dart analyze` when the check
+  is `enabled` and its `run_on_build` is set, after every code generator.
 - **`inspectra:api`** writes the public API to `api/<package>.api` (`build_to: source`). The dump is
   committed, so every API change shows up as a diff in review. `build_runner build --only-check`
   fails when the committed dump differs — the API check for CI.
 - **`inspectra:secret_scan`**, **`inspectra:license_scan`** and **`inspectra:vulnerability_scan`** run
-  the scans whose `run_on_build` is set (by default only the secret scan). Findings are logged; with
-  `fail_on_findings` they fail the build.
+  a scan when `trivy.enabled`, the scan's own `enabled` and its `run_on_build` are all set (by default
+  `run_on_build` is set only for the secret scan). Findings are logged; with `fail_on_findings` they
+  fail the build.
 
 ### Format and lint
 
@@ -250,7 +262,7 @@ project and is published to GitHub Pages from `main`.
 
 ```yaml
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v7
   - uses: dart-lang/setup-dart@v1
   - run: dart pub get
   - run: dart run inspectra scan -f sarif -o inspectra.sarif --fail-on high
@@ -262,7 +274,10 @@ steps:
   - run: dart run inspectra check
 ```
 
-Trivy is provisioned automatically; use `-f markdown >> "$GITHUB_STEP_SUMMARY"` for a job summary.
+`scan` and `check` provision Trivy automatically. Trivy builders with `run_on_build` need it on the
+`PATH`: run `dart run inspectra trivy --install --format json --output "$RUNNER_TEMP/trivy.json"` and
+append the directory of its `trivy.executable` to `$GITHUB_PATH` before `build_runner`. Use
+`-f markdown >> "$GITHUB_STEP_SUMMARY"` for a job summary.
 
 ## Contributing
 

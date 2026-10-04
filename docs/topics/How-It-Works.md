@@ -15,7 +15,7 @@
 flowchart LR
     config["pubspec.yaml (inspectra:)<br/>or inspectra.yaml"]
     subgraph entry["Entry points"]
-        builders["build_runner builders<br/>inspectra:api, :secret_scan,<br/>:license_scan, :vulnerability_scan"]
+        builders["build_runner builders<br/>inspectra:format, :lint, :api,<br/>:secret_scan, :license_scan,<br/>:vulnerability_scan"]
         cli["inspectra<br/>scan, audit, inspect, trust, typosquat, add, hook<br/>check, format, lint, api, trivy, coverage"]
         library["package:inspectra<br/>your own tooling"]
     end

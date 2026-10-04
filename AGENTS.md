@@ -15,7 +15,7 @@ standard it checks.
 | `lib/src/` | Everything else; private to the package |
 | `api/inspectra.api` | The recorded public API; `inspectra api check` compares against it |
 | `docs/` | The Writerside documentation |
-| `test/` | Unit tests mirroring `lib/src/`, `test/e2e/` drives the whole CLI in-process |
+| `test/` | Unit tests, mostly mirroring `lib/src/` (the quality-gate, builder and Trivy scan tests sit at the top level); `test/e2e/` drives the whole CLI in-process |
 | `tool/` | `verify.dart` and the AST based `style_check.dart` |
 
 ## Verify
@@ -77,7 +77,9 @@ Enforced by `dart analyze --fatal-infos` with the rules in `analysis_options.yam
   unless the value is provably present, no broad `catch` without `on`.
 - Name intermediate results and computed conditions instead of nesting calls.
 - Runtime dependencies are limited to `args`, `yaml`, `crypto`, `path`, `pub_semver` and
-  `archive`. HTTP uses `dart:io`. Adding a dependency needs a maintainer's approval.
+  `archive` for the security command line, and `analyzer`, `build`, `coverage` and `glob` for the
+  quality gates and the builders. HTTP uses `dart:io`. Adding a dependency needs a maintainer's
+  approval.
 
 ## Security rules
 
@@ -91,9 +93,12 @@ Enforced by `dart analyze --fatal-infos` with the rules in `analysis_options.yam
 ## Tests
 
 `package:test` only, with hand written fakes from `test/support/` (`FakeProcessRunner`, the
-loopback `FakeHttpServer`, `TestHarness`). No mocking library, no real network, no real external
-tools. Tests mirror the production package. Every change ships with its tests; every fixed bug gets
-a regression test.
+loopback `FakeHttpServer`, `TestHarness`). No mocking library and no real network. Unit tests use
+fakes instead of real external tools; the only exceptions are the integration test tagged `trivy`
+(`@Tags(['trivy'])`), which runs the real Trivy and is skipped when Trivy is not installed, the
+tests tagged `slow`, and the quality tests that run the real `dart format` and `dart analyze` in
+temporary packages. Tests follow the production packages where practical. Every change ships with
+its tests; every fixed bug gets a regression test.
 
 ## Public API
 

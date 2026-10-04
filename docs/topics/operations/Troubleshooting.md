@@ -112,6 +112,7 @@ The command line found no Trivy and could not download one. The message says why
 | `… github.com is not reachable, so it was not downloaded.` | Allow the host, set `network.proxy`, or point `trivy.download_base_url` at a mirror |
 | `The configured Trivy executable "…" (trivy.executable) cannot be run.` | Fix `trivy.executable` or `%trivy_env%`, which disable every other lookup |
 | `Trivy publishes no build for …` | Install Trivy manually and set `trivy.executable` |
+| `Trivy <version> is neither installed nor cached; "inspectra trivy --install" downloads it.` | Printed by `trivy --where`, which never downloads; exit code `69`. Run `dart run %package% trivy --install` |
 
 In `auto` mode `scan` continues without Trivy; in `required` mode, and for the configured scans of `trivy` and
 `check`, the command exits with `69`. See [Installing Trivy](Trivy-Installation.md#provisioning).

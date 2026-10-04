@@ -11,15 +11,16 @@
 
 | Component | Required | Tested in CI |
 |:--|:--|:--|
-| Dart SDK | %min_dart% | Stable channel; locally %tested_dart% |
+| Dart SDK | %min_dart% | The stable channel on Linux, macOS and Windows, and %min_dart% on Linux; locally %tested_dart% |
 | `build_runner` | %min_build_runner%, for `--only-check` | %min_build_runner% |
-| Trivy | A release with `--scanners` | %tested_trivy% |
+| Trivy | A release with `--scanners` | %tested_trivy%, the version %product% downloads by default |
 | Flutter | Any release bundling Dart %min_dart%+ | Not in CI |
 
 ## Dart SDK
 
 %product% requires Dart %min_dart% or later, as stated in its `pubspec.yaml`. It uses the analyzer's current element
-model, which needs a recent SDK.
+model, which needs a recent SDK. CI runs the full verification - format, analysis, style check and tests - with the
+current stable SDK and with %min_dart%, the minimum.
 
 ## Dependencies
 
@@ -28,13 +29,15 @@ model, which needs a recent SDK.
 | `analyzer` | ^%analyzer_version% | Resolving libraries for the API dump |
 | `build` | ^%build_version% | The builders |
 | `coverage` | ^%coverage_version% | Merging hit maps, ignore comments, lcov |
+| `archive` | ^4.0.7 | Reading package archives and the Trivy download in memory |
 | `args` | ^2.7.0 | The command line |
+| `crypto` | ^3.0.6 | SHA-256 verification of package archives and Trivy downloads, finding fingerprints |
 | `glob` | ^2.2.0 | `include`, `exclude`, `ignored_libraries` |
 | `path` | ^1.9.1 | Paths on every platform |
+| `pub_semver` | ^2.2.0 | Version constraints and ranges of the supply-chain checks |
 | `yaml` | ^3.1.4 | Reading the configuration |
 
-`args`, `glob`, `path` and `yaml` are dependencies of `analyzer`, `build` or `coverage` anyway, so %product% adds no
-package to your resolution beyond those three.
+HTTP uses `dart:io`, so %product% needs no HTTP client package.
 
 <note>
 <code>analyzer</code> is also a dependency of <code>build_runner</code>, <code>freezed</code>,
@@ -50,16 +53,19 @@ versions, the builders run, but CI has to use `dart run %package% api check` ins
 ## Trivy
 
 %product% uses Trivy's stable command line and reads the `Results` array of its JSON report. It is tested with Trivy
-%tested_trivy%, the version pinned in its CI. Dart support - pub lock files and the GitHub advisories for pub - has been
-in Trivy for many releases.
+%tested_trivy%, the version pinned in %product% itself (`TrivyConfig.pinnedVersion`): the one it downloads unless
+`trivy.version` says otherwise, and the one its CI provisions. Dart support - pub lock files and the GitHub advisories
+for pub - has been in Trivy for many releases.
 
 ## Platforms
 
 | Platform | Status |
 |:--|:--|
-| Linux | Tested in CI, every push |
+| Linux | Tested in CI, every push; also with the minimum SDK %min_dart% |
 | macOS | Tested in CI, every push |
-| Windows | Expected to work; not covered by CI. The API dump and the configuration use `/` in paths on every platform. |
+| Windows | Tested in CI, every push, except the integration tests against a real Trivy, which are skipped there. The API dump and the configuration use `/` in paths on every platform. |
+
+CI also compiles the native executable with `dart compile exe` on all three platforms on every push.
 
 <seealso>
     <category ref="start">

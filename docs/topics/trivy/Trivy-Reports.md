@@ -89,7 +89,7 @@ severities, ignores and categories were applied.
         <code-block lang="yaml"><![CDATA[
 - name: Upload the Trivy reports
   if: always()
-  uses: actions/upload-artifact@v4
+  uses: actions/upload-artifact@v7
   with:
     name: trivy-reports
     path: .dart_tool/inspectra/trivy/

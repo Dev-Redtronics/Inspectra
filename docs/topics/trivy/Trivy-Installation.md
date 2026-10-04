@@ -19,7 +19,8 @@
 
 %product% does not bundle Trivy. The command line uses an installed Trivy when there is one, and otherwise downloads a
 pinned, checksum-verified release from GitHub - only when the network is available. Installing Trivy yourself keeps the
-scanner under your control and is what the `build_runner` builders need.
+scanner under your control. The `build_runner` builders never download it: they need Trivy on the `PATH`, in
+`trivy.executable` or in `%trivy_env%`, and `inspectra trivy --install` puts it there.
 
 ## Installing
 
@@ -49,9 +50,15 @@ scoop install trivy
     </tab>
     <tab title="GitHub Actions" group-key="actions">
         <code-block lang="yaml"><![CDATA[
-- uses: aquasecurity/setup-trivy@v0.3.1
-  with:
-    version: v%tested_trivy%
+# Inspectra provisions Trivy (checksum verified) and puts it on the PATH.
+- run: |
+    dart run inspectra trivy --install --format json --output "$RUNNER_TEMP/trivy.json"
+    dirname "$(jq -r .trivy.executable "$RUNNER_TEMP/trivy.json")" >> "$GITHUB_PATH"
+
+# Alternatively, with a third-party action:
+# - uses: aquasecurity/setup-trivy@v0.3.1
+#   with:
+#     version: v%tested_trivy%
 ]]></code-block>
     </tab>
     <tab title="Container image" group-key="docker">
@@ -207,9 +214,18 @@ repository root. Each package of a monorepo uses its own <code>.trivyignore</cod
 
 ## Offline and air-gapped use
 
-`--offline` (or `network.offline: true`) guarantees that %product% opens no connection: it never downloads Trivy, and
-uses an installed or cached one. For the download itself, point `trivy.download_base_url` at a mirror of the release
-assets; it must provide the archives and the checksums file under `<base>/v<version>/`.
+`--offline` (or `network.offline: true`) keeps %product% and Trivy from opening any connection:
+
+- %product% sends no HTTP request: it never downloads Trivy, and uses an installed or cached one.
+- `scan`, `trivy`, `check` and the Trivy builders start Trivy with `--skip-db-update --offline-scan`, so Trivy neither
+  downloads its database nor queries remote registries. `check` has no `--offline` flag and the builders read only the
+  configuration file, so for them set `network.offline: true` - `check` also accepts `INSPECTRA_NETWORK_OFFLINE=true`.
+- Without a cached database, the scans that need it fail instead of going online: the Trivy part of `scan` is skipped
+  with a warning in `trivy.mode: auto` and exits with `69` in `required`; the configured scans of `trivy` and `check`
+  exit with `69`. Seed the database as shown below.
+
+For the download itself, point `trivy.download_base_url` at a mirror of the release assets; it must provide the archives
+and the checksums file under `<base>/v<version>/`.
 
 ```yaml
 inspectra:
@@ -232,10 +248,10 @@ TRIVY_CACHE_DIR=./trivy-cache trivy fs --download-db-only
         <p>Copy <code>trivy-cache</code> to the offline machine or bake it into the CI image.</p>
     </step>
     <step>
-        <p>Run %product% against it without updating:</p>
+        <p>Run %product% against it in offline mode, which starts Trivy with <code>--skip-db-update</code> and
+            <code>--offline-scan</code>:</p>
         <code-block lang="bash"><![CDATA[
-TRIVY_CACHE_DIR=./trivy-cache TRIVY_SKIP_DB_UPDATE=true TRIVY_OFFLINE_SCAN=true \
-  dart run inspectra trivy vulnerability
+TRIVY_CACHE_DIR=./trivy-cache dart run inspectra trivy vulnerability --offline
 ]]></code-block>
     </step>
 </procedure>

@@ -18,6 +18,47 @@ a custom release script, a monorepo runner, a bot - everything the command line 
 import 'package:inspectra/inspectra.dart';
 ```
 
+## Running the command line in-process {id="in-process"}
+
+`InspectraCommandRunner` is the whole command line. `bin/inspectra.dart` does nothing but run it with
+`CommandContext.system()` and exit with the code it returns:
+
+```dart
+final runner = InspectraCommandRunner(CommandContext.system());
+final int code = await runner.run(['audit', '--format', 'json']);
+```
+
+Every side effect goes through the `CommandContext`, so tooling and tests can capture the output, change the working
+directory or replace the environment, the clock and the processes %product% starts:
+
+```dart
+final out = StringBuffer();
+final context = CommandContext(
+  environment: Environment({'INSPECTRA_TRIVY_MODE': 'disabled'}),
+  clock: const Clock.system(),
+  processRunner: const SystemProcessRunner(),
+  host: HostPlatform.current(),
+  workingDirectory: '/path/to/package',
+  out: out,
+  err: StringBuffer(),
+);
+final int code = await InspectraCommandRunner(context).run(['scan', '--offline']);
+```
+
+| API | Description |
+|:--|:--|
+| `InspectraCommandRunner(context)` | The `inspectra` command line; `run(args)` returns the exit code and never calls `exit`. |
+| `CommandContext({environment:, clock:, processRunner:, host:, workingDirectory:, out:, err:, outIsTerminal, supportsAnsi, sleep})` | Everything a command reads from or writes to its process. `CommandContext.system()` is the real process. |
+| `ExitCode` | `success` `0`, `findings` `1`, `usage` `64`, `dataError` `65`, `unavailable` `69`, `software` `70`; `code`, and `ExitCode.of(error)` for an `InspectraException`. |
+| `Environment(variables)`, `Environment.current()` | The environment variables; `homeDirectory`, `pathEntries(separator)`. |
+| `Clock(now)`, `Clock.system()` | The current time, replaceable in tests. |
+| `ProcessRunner` | Starts external processes: `run(executable, arguments, {workingDirectory, runInShell, timeout})`. |
+| `SystemProcessRunner` | The `dart:io` implementation; a timed-out process reports `timedOutExitCode`. |
+| `ProcessOutcome` | `exitCode`, `stdout`, `stderr`, `succeeded`. |
+| `HostPlatform` | Operating system and CPU architecture: `HostPlatform.current()`, `isWindows`, `pathListSeparator`. |
+| `ConfigOverrides({cli, environment})` | The `--set` values and `INSPECTRA_*` variables applied on top of the configuration file; `ConfigOverrides.none()`, `environmentName(path)`. |
+| `inspectraVersion` | The version of %product%, as printed by `inspectra --version`. |
+
 ## Loading the configuration
 
 ```dart
@@ -33,11 +74,13 @@ print(config.trivy.secret.severity);     // [Severity.critical, Severity.high, .
 | `InspectraConfig.fromSources(pubspec:, configFile:)` | The same from strings. |
 | `InspectraConfig.parse(node, packageName:)` | From a parsed YAML or plain map. |
 | `InspectraConfig.defaults(packageName)` | Every default; every feature off. |
+| `loadConfig(root, {overrides, configFile, requirePubspec})` | With `ConfigOverrides` for `--set` values and `INSPECTRA_*` variables, and another configuration file. |
 | `configFileName`, `pubspecSectionKey` | `'%config_file%'`, `'%pubspec_key%'` |
 
-The configuration classes - `FormatConfig`, `LintConfig`, `TrivyConfig`, `SecretScanConfig`, `LicenseScanConfig`, `VulnerabilityScanConfig`,
-`FilesystemScanConfig`, `ApiConfig`, `CoverageConfig` - are immutable and have `const` constructors, so tooling can also
-build a configuration without YAML.
+The configuration classes - `FormatConfig`, `LintConfig`, `TrivyConfig`, `SecretScanConfig`, `LicenseScanConfig`,
+`VulnerabilityScanConfig`, `FilesystemScanConfig`, `ApiConfig`, `CoverageConfig`, and for the supply-chain commands
+`NetworkConfig`, `InspectConfig`, `TrustThresholds`, `TyposquatConfig` and `IgnoreRule` - are immutable and have
+`const` constructors, so tooling can also build a configuration without YAML.
 
 ## Running the format and lint checks
 
@@ -74,7 +117,7 @@ for (final result in results) {
 }
 final bool failed = results.any((result) => result.failed);
 ]]></code-block>
-        <p>Exactly what <code>dart run inspectra trivy</code> does, including the JSON reports. Pass
+        <p>The configured scans of <code>dart run inspectra trivy</code>, including the JSON reports. Pass
             <code>only: {TrivyScan.secret}</code> to choose scans.</p>
     </tab>
     <tab title="One scan" group-key="one">
@@ -99,18 +142,48 @@ final ScanResult licenses = await scanLicenses(
 
 | API | Description |
 |:--|:--|
-| `runTrivyScans(config, root, {only})` | Every enabled scan, or the ones in `only`; writes the reports. |
+| `runTrivyScans(config, root, {only, executable})` | Every enabled scan, or the ones in `only`; writes the reports. With `network.offline`, Trivy runs offline. |
 | `scanSecrets`, `scanLicenses`, `scanVulnerabilities`, `scanFilesystem` | One scan each, on explicit inputs. |
-| `Trivy({executable, environment, workingDirectory})` | The Trivy runner; `scanFilesystem` returns a parsed `TrivyReport`. |
+| `Trivy({executable, environment, workingDirectory, offline})` | The Trivy runner; `scanFilesystem` returns a parsed `TrivyReport`. `offline: true` adds `--skip-db-update --offline-scan` to every `trivy fs` call. |
 | `ScanResult` | `scan`, `findings`, `failed`, `skipped`, `render()`, `toJson()`. |
-| `Finding` | `severity`, `target`, `id`, `title`, `detail`. |
-| `Severity` | `critical`, `high`, `medium`, `low`, `unknown`; `trivyName`, `tryParse`. |
+| `ScanFinding` | One finding of a scan: `severity`, `target`, `id`, `title`, `detail`. |
 | `TrivyScan` | `secret`, `license`, `vulnerability`, `filesystem`; `isEnabled(config)`. |
 | `PackageGraph.load(root)` | The dependency graph; `reachable(includeDev:)`, `directoryOf(name)`, `lock`. |
 | `PubspecLock.parse(text)` | A parsed lock file; `retain(names)` writes a narrowed one. |
 | `collectFiles(root, include, exclude)` | The files the secret scan would read. |
 | `resolveSecretConfig(root, configured)` | The secret rules file in use, or `null`. |
 | `TrivyException` | Trivy is missing or failed. |
+
+`runTrivyScans` does not provision Trivy. It starts the executable named by `%trivy_env%` when that is set, else
+`executable`, else `trivy.executable`, else `trivy` on the `PATH`. The command line provisions Trivy first - an
+installed one, a cached download or a verified download, see [Installing Trivy](Trivy-Installation.md#provisioning) -
+and passes the result as `executable`. It also calls `runTrivyScans` only for named scans or with `trivy.enabled: true`;
+otherwise `inspectra trivy` runs a plain `trivy fs` scan of the package instead. With `network.offline: true`,
+`runTrivyScans` starts Trivy with `--skip-db-update --offline-scan`, so without a cached database the vulnerability
+scan fails with a `TrivyException`.
+
+## The finding model {id="findings"}
+
+The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook` and `trivy` without
+configured scans - report the normalised `Finding`, which the JSON, SARIF and Markdown reports serialise.
+
+| API | Description |
+|:--|:--|
+| `Finding` | `ruleId`, `source`, `severity`, `title`, `description`, `location`, `packageName`, `packageVersion`, `fixedVersion`, `aliases`, `url`, `snippet`, `attributes`; `identifiers`, `fingerprint` (a stable SHA-256), `toJson()`. |
+| `FindingSource` | The scanner: `osv`, `trivy`, `regex`, `entropy`, `unicode`, `archive`, `pubspec`, `trust`, `typosquat`, `confusion`; `id`. |
+| `SourceLocation(path, {line})` | The file and line a finding refers to. |
+| `Severity` | `critical`, `high`, `medium`, `low`, `unknown`; `label`, `trivyName`, `isAtLeast(threshold)`, `parse`, `tryParse`, `fromCvssScore`. Shared by `Finding` and `ScanFinding`. |
+| `IgnoreRule({id:, reason:, package, expires})` | An `ignore:` entry; `matches(finding)`, `isExpired(now)`. |
+
+## Errors {id="errors"}
+
+| API | Description |
+|:--|:--|
+| `InspectraException` | The sealed base of the expected failures; `message`. `ExitCode.of` maps each subtype to its exit code. |
+| `InvalidUsageException` | An invalid command line, exit code `64`. |
+| `InvalidInputException` | An invalid lock file, pubspec or configuration, exit code `65`. |
+| `UnavailableException` | A service, tool or Trivy is unavailable or failed, exit code `69`. |
+| `InspectraConfigException` | Invalid configuration; `path` names the offending key. |
 
 ## Rendering and checking the API
 
@@ -139,7 +212,7 @@ final String? diff = diffApi(expected: oldDump, actual: dump);
 final CoverageReport report = await runCoverage(
   config.coverage,
   packageRoot,
-  minLineCoverage: 85,
+  minLineCoverage: 90,
 );
 print('${report.percent.toStringAsFixed(2)}% of ${report.linesFound} lines');
 for (final file in report.files) {

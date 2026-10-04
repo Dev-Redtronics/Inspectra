@@ -7,7 +7,11 @@
     <var name="version" value="1.0.0"/>
 
     <!-- Compatibility. The single source of truth for every version stated in the
-         documentation; the CI workflow runs on the same versions. -->
+         documentation. min_dart is the SDK lower bound of pubspec.yaml, which CI tests
+         next to the stable channel; tested_dart is the stable SDK tool/verify.dart last
+         passed with locally; tested_trivy is TrivyConfig.pinnedVersion, the
+         release Inspectra downloads by default and CI provisions; the others are the
+         lower bounds of pubspec.yaml. -->
     <var name="min_dart" value="3.13.4"/>
     <var name="tested_dart" value="3.13.5"/>
     <var name="tested_trivy" value="0.75.0"/>

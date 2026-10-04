@@ -77,7 +77,7 @@ options:
 | `--[no-]color` | Force or disable ANSI colours. Default: detected from the terminal. |
 | `-q`, `--quiet` | Only print warnings and errors. |
 | `-v`, `--verbose` | Print diagnostics and list clean packages. |
-| `--offline` | Never open a network connection. Same as `--set network.offline=true`. |
+| `--offline` | Never open a network connection: no HTTP request, no Trivy download, and Trivy runs with `--skip-db-update --offline-scan`. Same as `--set network.offline=true`. |
 | `--fail-on <severity>` | Minimum severity that makes the command exit with `1`: `critical`, `high`, `medium`, `low` or `unknown`. Same as `fail_on`. |
 | `--min-severity <severity>` | Hide findings below this severity. Same as `min_severity`. |
 | `-i`, `--ignore <ID>` | Ignore a rule, advisory id or alias. Repeatable. For a documented, expiring suppression use the [`ignore`](Configuration-Reference.md#ignore) list. |

@@ -14,7 +14,7 @@ Inspectra adds Trivy secret, license, vulnerability and filesystem scans, a comm
 gate to Dart and Flutter packages, run by build_runner and configured in pubspec.yaml.
 </web-summary>
 
-%product% is a dev dependency for Dart and Flutter packages that answers four questions on every build and in
+%product% is a dev dependency for Dart and Flutter packages that answers five questions on every build and in
 every CI run:
 
 1. **Is the code formatted and free of analyzer findings?**

@@ -7,7 +7,7 @@
 
 <link-summary>Every build_runner builder Inspectra applies: inputs, outputs, options and rerun behaviour.</link-summary>
 
-<card-summary>inspectra:api, :secret_scan, :license_scan and :vulnerability_scan in detail.</card-summary>
+<card-summary>inspectra:format, :lint, :api, :secret_scan, :license_scan and :vulnerability_scan in detail.</card-summary>
 
 %product% declares six builders in its `build.yaml`. All of them have `auto_apply: root_package`: they run for the
 package you build, never for its dependencies, and need no `build.yaml` of yours.

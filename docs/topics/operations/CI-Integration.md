@@ -7,11 +7,11 @@
 
 <link-summary>Complete GitHub Actions and GitLab CI pipelines that run every Inspectra check.</link-summary>
 
-<card-summary>Pipelines with Trivy installation, database caching, scheduled scans and report artifacts.</card-summary>
+<card-summary>Pipelines with Trivy provisioning, database caching, scheduled scans and report artifacts.</card-summary>
 
 <tldr>
 <p><b>Two commands</b>: <code>dart run build_runner build --only-check</code> and <code>dart run %package% check</code></p>
-<p><b>Install</b>: Trivy, before either</p>
+<p><b>Trivy</b>: <code>check</code>, <code>scan</code> and <code>trivy</code> provision it themselves; only the Trivy builders with <code>run_on_build</code> need it on the <code>PATH</code></p>
 <p><b>Cache</b>: <code>~/.cache/trivy</code></p>
 <p><b>Schedule</b>: weekly, for new vulnerabilities in unchanged dependencies</p>
 </tldr>
@@ -27,6 +27,11 @@ dart run inspectra check                   # format, lint, API, every enabled sc
 `--only-check` covers every builder - also those of `json_serializable`, `freezed` and the like - so it doubles as
 the check for stale generated code. `inspectra check` reads the file system directly, so its secret scan also sees
 files that are not build sources.
+
+`check`, `scan` and `trivy` provision Trivy themselves: an installed one, a cached download, or a checksum-verified
+download of the pinned release - see [Installing Trivy](Trivy-Installation.md#provisioning). The `build_runner`
+builders never download anything, so only a build that runs Trivy scans with `run_on_build: true` needs Trivy on the
+`PATH`, or in `%trivy_env%`, before it starts. `inspectra trivy --install` provides it.
 
 ## GitHub Actions
 
@@ -47,22 +52,25 @@ jobs:
   inspectra:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dart-lang/setup-dart@v1
 
-      - uses: aquasecurity/setup-trivy@v0.3.1
-        with:
-          version: v%tested_trivy%
-
       - name: Cache the Trivy database
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/trivy
           key: trivy-db-${{ runner.os }}-${{ github.run_id }}
           restore-keys: trivy-db-${{ runner.os }}-
 
       - run: dart pub get
+
+      # Only needed for Trivy builders with run_on_build: inspectra check
+      # provisions Trivy itself. The download is checksum verified.
+      - name: Provision Trivy
+        run: |
+          dart run inspectra trivy --install --format json --output "$RUNNER_TEMP/trivy.json"
+          dirname "$(jq -r .trivy.executable "$RUNNER_TEMP/trivy.json")" >> "$GITHUB_PATH"
 
       - name: Generated files and API dump are current
         run: dart run build_runner build --only-check
@@ -72,12 +80,29 @@ jobs:
 
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: inspectra-reports
           path: |
             coverage/lcov.info
             .dart_tool/inspectra/trivy/
+```
+
+### Provisioning Trivy
+
+`inspectra trivy --install` makes the configured Trivy version available - from the runner, from %product%'s cache or
+as a download verified against the release's checksums - and its JSON report names the executable in
+`trivy.executable`. Appending its directory to `$GITHUB_PATH` puts it on the `PATH` of every later step, where the
+builders find it. Prefer the `PATH` over `%trivy_env%` when your own tests start fake Trivy executables: the
+environment variable overrides every configured executable.
+
+[`aquasecurity/setup-trivy`](https://github.com/aquasecurity/setup-trivy) is an alternative that installs Trivy with
+a third-party action:
+
+```yaml
+- uses: aquasecurity/setup-trivy@v0.3.1
+  with:
+    version: v%tested_trivy%
 ```
 
 ### The Trivy database cache
@@ -121,7 +146,10 @@ inspectra:
       - .dart_tool/inspectra/trivy/
 ```
 
-The `coverage` regex reads the total from the coverage table, so GitLab shows it in merge requests.
+The `coverage` regex reads the total from the coverage table, so GitLab shows it in merge requests. Without Trivy
+builders that have `run_on_build` set, the Trivy installation in `before_script` can go: `inspectra check` provisions
+Trivy itself. Set `INSPECTRA_CACHE_DIR` to a directory inside the project, such as `$CI_PROJECT_DIR/.inspectra-cache`,
+and cache it to keep the download between pipelines.
 
 ## Splitting the work
 
@@ -132,7 +160,7 @@ One job is simplest. In larger projects, split by speed and by what needs Trivy:
 | Format and lint | `dart run %package% format`, `dart run %package% lint` | No | Seconds |
 | Generated code | `dart run build_runner build --only-check` | Only for scans with `run_on_build` | Build time |
 | API | `dart run %package% api check` | No | Seconds |
-| Security | `dart run %package% trivy` | Yes | Seconds, plus the database |
+| Security | `dart run %package% trivy` | Yes; the command provisions it | Seconds, plus the database |
 | Coverage | `dart run %package% coverage` | No | Test suite time |
 
 ## Scheduled scans

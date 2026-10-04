@@ -8,9 +8,10 @@
     <section-starting-page>
         <title>Inspectra</title>
         <description>
-            Format and lint checks, Trivy security scans, public API dumps and a coverage gate for Dart and Flutter
-            packages - run by build_runner, configured in one YAML file, and built on nothing but the Dart toolchain
-            and Trivy.
+            Supply-chain security commands - OSV.dev audit, package inspection, pub.dev trust and typosquat checks -
+            plus format and lint checks, Trivy security scans, public API dumps and a coverage gate for Dart and
+            Flutter packages: run by build_runner and the command line, configured in one YAML file, and built on the
+            Dart toolchain, Trivy, OSV.dev and pub.dev.
         </description>
 
         <spotlight>
