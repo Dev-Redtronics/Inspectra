@@ -140,6 +140,18 @@ inspectra:
     exclude: ['**.g.dart', '**.freezed.dart', '**.mocks.dart']
     # min_line_coverage: 80        # unset: report only, never fail
     test_arguments: []
+
+  changelog:
+    enabled: false
+    file: CHANGELOG.md
+    tag_prefix: v
+    types: {feat: added, fix: fixed, perf: changed, refactor: changed, revert: changed,
+            deprecate: deprecated, remove: removed, security: security, docs: hidden,
+            style: hidden, test: hidden, build: hidden, ci: hidden, chore: hidden}
+    unconventional: hidden
+    # repository: …                # unset: repository of pubspec.yaml
+    commit_url: '{repository}/commit/{hash}'
+    compare_url: '{repository}/compare/{from}...{to}'
 ```
 
 ## fail_on and min_severity {id="severity-thresholds"}
@@ -378,6 +390,23 @@ The coverage gate. See [Coverage](Coverage-Overview.md).
 
 Details: [Coverage configuration](Coverage-Configuration.md).
 
+## changelog {id="changelog"}
+
+Changelog generation and validation. See [Changelog](Changelog-Overview.md).
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `enabled` | boolean | `false` | Whether `check` runs the changelog check. `changelog check`, `generate` and `notes` run regardless. |
+| `file` | string | `CHANGELOG.md` | The changelog file. |
+| `tag_prefix` | string | `v` | The text before the version in release tags; `''` for tags without prefix. |
+| `types` | map of type to section | `feat: added`, `fix: fixed`, … | The section of each Conventional Commits type: `added`, `changed`, `deprecated`, `removed`, `fixed`, `security` or `hidden`. Listed types replace their defaults; other types are hidden. |
+| `unconventional` | section | `hidden` | The section of commits that do not follow Conventional Commits. |
+| `repository` | URL | `repository` of `pubspec.yaml` | The `https://` repository URL that commit and comparison links point to. |
+| `commit_url` | string | `{repository}/commit/{hash}` | The link of each entry; must contain `{hash}`. |
+| `compare_url` | string | `{repository}/compare/{from}...{to}` | The comparison link of a release; must contain `{to}`. |
+
+Details: [Changelog configuration](Changelog-Configuration.md).
+
 ## Lists replace, they do not merge
 
 Every list option replaces its default when you set it. To add a glob to the secret scan, repeat the defaults:
@@ -388,6 +417,9 @@ inspectra:
     secret:
       include: ['**.dart', '**.yaml', '**.yml', '**.json', '**.env', '**.properties', '**.toml']
 ```
+
+The one mapping with user defined keys, `changelog.types`, is the exception: the types you list replace their own
+defaults, and every other default stays.
 
 <seealso>
     <category ref="config">

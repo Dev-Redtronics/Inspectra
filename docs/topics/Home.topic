@@ -9,9 +9,9 @@
         <title>Inspectra</title>
         <description>
             Supply-chain security commands - OSV.dev audit, package inspection, pub.dev trust and typosquat checks -
-            plus format and lint checks, Trivy security scans, public API dumps and a coverage gate for Dart and
-            Flutter packages: run by build_runner and the command line, configured in one YAML file, and built on the
-            Dart toolchain, Trivy, OSV.dev and pub.dev.
+            plus format and lint checks, Trivy security scans, public API dumps, a coverage gate and a changelog
+            generator for Dart and Flutter packages: run by build_runner and the command line, configured in one YAML
+            file, and built on the Dart toolchain, Trivy, Git, OSV.dev and pub.dev.
         </description>
 
         <spotlight>
@@ -56,6 +56,10 @@
             <a href="Coverage-Overview.md"
                summary="Run the tests with coverage, write lcov.info and fail below a threshold.">
                 Coverage gate
+            </a>
+            <a href="Changelog-Overview.md"
+               summary="CHANGELOG.md from Conventional Commits, a suggested version and release notes.">
+                Changelog
             </a>
         </primary>
 

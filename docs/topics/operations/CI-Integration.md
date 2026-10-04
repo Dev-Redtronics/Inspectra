@@ -21,7 +21,7 @@ checks pass? One command each:
 
 ```bash
 dart run build_runner build --only-check   # API dump current; checks enabled on build pass
-dart run inspectra check                   # format, lint, API, every enabled scan, coverage gate
+dart run inspectra check                   # format, lint, API, changelog, every enabled scan, coverage gate
 ```
 
 `--only-check` covers every builder - also those of `json_serializable`, `freezed` and the like - so it doubles as
@@ -150,6 +150,14 @@ The `coverage` regex reads the total from the coverage table, so GitLab shows it
 builders that have `run_on_build` set, the Trivy installation in `before_script` can go: `inspectra check` provisions
 Trivy itself. Set `INSPECTRA_CACHE_DIR` to a directory inside the project, such as `$CI_PROJECT_DIR/.inspectra-cache`,
 and cache it to keep the download between pipelines.
+
+## Changelog and release notes {id="changelog"}
+
+With `changelog.enabled: true`, `inspectra check` also fails when `CHANGELOG.md` does not document the version of
+`pubspec.yaml`; it reads only files, so the default shallow checkout is enough. Jobs that *generate* a changelog read
+the Git history and the release tags and need `fetch-depth: 0`. A release job takes its description from the
+changelog with `dart run inspectra changelog notes "${GITHUB_REF_NAME#v}" --output RELEASE_NOTES.md`. See
+[Releasing](Changelog-Releasing.md#ci) for complete jobs.
 
 ## Splitting the work
 

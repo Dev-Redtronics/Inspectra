@@ -7,7 +7,7 @@
 
 <link-summary>Every command and option of the inspectra command line, with output and exit codes.</link-summary>
 
-<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, api and coverage; options and exit codes.</card-summary>
+<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, api, coverage and changelog; options and exit codes.</card-summary>
 
 ```text
 Supply-chain security scanner for Dart and Flutter projects.
@@ -23,7 +23,8 @@ Available commands:
   add         Audit a package and add its exact version to pubspec.yaml.
   api         Record or check the public API dump.
   audit       Scan pubspec.lock against the OSV.dev vulnerability database.
-  check       Run every enabled package check: format, lint, API, Trivy scans and coverage.
+  changelog   Generate the changelog from Conventional Commits, check it and print release notes.
+  check       Run every enabled package check: format, lint, API, changelog, Trivy scans and coverage.
   coverage    Run the tests with coverage, write lcov.info and check the threshold.
   format      Check that the Dart files are formatted, or format them with --fix.
   hook        Install or remove the Git pre-commit hook.
@@ -293,15 +294,16 @@ Runs every enabled package check in this order and fails if any of them fails:
 1. The [format check](#format), when `format.enabled`.
 2. The [lint check](#lint), when `lint.enabled`.
 3. The [API check](#api-check), when `api.enabled`.
-4. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
-5. The [coverage gate](#coverage), when `coverage.enabled`.
+4. The [changelog check](#changelog-check), when `changelog.enabled`.
+5. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
+6. The [coverage gate](#coverage), when `coverage.enabled`.
 
 All checks run even when an earlier one fails, so one run reports everything; an error such as a missing Trivy stops
 the run with its exit code. With nothing enabled it prints
-`Nothing is enabled. Enable "format", "lint", "api", "trivy" or "coverage" in the Inspectra configuration.` and exits
-with `0`.
+`Nothing is enabled. Enable "format", "lint", "api", "changelog", "trivy" or "coverage" in the Inspectra configuration.`
+and exits with `0`.
 
-`check`, `format`, `lint`, `api` and `coverage` need a `pubspec.yaml` in the package root. They take no shared options;
+`check`, `format`, `lint`, `api`, `coverage` and `changelog check` need a `pubspec.yaml` in the package root. They take no shared options;
 `INSPECTRA_*` environment variables and `INSPECTRA_CONFIG` apply to them as well. See
 [Overriding options](Configuration-Overview.md#overrides).
 
@@ -388,6 +390,75 @@ Runs the tests with coverage, writes `lcov.info`, prints the table and checks th
 | Below the threshold | `1` |
 | A test failed, or the runner could not start | `69` |
 
+## changelog generate {id="changelog-generate"}
+
+```bash
+dart run inspectra changelog generate
+dart run inspectra changelog generate --write
+dart run inspectra changelog generate --from v1.0.0 --to main --release 1.1.0 --date 2026-10-04 -f json
+```
+
+Reads the commits reachable from `--to` and not from the previous release tag, groups them into the sections of Keep
+a Changelog and prints the section of the next release as Markdown. With `--write` it adds the section to
+`changelog.file` instead. The suggested version and why it was chosen go to standard error. See
+[Changelog](Changelog-Overview.md) and [Commit conventions](Changelog-Commit-Conventions.md).
+
+| Option | Description |
+|:--|:--|
+| `--from <revision>` | Leave out the commits reachable from this tag, branch or commit. Default: the release tag with the highest version reachable from `--to`; without one, the whole history. |
+| `--to <revision>` | Include the commits reachable from this revision. Default: `HEAD`. |
+| `--release <version>` | The version to release, with or without a leading `v`. Default: [suggested](Changelog-Commit-Conventions.md#versions) from the commits. |
+| `--date <YYYY-MM-DD>` | The release date. Default: today. |
+| `--write` | Add the section to `changelog.file` below its introduction and `Unreleased` section, creating the file when it is missing. |
+
+The shared options apply; `-f json` prints the [JSON report](Changelog-Releasing.md#ci) and `-o` writes the output to
+a file. Revisions that start with `-` are rejected, so that no value can become an option of `git`.
+
+| Result | Output | Exit code |
+|:--|:--|:--|
+| Changes to release | The Markdown section, or `✔ Version 1.2.0 added to CHANGELOG.md (5 changes).` with `--write` | `0` |
+| Nothing to release | `No changes to release since v1.1.0.`; nothing is written | `0` |
+| The version is already in the changelog | `error: … already has a section for version 1.2.0. …` | `64` |
+| An invalid `--release` or `--date`, a revision Git cannot resolve, or no release tag and no `version` in `pubspec.yaml` | The cause | `64` |
+| Not inside a Git repository | `error: No Git repository found. Run this command inside a Git repository.` | `64` |
+| Git is missing or fails, or the changelog cannot be written | The cause | `69` |
+
+In a shallow clone it warns that commits and tags may be missing.
+
+## changelog check {id="changelog-check"}
+
+```bash
+dart run inspectra changelog check
+```
+
+Validates `changelog.file`: every level two heading is a release or `Unreleased`, versions are semantic versions
+listed once and newest first, dates are `YYYY-MM-DD`, and the version of `pubspec.yaml` has a section with text. Runs
+whether or not `changelog.enabled` is set; with it, [`check`](#check) runs it too. See
+[What changelog check validates](Changelog-Releasing.md#check).
+
+| Result | Output | Exit code |
+|:--|:--|:--|
+| Valid | `CHANGELOG.md is well-formed and documents version 1.2.0.` | `0` |
+| Problems | `CHANGELOG.md has 2 problem(s):`, one line per problem, and how to generate the missing section | `1` |
+| `pubspec.yaml` malformed | The cause | `65` |
+
+## changelog notes {id="changelog-notes"}
+
+```bash
+dart run inspectra changelog notes
+dart run inspectra changelog notes 1.2.0 --output RELEASE_NOTES.md
+```
+
+Prints the text of the section of a release, without its heading: the release notes. The version defaults to the one
+in `pubspec.yaml` and matches `## 1.2.0`, `## [1.2.0]` and `## v1.2.0` alike. With `-f json` the report holds
+`version`, `date` and `notes`.
+
+| Result | Exit code |
+|:--|:--|
+| The section was printed | `0` |
+| No version given and none in `pubspec.yaml` | `64` |
+| The changelog is missing, or has no or an empty section for the version | `65` |
+
 ## Exit codes {id="exit-codes"}
 
 <include from="lib.topic" element-id="exit-codes"/>
@@ -400,12 +471,15 @@ Every exit code other than `0` and `1` comes with a message on standard error na
 | `error: inspect requires <package> and <version> arguments.` | `64` |
 | `error: --set expects key=value, got "foo".` | `64` |
 | `error: --min must be a number between 0 and 100.` | `64` |
+| `error: Git cannot resolve the range: fatal: ambiguous argument 'v9..HEAD': unknown revision …` | `64` |
 | `error: Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Known options here: …` | `65` |
 | `error: Invalid Inspectra configuration at "trivy.secrets": unknown option given on the command line.` | `65` |
 | `error: Invalid Inspectra configuration at "nope.yaml": the configuration file does not exist.` | `65` |
 | `error: …/pubspec.lock not found. Run "dart pub get" first.` | `65` |
 | `error: No pubspec.lock found; run "dart pub get" first.: …` | `65` |
 | `error: No pubspec.yaml found; run Inspectra from a package root.: …` | `65` |
+| `error: The changelog CHANGELOG.md has no section for version 1.2.0.` | `65` |
+| `error: Git is not installed or not on the PATH.` | `69` |
 | `error: Trivy is not installed and downloading is disabled (trivy.download: false). Trivy is required (trivy.mode: required).` | `69` |
 | `error: The configured Trivy executable "…" (trivy.executable) cannot be run.` | `69` |
 | `error: Network access is disabled (offline mode), so api.osv.dev cannot be contacted.` | `69` |

@@ -14,7 +14,7 @@ Inspectra adds Trivy secret, license, vulnerability and filesystem scans, a comm
 gate to Dart and Flutter packages, run by build_runner and configured in pubspec.yaml.
 </web-summary>
 
-%product% is a dev dependency for Dart and Flutter packages that answers five questions on every build and in
+%product% is a dev dependency for Dart and Flutter packages that answers six questions on every build and in
 every CI run:
 
 1. **Is the code formatted and free of analyzer findings?**
@@ -24,9 +24,10 @@ every CI run:
    published vulnerability, a dependency whose license you may not ship.
 4. **Did the public API change, and did somebody mean to change it?**
 5. **Is the code tested well enough to merge?**
+6. **What changed since the last release, and is it documented?**
 
-It answers them with supply-chain commands that work without configuration, and five package checks, each of which you
-enable on its own.
+It answers them with supply-chain commands that work without configuration, six package checks, each of which you
+enable on its own, and a changelog generator.
 
 ## Features
 
@@ -68,6 +69,12 @@ enable on its own.
         <tooltip term="lcov">lcov.info</tooltip> and fails below a line coverage threshold. See
         <a href="Coverage-Overview.md">Coverage</a>.
     </def>
+    <def title="Changelog" id="feature-changelog">
+        Generates the changelog of the next release from Conventional Commits in the Keep a Changelog layout,
+        suggests the next semantic version, checks that <code>CHANGELOG.md</code> documents the version of
+        <code>pubspec.yaml</code>, and prints the release notes of a version. See
+        <a href="Changelog-Overview.md">Changelog</a>.
+    </def>
 </deflist>
 
 ## Two ways to run the same checks
@@ -86,6 +93,7 @@ code; they differ in when they run and what they can see.
 | Vulnerability scan | When `run_on_build: true` | Always available |
 | Filesystem scan | Not available | Always available |
 | Coverage gate | Not available | `coverage` and `check` |
+| Changelog | Not available | `changelog generate`, `changelog check` and `check`, `changelog notes` |
 | Reruns | Only when a file the step read changed | Every time |
 
 <tip>
@@ -109,8 +117,9 @@ These decisions shape how every feature behaves. When something surprises you, i
         <code>coverage</code> for the gate. <code>args</code>, <code>glob</code>, <code>path</code> and
         <code>yaml</code> are already dependencies of those; <code>archive</code>, <code>crypto</code> and
         <code>pub_semver</code> read archives, verify checksums and compare versions. HTTP uses
-        <code>dart:io</code>. Everything else is done by Trivy or by the SDK's own
-        tools: <code>dart format</code>, <code>dart analyze</code>, <code>dart fix</code> and <code>dart test</code>.
+        <code>dart:io</code>. Everything else is done by Trivy, by the <code>git</code> command line or by the SDK's
+        own tools: <code>dart format</code>, <code>dart analyze</code>, <code>dart fix</code> and
+        <code>dart test</code>.
     </def>
     <def title="A typo is an error, not a silent no-op" id="principle-strict">
         Every key of the configuration is validated. An unknown key or a value of the wrong type fails with the full

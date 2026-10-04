@@ -39,6 +39,8 @@ inspectra:
   coverage:
     enabled: true
     min_line_coverage: 90
+  changelog:
+    enabled: true
 ```
 
 - **Format and lint on every build**: an unformatted file or a single lint fails `build_runner build`, with
@@ -57,6 +59,8 @@ inspectra:
   The license and vulnerability scans cost nothing unless `pubspec.lock` changed.
 - **Filesystem scan** in CI, for everything the focused scans do not cover.
 - **Coverage gate** at 90%; the suite currently measures about 90.6%.
+- **Changelog**: `check` fails when `CHANGELOG.md` does not document the version of `pubspec.yaml`. Commits follow
+  Conventional Commits with the feature as scope, so `changelog generate --write` drafts each release.
 
 ## Build sources
 
@@ -150,11 +154,13 @@ SARIF to GitHub code scanning, writes a Markdown report to the job summary, and 
 findings with `scan --fail-on high`. The SARIF and summary steps use `--exit-zero`, so a newly disclosed advisory
 never prevents the upload.
 
-### Release
+### Release {id="release"}
 
 The `Release` workflow runs for `v*` tags. It runs `tool/verify.dart`, checks that the tag matches the `version` of
-`pubspec.yaml`, compiles native executables for Linux x64 and ARM64, macOS ARM64 and x64, and Windows x64, and
-publishes them as zip archives with a `checksums.txt` of their SHA-256 sums in a GitHub release.
+`pubspec.yaml`, runs `changelog check` and takes the release notes from `CHANGELOG.md` with
+`changelog notes "${GITHUB_REF_NAME#v}"` - a tag whose version is not documented stops the release here. It then
+compiles native executables for Linux x64 and ARM64, macOS ARM64 and x64, and Windows x64, and publishes them as zip
+archives with a `checksums.txt` of their SHA-256 sums in a GitHub release whose description is those release notes.
 
 ### Documentation
 

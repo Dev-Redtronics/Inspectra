@@ -57,6 +57,13 @@ versions, the builders run, but CI has to use `dart run %package% api check` ins
 `trivy.version` says otherwise, and the one its CI provisions. Dart support - pub lock files and the GitHub advisories
 for pub - has been in Trivy for many releases.
 
+## Git {id="git"}
+
+`changelog generate` reads the history with the `git` command line, which must be on the `PATH`. It needs Git 2.15 or
+later for `rev-parse --is-shallow-repository`. %product% passes its own settings for signatures, colours and the log
+encoding on every call, so `log.showSignature`, `color.ui` or `i18n.logOutputEncoding` in your Git configuration do
+not change the result. `changelog check` and `changelog notes` read only files and need no Git.
+
 ## Platforms
 
 | Platform | Status |

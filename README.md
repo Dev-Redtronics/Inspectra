@@ -13,6 +13,9 @@ CLI and one YAML configuration:
   only when the network is available**. Version, mode and download are configurable.
 - **Package quality gates** — format and lint checks, a committed public API dump and a coverage gate,
   run from the command line or by `build_runner`.
+- **Changelog** — the next release of `CHANGELOG.md` generated from Conventional Commits in the Keep a
+  Changelog layout, a suggested semantic version, a CI check that every version is documented, and the
+  release notes of a version. Built in, with no extra dependency: it reads the history with `git`.
 
 It is the Dart counterpart of the static analysis, security and API features of
 [Kreate](https://github.com/davils-com/kreate) for Gradle:
@@ -27,6 +30,7 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `kreateApiDump` / `ApiCheck`   | `dart run build_runner build [--only-check]`, `inspectra api dump\|check`     |
 | Kover threshold gate           | `inspectra coverage`                                                         |
 | —                              | `inspectra scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`     |
+| —                              | `inspectra changelog generate\|check\|notes`                                |
 
 ## Commands
 
@@ -40,10 +44,13 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra add <pkg> [version]` | Audits a package and adds **exactly** the audited version (`--dev`, `--dry-run`, `--force`) |
 | `inspectra hook [install\|remove]` | Git pre-commit hook for staged `pubspec.yaml` / `pubspec.lock` changes |
 | `inspectra trivy [secret\|license\|vulnerability\|filesystem…]` | The configured Trivy scans, or a `trivy fs` scan; `--install`, `--where` |
-| `inspectra check` | Every enabled package check: format, lint, API, Trivy scans, coverage |
+| `inspectra check` | Every enabled package check: format, lint, API, changelog, Trivy scans, coverage |
 | `inspectra format [--fix]` / `lint [--fix]` | `dart format` / `dart analyze` gates |
 | `inspectra api dump\|check` | Record or verify the public API dump |
 | `inspectra coverage [--min 80]` | Run the tests with coverage and check the threshold |
+| `inspectra changelog generate [--write]` | The changelog section of the next release from Conventional Commits, with a suggested version (`--from`, `--to`, `--release`, `--date`) |
+| `inspectra changelog check` | Fail when `CHANGELOG.md` is malformed or misses the version of `pubspec.yaml` |
+| `inspectra changelog notes [version]` | Print the section of a release, for example as GitHub release notes |
 
 `-C <path>` before the command works on another package. The supply-chain commands share
 `--format text|json|sarif|markdown`, `--output`, `--fail-on`, `--min-severity`, `--ignore`,
@@ -171,9 +178,9 @@ The supply-chain commands render `--format text|json|sarif|markdown`; progress g
 |---|---|
 | `0` | Passed: no finding reached the threshold, every gate passed |
 | `1` | Findings at or above `--fail-on` (default: any finding; `typosquat`: HIGH; `trust`: CRITICAL; `inspect`/`add`: risk score ≥ `inspect.fail_score`), or a failed gate |
-| `64` | Invalid command line |
-| `65` | Invalid input: lockfile, pubspec, configuration |
-| `69` | Incomplete: OSV.dev, pub.dev, Trivy, `dart` or the coverage tooling unavailable or failing |
+| `64` | Invalid command line, or a Git revision, version or date the changelog cannot use |
+| `65` | Invalid input: lockfile, pubspec, configuration, a changelog without the requested release |
+| `69` | Incomplete: OSV.dev, pub.dev, Trivy, `git`, `dart` or the coverage tooling unavailable or failing |
 | `70` | Internal error (`INSPECTRA_DEBUG=1` prints the stack trace) |
 
 `--exit-zero` turns `1` into `0` and never hides `64`, `65`, `69` or `70`.
@@ -252,6 +259,24 @@ Declarations annotated with `@internal` or `@visibleForTesting`, or any annotati
 `inspectra coverage` runs `dart test --coverage` (or `flutter test --coverage`), merges the hit maps
 with `package:coverage` — honouring `// coverage:ignore-line`, `ignore-start`/`ignore-end` and
 `ignore-file` — writes `coverage/lcov.info` and fails below `min_line_coverage`.
+
+## Changelog
+
+```bash
+dart run inspectra changelog generate            # preview the next release
+dart run inspectra changelog generate --write    # add it to CHANGELOG.md
+dart run inspectra changelog check               # CHANGELOG.md documents the version of pubspec.yaml
+dart run inspectra changelog notes 1.2.0         # the section of 1.2.0, as release notes
+```
+
+Commits since the latest `v*` tag are grouped by their Conventional Commits type into **Added**,
+**Changed**, **Deprecated**, **Removed**, **Fixed** and **Security**, with breaking changes (`feat!:`,
+`BREAKING CHANGE:`) in a section of their own; `docs`, `test`, `ci`, `chore` and the like are hidden.
+The version is suggested by Semantic Versioning (before `1.0.0`, a breaking change raises the minor
+version), a higher version in `pubspec.yaml` wins, and `--release` overrides both. Reverted commits
+are dropped together with their revert, commit texts are sanitised, and `--write` never touches
+existing sections. With `changelog: {enabled: true}`, `inspectra check` runs the changelog check.
+The mapping of types, the tag prefix and the link templates are configurable.
 
 ## Documentation
 

@@ -16,7 +16,7 @@ flowchart LR
     config["pubspec.yaml (inspectra:)<br/>or inspectra.yaml"]
     subgraph entry["Entry points"]
         builders["build_runner builders<br/>inspectra:format, :lint, :api,<br/>:secret_scan, :license_scan,<br/>:vulnerability_scan"]
-        cli["inspectra<br/>scan, audit, inspect, trust, typosquat, add, hook<br/>check, format, lint, api, trivy, coverage"]
+        cli["inspectra<br/>scan, audit, inspect, trust, typosquat, add, hook<br/>check, format, lint, api, trivy, coverage, changelog"]
         library["package:inspectra<br/>your own tooling"]
     end
     subgraph checks["Checks"]
@@ -24,6 +24,7 @@ flowchart LR
         api["API renderer<br/>(analyzer)"]
         scans["Scans<br/>(Trivy)"]
         coverage["Coverage gate<br/>(dart test + package:coverage)"]
+        changelog["Changelog<br/>(git log + Conventional Commits)"]
     end
     config --> builders
     config --> cli
@@ -35,10 +36,12 @@ flowchart LR
     cli --> api
     cli --> scans
     cli --> coverage
+    cli --> changelog
     library --> quality
     library --> api
     library --> scans
     library --> coverage
+    library --> changelog
 ```
 
 ## The configuration
@@ -115,9 +118,11 @@ system:
 
 - It sees every file, not only build sources, so the secret scan covers dotfiles and root-level configuration.
 - It always runs: no caching, which is what a CI job wants.
-- It runs the checks the builders cannot: the filesystem scan and the coverage gate.
+- It runs the checks the builders cannot: the filesystem scan, the coverage gate and the changelog check.
 - It applies fixes: `format --fix` and `lint --fix`.
-- `check` runs everything enabled in a fixed order: format, lint, API, Trivy scans, coverage.
+- `check` runs everything enabled in a fixed order: format, lint, API, changelog, Trivy scans, coverage.
+- `changelog generate` and `changelog notes` write the changelog of the next release from the Git history and
+  print the release notes of a version.
 - It runs the supply-chain commands - `scan` (the default), `audit`, `inspect`, `trust`, `typosquat`, `add` and
   `hook` - which have no builders.
 

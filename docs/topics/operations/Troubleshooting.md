@@ -182,6 +182,47 @@ The IDE may count different files: %product% reports only `report_on` minus `exc
 
 Add their pattern to `coverage.exclude`. Remember that setting `exclude` replaces the defaults.
 
+## Changelog {id="changelog"}
+
+### warning: The repository is a shallow clone {collapsible="true"}
+
+The clone has only the latest commits and no tags, so the previous release cannot be found and older commits are
+missing. Fetch everything with `fetch-depth: 0` in `actions/checkout`, or locally with
+`git fetch --unshallow --tags`. See [Releasing in CI](Changelog-Releasing.md#ci).
+
+### There is no release tag and pubspec.yaml declares no valid version {collapsible="true"}
+
+No tag starting with `changelog.tag_prefix` and a semantic version is reachable from `--to`, so there is nothing to
+count the version from. Set `version:` in `pubspec.yaml` for the first release, or pass `--release 1.0.0`. If your
+tags look like `1.0.0` or `release-1.0.0`, set `tag_prefix` to `''` or `release-`.
+
+### The changelog repeats changes that were already released {collapsible="true"}
+
+The previous release was not found: the tag is missing locally (`git fetch --tags`), it does not start with
+`tag_prefix`, or it is not reachable from `--to`, for example because the release was tagged on another branch. Pass
+the previous release with `--from v1.1.0`.
+
+### No changes to release, although there are commits {collapsible="true"}
+
+Every commit since the last release is hidden: `docs`, `test`, `ci`, `chore` and the other hidden types, types that
+are not mapped, and commits that do not follow Conventional Commits. Give them a section in
+[`changelog.types`](Changelog-Configuration.md#types) or `changelog.unconventional`.
+
+### … already has a section for version 1.2.0 {collapsible="true"}
+
+`--write` never documents a version twice. Edit the existing section by hand, or release another version with
+`--release`.
+
+### Git cannot resolve the range {collapsible="true"}
+
+The revision given with `--from` or `--to` does not exist in the clone. Tags and branches of other remotes have to be
+fetched first; a commit can be given by its hash.
+
+### Version 1.2.0 of pubspec.yaml has no section {collapsible="true"}
+
+`changelog check` requires a section for the version in `pubspec.yaml`. Generate it with
+`dart run %package% changelog generate --write --release 1.2.0`, or write it by hand.
+
 ## Still stuck
 
 Run the failing command with the scan or check isolated - `dart run %package% trivy secret`,

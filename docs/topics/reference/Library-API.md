@@ -7,7 +7,7 @@
 
 <link-summary>Running the checks from your own Dart tooling with package:inspectra.</link-summary>
 
-<card-summary>The configuration, the scans, the API renderer and the coverage gate as Dart functions.</card-summary>
+<card-summary>The configuration, the scans, the API renderer, the coverage gate and the changelog check as Dart functions.</card-summary>
 
 Most packages need %product% only as a dev dependency, its configuration, and the command line. For your own tooling -
 a custom release script, a monorepo runner, a bot - everything the command line does is available as Dart API in
@@ -161,6 +161,27 @@ and passes the result as `executable`. It also calls `runTrivyScans` only for na
 otherwise `inspectra trivy` runs a plain `trivy fs` scan of the package instead. With `network.offline: true`,
 `runTrivyScans` starts Trivy with `--skip-db-update --offline-scan`, so without a cached database the vulnerability
 scan fails with a `TrivyException`.
+
+## Checking the changelog {id="changelog"}
+
+```dart
+final ChangelogCheckResult result = checkChangelog(config, '/path/to/package');
+if (result.failed) {
+  for (final ChangelogProblem problem in result.problems) {
+    print('${result.path}:${problem.line ?? '-'}: ${problem.message}');
+  }
+}
+```
+
+| API | Description |
+|:--|:--|
+| `checkChangelog(config, packageRoot)` | Validates `changelog.file` against the version of `pubspec.yaml`, as `changelog check` does. Throws `InvalidInputException` for a malformed `pubspec.yaml`. |
+| `ChangelogCheckResult` | `path`, `version` (of `pubspec.yaml`, or `null`), `problems`, `failed`, `render()`. |
+| `ChangelogProblem` | `message` and the one-based `line`, `null` for problems of the whole file. |
+| `ChangelogConfig`, `ChangelogSection` | The `changelog:` section, part of `InspectraConfig`; `sectionOf(type)` maps a commit type to its section. |
+
+Generating a changelog reads the Git history; run it through the command line, in-process if you like:
+`InspectraCommandRunner(context).run(['changelog', 'generate', '-f', 'json'])`.
 
 ## The finding model {id="findings"}
 
