@@ -33,6 +33,21 @@ jobs:
           version=$(grep '^version:' pubspec.yaml | awk '{print $2}')
           test "v${version}" = "${GITHUB_REF_NAME}"
 
+      # The release description is the section of the tagged version in
+      # CHANGELOG.md; the release stops here when it is missing or empty.
+      - name: Release notes
+        shell: bash
+        run: |
+          dart run bin/inspectra.dart changelog check
+          dart run bin/inspectra.dart changelog notes "${GITHUB_REF_NAME#v}" --output RELEASE_NOTES.md
+
+      - name: Upload the release notes
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-notes
+          path: RELEASE_NOTES.md
+          retention-days: 7
+
   build:
     name: Build (${{ matrix.target }})
     needs: verify
@@ -110,7 +125,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
+          body_path: dist/RELEASE_NOTES.md
           files: |
             dist/inspectra-*.zip
             dist/checksums.txt
-          generate_release_notes: true
