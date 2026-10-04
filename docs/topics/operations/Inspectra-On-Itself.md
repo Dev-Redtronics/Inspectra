@@ -22,6 +22,11 @@ inspectra:
   lint:
     enabled: true
     run_on_build: true
+  style:
+    enabled: true
+    run_on_build: true
+    preset: strict
+    license_header: tool/license_header.txt
   api:
     enabled: true
   trivy:
@@ -51,8 +56,12 @@ inspectra:
   `.dart_tool/` are excluded, and `avoid_catches_without_on_clauses`, `avoid_void_async`, `comment_references`,
   `literal_only_boolean_expressions`, `no_default_cases`, `public_member_api_docs` and `throw_in_finally` are enabled
   on top of the preset.
-- **API**: `api/inspectra.api` records the public API of `package:inspectra/inspectra.dart` and
-  `package:inspectra/builder.dart`.
+- **Style on every build**: the `strict` preset is the code rules of `AGENTS.md` - documentation on every
+  declaration, no comments, no `else`, exhaustive switches, one type per file named after it - and every file starts
+  with the Apache-2.0 header of `tool/license_header.txt`. These rules used to be a script of the repository; now
+  `tool/verify.dart` runs `inspectra style`.
+- **API**: `api/inspectra.api` records the public API of `package:inspectra/inspectra.dart`,
+  `package:inspectra/builder.dart` and `package:inspectra/style.dart`.
 - **License scan**: `ignored_licenses: [bzip2]` accepts the bzip2 decoder bundled by `package:archive`, whose
   BSD-style license Trivy cannot classify.
 - **All three focused scans on build**: every `build_runner build` runs the secret, license and vulnerability scans.
@@ -126,7 +135,7 @@ published for one of Inspectra's dependencies is noticed without a push. It has 
 | Job | Runs |
 |:--|:--|
 | `verify` | `dart run tool/verify.dart` - format, analyze, style check and tests - on Linux, macOS and Windows with the stable SDK, and on Linux with the minimum SDK %min_dart% |
-| `inspectra` | `dart run build_runner build --only-check`, then `dart run inspectra check` - format, lint, API, every enabled scan and the coverage gate; uploads `lcov.info` and the Trivy reports |
+| `inspectra` | `dart run build_runner build --only-check`, then `dart run inspectra check` - format, lint, style, API, changelog, every enabled scan and the coverage gate; uploads `lcov.info` and the Trivy reports |
 | `compile` | `dart compile exe bin/inspectra.dart` on Linux, macOS and Windows, then runs the executable with `--version` |
 
 Neither `verify` nor `inspectra` uses a third-party action to install Trivy: Inspectra provisions it - checksum

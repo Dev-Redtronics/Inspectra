@@ -97,6 +97,29 @@ every code generator.
 Disable a rule of an included file with the map form, `rule_name: false`; listing rules adds them. See
 [Lint preset](Lint-Preset.md#adjusting-it).
 
+## Style check {id="style"}
+
+### The license header template … does not exist {collapsible="true"}
+
+`style.license_header` names a file relative to the package root. With the builder, the template must also be a
+[build source](Build-Sources.md); files under `tool/` are by default.
+
+### The custom style rules … could not be run {collapsible="true"}
+
+The generated program did not compile or crashed; the compiler output follows the message. Check that every file of
+`style.custom_rules` declares a top level `styleRules` of type `List<StyleRule>`, that `inspectra` is a dependency of
+the package, and that `dart pub get` ran. See [How custom rules run](Style-Custom-Rules.md#how-it-works).
+
+### An ignore comment is reported by no_comments {collapsible="true"}
+
+`no_comments` forbids every comment except documentation, ignore comments included. Leave such files out with
+`style.exclude`, or switch the rule off with `rules: {no_comments: false}`.
+
+### A rule I switched off still runs {collapsible="true"}
+
+`rules` wins over `preset`, but its keys are rule ids: `no_else`, not `no-else` or `NoElse`. An id that does not exist
+is an error rather than ignored, so check the spelling in the message.
+
 ## Trivy
 
 `dart run %package% trivy --where` shows which Trivy the command line would use and where it comes from.

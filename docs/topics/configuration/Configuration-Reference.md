@@ -74,6 +74,17 @@ inspectra:
     run_on_build: false
     fail_on: info                  # error, warning, info or none
 
+  style:
+    enabled: false
+    run_on_build: false
+    fail_on_findings: true
+    preset: recommended            # none, recommended or strict
+    rules: {}                      # rule id: true or false
+    # license_header: …            # unset: no license_header rule
+    custom_rules: []
+    include: ['**.dart']
+    exclude: ['**/.dart_tool/**', '**/build/**', '**.g.dart', '**.freezed.dart', '**.mocks.dart']
+
   api:
     enabled: false
     output: api/<package>.api
@@ -264,6 +275,22 @@ The lint check. See [Lint check](Lint-Check.md).
 
 The rules themselves live in `analysis_options.yaml`; see [Lint preset](Lint-Preset.md).
 
+## style {id="style"}
+
+The style check. See [Style check](Style-Check.md) and [Custom style rules](Style-Custom-Rules.md).
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `enabled` | boolean | `false` | Whether `check` runs the style check. `dart run %package% style` runs it regardless. |
+| `run_on_build` | boolean | `false` | Whether the `inspectra:style` builder checks on `build_runner build`. |
+| `fail_on_findings` | boolean | `true` | Whether a violation fails the build or the command. |
+| `preset` | `none`, `recommended` or `strict` | `recommended` | The built-in rules that run. |
+| `rules` | map of rule id to boolean | `{}` | Built-in and custom rules switched on or off; wins over `preset`. An unknown id is an error. |
+| `license_header` | string | unset | The header template every file must start with; `{year}` matches any year. Unset: the `license_header` rule does not run. |
+| `custom_rules` | list of strings | `[]` | Dart files that declare custom rules in a top level `styleRules`. |
+| `include` | list of globs | `['**.dart']` | The files that are checked. |
+| `exclude` | list of globs | as for `format` | Files never checked. Replaces the default when set. |
+
 ## api {id="api"}
 
 Public API validation. See [Public API validation](API-Overview.md).
@@ -418,8 +445,8 @@ inspectra:
       include: ['**.dart', '**.yaml', '**.yml', '**.json', '**.env', '**.properties', '**.toml']
 ```
 
-The one mapping with user defined keys, `changelog.types`, is the exception: the types you list replace their own
-defaults, and every other default stays.
+The mappings with user defined keys, `changelog.types` and `style.rules`, are the exception: the keys you list
+replace their own defaults, and every other default stays.
 
 <seealso>
     <category ref="config">

@@ -21,7 +21,7 @@ checks pass? One command each:
 
 ```bash
 dart run build_runner build --only-check   # API dump current; checks enabled on build pass
-dart run inspectra check                   # format, lint, API, changelog, every enabled scan, coverage gate
+dart run inspectra check                   # format, lint, style, API, changelog, every enabled scan, coverage gate
 ```
 
 `--only-check` covers every builder - also those of `json_serializable`, `freezed` and the like - so it doubles as
@@ -165,7 +165,7 @@ One job is simplest. In larger projects, split by speed and by what needs Trivy:
 
 | Job | Command | Needs Trivy | Typical time |
 |:--|:--|:--|:--|
-| Format and lint | `dart run %package% format`, `dart run %package% lint` | No | Seconds |
+| Format, lint and style | `dart run %package% format`, `dart run %package% lint`, `dart run %package% style` | No | Seconds |
 | Generated code | `dart run build_runner build --only-check` | Only for scans with `run_on_build` | Build time |
 | API | `dart run %package% api check` | No | Seconds |
 | Security | `dart run %package% trivy` | Yes; the command provisions it | Seconds, plus the database |

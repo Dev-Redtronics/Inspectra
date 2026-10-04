@@ -7,7 +7,7 @@
 
 <link-summary>Every command and option of the inspectra command line, with output and exit codes.</link-summary>
 
-<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, api, coverage and changelog; options and exit codes.</card-summary>
+<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage and changelog; options and exit codes.</card-summary>
 
 ```text
 Supply-chain security scanner for Dart and Flutter projects.
@@ -24,13 +24,14 @@ Available commands:
   api         Record or check the public API dump.
   audit       Scan pubspec.lock against the OSV.dev vulnerability database.
   changelog   Generate the changelog from Conventional Commits, check it and print release notes.
-  check       Run every enabled package check: format, lint, API, changelog, Trivy scans and coverage.
+  check       Run every enabled package check: format, lint, style, API, changelog, Trivy scans and coverage.
   coverage    Run the tests with coverage, write lcov.info and check the threshold.
   format      Check that the Dart files are formatted, or format them with --fix.
   hook        Install or remove the Git pre-commit hook.
   inspect     Statically analyse a pub.dev package before adding it.
   lint        Analyze the package with the rules of analysis_options.yaml.
   scan        Run every project check: OSV.dev audit, supply chain checks and Trivy (default).
+  style       Check the Dart files against the built-in and custom style rules.
   trivy       Run Trivy: the configured scans, or a filesystem scan of the package.
   trust       Query pub.dev and print a trust assessment for a package.
   typosquat   Scan pubspec.yaml for typosquatting and dependency confusion risks.
@@ -293,14 +294,15 @@ Runs every enabled package check in this order and fails if any of them fails:
 
 1. The [format check](#format), when `format.enabled`.
 2. The [lint check](#lint), when `lint.enabled`.
-3. The [API check](#api-check), when `api.enabled`.
-4. The [changelog check](#changelog-check), when `changelog.enabled`.
-5. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
-6. The [coverage gate](#coverage), when `coverage.enabled`.
+3. The [style check](#style), when `style.enabled`.
+4. The [API check](#api-check), when `api.enabled`.
+5. The [changelog check](#changelog-check), when `changelog.enabled`.
+6. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
+7. The [coverage gate](#coverage), when `coverage.enabled`.
 
 All checks run even when an earlier one fails, so one run reports everything; an error such as a missing Trivy stops
 the run with its exit code. With nothing enabled it prints
-`Nothing is enabled. Enable "format", "lint", "api", "changelog", "trivy" or "coverage" in the Inspectra configuration.`
+`Nothing is enabled. Enable "format", "lint", "style", "api", "changelog", "trivy" or "coverage" in the Inspectra configuration.`
 and exits with `0`.
 
 `check`, `format`, `lint`, `api`, `coverage` and `changelog check` need a `pubspec.yaml` in the package root. They take no shared options;
@@ -346,6 +348,25 @@ or not `lint.enabled` is set, and writes `.dart_tool/inspectra/lint.json`.
 | No diagnostic at or above `lint.fail_on` | `0` |
 | Diagnostics at or above `lint.fail_on` | `1` |
 | `dart analyze` or `dart fix --apply` did not complete | `69` |
+
+## style {id="style"}
+
+```bash
+dart run inspectra style
+dart run inspectra style -f sarif -o style.sarif
+```
+
+Checks the files selected by `style.include` and `style.exclude` against the built-in rules of `style.preset` and
+`style.rules` and the [custom rules](Style-Custom-Rules.md) of `style.custom_rules`, and writes
+`.dart_tool/inspectra/style.json`. Runs whether or not `style.enabled` is set. The shared options apply; every
+violation is a finding of the source `style` in JSON, SARIF and Markdown. See [Style check](Style-Check.md).
+
+| Result | Exit code |
+|:--|:--|
+| No violation, or `style.fail_on_findings: false` | `0` |
+| Violations | `1` |
+| A missing header template or custom rule file, custom rules that do not compile or have invalid ids, an unknown rule in `style.rules` | `65` |
+| `dart` cannot be started for the custom rules | `69` |
 
 ## api dump {id="api-dump"}
 
@@ -479,6 +500,8 @@ Every exit code other than `0` and `1` comes with a message on standard error na
 | `error: No pubspec.lock found; run "dart pub get" first.: …` | `65` |
 | `error: No pubspec.yaml found; run Inspectra from a package root.: …` | `65` |
 | `error: The changelog CHANGELOG.md has no section for version 1.2.0.` | `65` |
+| `error: The license header template tool/header.txt (style.license_header) does not exist.` | `65` |
+| `error: The custom style rules of style.custom_rules could not be run (dart run exited with 254). …` | `65` |
 | `error: Git is not installed or not on the PATH.` | `69` |
 | `error: Trivy is not installed and downloading is disabled (trivy.download: false). Trivy is required (trivy.mode: required).` | `69` |
 | `error: The configured Trivy executable "…" (trivy.executable) cannot be run.` | `69` |

@@ -9,7 +9,7 @@
         <title>Inspectra</title>
         <description>
             Supply-chain security commands - OSV.dev audit, package inspection, pub.dev trust and typosquat checks -
-            plus format and lint checks, Trivy security scans, public API dumps, a coverage gate and a changelog
+            plus format, lint and style checks with custom rules, Trivy security scans, public API dumps, a coverage gate and a changelog
             generator for Dart and Flutter packages: run by build_runner and the command line, configured in one YAML
             file, and built on the Dart toolchain, Trivy, Git, OSV.dev and pub.dev.
         </description>
@@ -36,6 +36,10 @@
             <a href="Lint-Check.md"
                summary="dart analyze with your rules, failing from the level you choose.">
                 Lint check
+            </a>
+            <a href="Style-Check.md"
+               summary="License headers, one type per file, documented code - and style rules you write in Dart.">
+                Style check
             </a>
             <a href="Trivy-Secret-Scan.md"
                summary="Catch hard-coded credentials on every build, before they reach a push.">

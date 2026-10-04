@@ -23,7 +23,8 @@ The whole configuration of %product% is one YAML mapping with snake_case keys:
 
 - the supply-chain commands (`scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`) are tuned by `fail_on`,
   `min_severity`, `ignore`, `network`, `inspect`, `trust` and `typosquat`;
-- the package checks are configured in `format`, `lint`, `api`, `trivy` and `coverage`; `trivy` also decides how
+- the package checks are configured in `format`, `lint`, `style`, `api`, `changelog`, `trivy` and `coverage`; `trivy`
+  also decides how
   Trivy is provisioned for every command that runs it.
 
 It can live in either of two places.
@@ -140,7 +141,8 @@ INSPECTRA_TRIVY_ENABLED=true dart run inspectra check
 - A `--set` key that is not an option is an error; an `INSPECTRA_*` variable that matches no option is ignored.
 - The `ignore` list can only be written in the file, and sections cannot be replaced as a whole.
 - `INSPECTRA_TRIVY` sets `trivy.executable`, and wins over the file, for compatibility.
-- `check`, `format`, `lint`, `api` and `coverage` take no `--set`; the environment variables apply to them as well.
+- `check`, `format`, `lint`, `api`, `coverage` and `changelog check` take no `--set`; the environment variables apply to
+  them as well. `style` takes `--set` like the supply-chain commands.
 
 ## Defaults
 

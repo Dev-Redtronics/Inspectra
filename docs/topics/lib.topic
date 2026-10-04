@@ -72,7 +72,7 @@
                 nothing was enabled.</td></tr>
             <tr><td><code>1</code></td><td>Findings at or above the threshold, or a failed check: unformatted files,
                 diagnostics at or above <code>lint.fail_on</code>, findings in a scan that fails on findings, an API
-                that differs from its dump or has none, coverage below the threshold, a changelog that is malformed or does
+                that differs from its dump or has none, style violations, coverage below the threshold, a changelog that is malformed or does
                 not document the version of <code>pubspec.yaml</code>, a package that
                 <code>inspect</code> or <code>add</code> rates at or above <code>inspect.fail_score</code>.</td></tr>
             <tr><td><code>64</code></td><td>Usage error: an unknown command, option or scan name, a missing argument,
@@ -82,7 +82,8 @@
             <tr><td><code>65</code></td><td>Invalid input or configuration: a broken configuration key, a named
                 configuration file that does not exist, a missing or unreadable <code>pubspec.yaml</code>,
                 <code>pubspec.lock</code> or <code>.dart_tool/package_config.json</code>, a changelog without the release
-                that <code>changelog notes</code> asks for.</td></tr>
+                that <code>changelog notes</code> asks for, a missing style header template or custom style rules
+                that cannot run.</td></tr>
             <tr><td><code>69</code></td><td>Unavailable, so the check is incomplete: Trivy missing, crashing, or
                 required but not provisionable; <code>dart format</code>, <code>dart analyze</code>,
                 <code>dart fix</code> or the test run of the coverage gate failing; OSV.dev or pub.dev unreachable;

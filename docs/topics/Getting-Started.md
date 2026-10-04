@@ -185,7 +185,7 @@ Two commands cover every feature:
 
 ```bash
 dart run build_runner build --only-check   # the API dump is up to date; scans enabled on build
-dart run inspectra check                   # format, lint, API, changelog, all enabled scans, coverage
+dart run inspectra check                   # format, lint, style, API, changelog, all enabled scans, coverage
 ```
 
 [CI integration](CI-Integration.md) has complete GitHub Actions and GitLab CI pipelines, including Trivy installation

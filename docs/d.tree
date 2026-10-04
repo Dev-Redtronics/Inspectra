@@ -20,6 +20,8 @@
         <toc-element topic="Format-Check.md"/>
         <toc-element topic="Lint-Check.md"/>
         <toc-element topic="Lint-Preset.md"/>
+        <toc-element topic="Style-Check.md"/>
+        <toc-element topic="Style-Custom-Rules.md"/>
     </toc-element>
 
     <toc-element toc-title="Security &amp; compliance">

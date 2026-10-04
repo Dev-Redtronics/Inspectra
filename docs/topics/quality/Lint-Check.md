@@ -68,7 +68,8 @@ The check runs `dart analyze` in the package root, so everything in `analysis_op
 - `analyzer: language:` - `strict-casts`, `strict-inference`, `strict-raw-types`.
 
 %product% adds no rules of its own on top. The lint check is a gate around your analysis configuration, and the
-preset is one configuration you can choose.
+preset is one configuration you can choose. Rules the analyzer has no lint for - license headers, one type per file,
+your own conventions - belong to the [style check](Style-Check.md).
 
 ## Running it
 

@@ -15,12 +15,12 @@
 flowchart LR
     config["pubspec.yaml (inspectra:)<br/>or inspectra.yaml"]
     subgraph entry["Entry points"]
-        builders["build_runner builders<br/>inspectra:format, :lint, :api,<br/>:secret_scan, :license_scan,<br/>:vulnerability_scan"]
-        cli["inspectra<br/>scan, audit, inspect, trust, typosquat, add, hook<br/>check, format, lint, api, trivy, coverage, changelog"]
+        builders["build_runner builders<br/>inspectra:format, :lint, :style, :api,<br/>:secret_scan, :license_scan,<br/>:vulnerability_scan"]
+        cli["inspectra<br/>scan, audit, inspect, trust, typosquat, add, hook<br/>check, format, lint, style, api, trivy, coverage, changelog"]
         library["package:inspectra<br/>your own tooling"]
     end
     subgraph checks["Checks"]
-        quality["Format and lint<br/>(dart format, dart analyze)"]
+        quality["Format, lint and style<br/>(dart format, dart analyze, style rules)"]
         api["API renderer<br/>(analyzer)"]
         scans["Scans<br/>(Trivy)"]
         coverage["Coverage gate<br/>(dart test + package:coverage)"]
@@ -59,13 +59,14 @@ Adding %product% as a dev dependency applies six builders to your root package. 
 |:--|:--|:--|:--|
 | `inspectra:format` | `$package$` | `inspectra/format.json` | The artifact tree |
 | `inspectra:lint` | `$package$` | `inspectra/lint.json` | The artifact tree |
+| `inspectra:style` | `$package$` | `inspectra/style.json` | The artifact tree |
 | `inspectra:api` | `$package$` | `api/<package>.api` | The package (`build_to: source`) |
 | `inspectra:secret_scan` | `$package$` | `inspectra/trivy/secret.json` | The <tooltip term="artifact tree">artifact tree</tooltip> |
 | `inspectra:license_scan` | `$package$` | `inspectra/trivy/license.json` | The artifact tree |
 | `inspectra:vulnerability_scan` | `$package$` | `inspectra/trivy/vulnerability.json` | The artifact tree |
 
 Every builder uses the synthetic `$package$` input, which exists once per package, so each runs once per build. The
-format and lint builders also declare `.dart` as a required input, which makes `build_runner` run them after every
+format, lint and style builders also declare `.dart` as a required input, which makes `build_runner` run them after every
 builder that generates Dart code - they check the package as the build leaves it.
 
 ### Why reruns are exact
@@ -79,7 +80,8 @@ depend on through the build step:
 - for the secret scan, each file it scans, plus `trivy-secret.yaml` when that is a build source,
 - for the license and vulnerability scans, `pubspec.lock`,
 - for the format and lint checks, every Dart file they check, plus `analysis_options.yaml` when that is a build
-  source.
+  source,
+- for the style check, every file it checks, the license header template and the custom rule files.
 
 A build that changed none of these is a no-op for %product%: no analyzer run, no Trivy process. Files that are not
 build sources are the exception; [Build sources](Build-Sources.md) explains which those are and how to add them.
@@ -120,7 +122,7 @@ system:
 - It always runs: no caching, which is what a CI job wants.
 - It runs the checks the builders cannot: the filesystem scan, the coverage gate and the changelog check.
 - It applies fixes: `format --fix` and `lint --fix`.
-- `check` runs everything enabled in a fixed order: format, lint, API, changelog, Trivy scans, coverage.
+- `check` runs everything enabled in a fixed order: format, lint, style, API, changelog, Trivy scans, coverage.
 - `changelog generate` and `changelog notes` write the changelog of the next release from the Git history and
   print the release notes of a version.
 - It runs the supply-chain commands - `scan` (the default), `audit`, `inspect`, `trust`, `typosquat`, `add` and

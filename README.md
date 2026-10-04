@@ -11,8 +11,9 @@ CLI and one YAML configuration:
 - **Trivy** — secret, license, vulnerability, misconfiguration and filesystem scans. Inspectra finds
   an installed Trivy or **downloads a pinned, checksum-verified release for Linux, macOS and Windows —
   only when the network is available**. Version, mode and download are configurable.
-- **Package quality gates** — format and lint checks, a committed public API dump and a coverage gate,
-  run from the command line or by `build_runner`.
+- **Package quality gates** — format and lint checks, a style check with built-in house rules and
+  **your own rules written in Dart**, a committed public API dump and a coverage gate, run from the
+  command line or by `build_runner`.
 - **Changelog** — the next release of `CHANGELOG.md` generated from Conventional Commits in the Keep a
   Changelog layout, a suggested semantic version, a CI check that every version is documented, and the
   release notes of a version. Built in, with no extra dependency: it reads the history with `git`.
@@ -23,6 +24,7 @@ It is the Dart counterpart of the static analysis, security and API features of
 | Kreate (Gradle)                | Inspectra (Dart)                                                             |
 |:-------------------------------|:-----------------------------------------------------------------------------|
 | Detekt with `kreateRules`      | `inspectra lint`, `inspectra:lint` builder, `package:inspectra/lints/strict.yaml` |
+| Detekt custom rule sets        | `inspectra style`, custom rules with `package:inspectra/style.dart`           |
 | Formatting rules               | `inspectra format [--fix]`, `inspectra:format` builder                        |
 | `kreateTrivySecretScan`        | `inspectra:secret_scan` builder, `inspectra trivy secret`                     |
 | `kreateTrivyLicenseScan`       | `inspectra:license_scan` builder, `inspectra trivy license`                   |
@@ -44,8 +46,9 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra add <pkg> [version]` | Audits a package and adds **exactly** the audited version (`--dev`, `--dry-run`, `--force`) |
 | `inspectra hook [install\|remove]` | Git pre-commit hook for staged `pubspec.yaml` / `pubspec.lock` changes |
 | `inspectra trivy [secret\|license\|vulnerability\|filesystem…]` | The configured Trivy scans, or a `trivy fs` scan; `--install`, `--where` |
-| `inspectra check` | Every enabled package check: format, lint, API, changelog, Trivy scans, coverage |
+| `inspectra check` | Every enabled package check: format, lint, style, API, changelog, Trivy scans, coverage |
 | `inspectra format [--fix]` / `lint [--fix]` | `dart format` / `dart analyze` gates |
+| `inspectra style` | Built-in and custom style rules: license header, one type per file, documentation, no `else`, … (SARIF-capable) |
 | `inspectra api dump\|check` | Record or verify the public API dump |
 | `inspectra coverage [--min 80]` | Run the tests with coverage and check the threshold |
 | `inspectra changelog generate [--write]` | The changelog section of the next release from Conventional Commits, with a suggested version (`--from`, `--to`, `--release`, `--date`) |
@@ -233,6 +236,37 @@ The format check runs `dart format --output=none --set-exit-if-changed` over the
 `--fatal-infos`, `warning` the analyzer's default, `error` only on errors, `none` never.
 `package:inspectra/lints/strict.yaml` is a strict preset with strict casts, inference and raw types
 and about 200 lint rules, which this repository uses itself.
+
+### Style check
+
+Rules no lint covers, on the syntax tree: `license_header` (from a template with `{year}`),
+`one_public_type_per_file`, `one_type_per_file`, `file_named_after_type`, `public_docs`,
+`private_docs`, `no_comments`, `no_else`, `no_default_case`, `no_wildcard_case`.
+`preset: recommended` (the default) takes the header, one public type per file and file naming -
+Flutter's widget-plus-private-`State` files pass; `strict` is the house style Inspectra follows
+itself; `rules: {no_else: true}` switches single rules.
+`// inspectra: ignore-style <rule>` suppresses a line, `ignore-style-file` a file.
+
+Custom rules are Dart classes against the analyzer's syntax tree, written with
+`package:inspectra/style.dart` and listed in `style.custom_rules`:
+
+```dart
+final styleRules = <StyleRule>[const NoPrintRule()];
+
+final class NoPrintRule extends StyleRule {
+  const NoPrintRule();
+  @override
+  String get id => 'no_print';
+  @override
+  String get description => 'Use a logger instead of print.';
+  @override
+  void check(StyleFile file, StyleReporter reporter) =>
+      file.unit.accept(_PrintFinder(reporter));
+}
+```
+
+Inspectra runs them in a generated program with `dart run`, so they work with the compiled
+executable too, and reports them like its own rules. Inspectra holds itself to `strict`.
 
 ### Public API dump
 

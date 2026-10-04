@@ -16,6 +16,7 @@ package you build, never for its dependencies, and need no `build.yaml` of yours
 |:--|:--|:--|:--|:--|
 | `inspectra:format` | `formatBuilder` | `cache` | `inspectra/format.json` | `format.enabled`, `format.run_on_build` |
 | `inspectra:lint` | `lintBuilder` | `cache` | `inspectra/lint.json` | `lint.enabled`, `lint.run_on_build` |
+| `inspectra:style` | `styleBuilder` | `cache` | `inspectra/style.json` | `style.enabled`, `style.run_on_build` |
 | `inspectra:api` | `apiBuilder` | `source` | `api/<package>.api` | `api.enabled` |
 | `inspectra:secret_scan` | `secretScanBuilder` | `cache` | `inspectra/trivy/secret.json` | `trivy.enabled`, `secret.enabled`, `secret.run_on_build` |
 | `inspectra:license_scan` | `licenseScanBuilder` | `cache` | `inspectra/trivy/license.json` | `trivy.enabled`, `license.enabled`, `license.run_on_build` |
@@ -64,6 +65,29 @@ returns immediately and writes nothing.
     </def>
     <def title="Reruns">
         When a Dart file, the configuration, or - as a build source - <code>analysis_options.yaml</code> changes.
+    </def>
+</deflist>
+
+## inspectra:style {id="style"}
+
+<deflist type="medium">
+    <def title="Order">
+        <code>required_inputs: [".dart"]</code>: runs after every builder that outputs Dart files, so that generated
+        files it checks exist.
+    </def>
+    <def title="Reads">
+        The configuration; every file of <code>style.include</code> minus <code>style.exclude</code>; the header
+        template of <code>style.license_header</code>; the files of <code>style.custom_rules</code>.
+    </def>
+    <def title="Runs">
+        The built-in rules in-process; custom rules through <code>dart run</code> of a generated program, see
+        <a href="Style-Custom-Rules.md#how-it-works">How custom rules run</a>.
+    </def>
+    <def title="Writes">
+        <code>.dart_tool/build/generated/&lt;package&gt;/inspectra/style.json</code>.
+    </def>
+    <def title="Reruns">
+        When a checked file, the header template, a custom rule file or the configuration changes.
     </def>
 </deflist>
 

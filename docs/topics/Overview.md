@@ -17,7 +17,7 @@ gate to Dart and Flutter packages, run by build_runner and configured in pubspec
 %product% is a dev dependency for Dart and Flutter packages that answers six questions on every build and in
 every CI run:
 
-1. **Is the code formatted and free of analyzer findings?**
+1. **Is the code formatted, free of analyzer findings, and does it follow the team's rules?**
 2. **Can I trust my dependencies?** A package with a known vulnerability, a typosquat, a name that collides with a
    private package, or a release whose source does something it should not.
 3. **Is anything unsafe in this repository?** A credential pasted into a source file, a dependency with a
@@ -26,7 +26,7 @@ every CI run:
 5. **Is the code tested well enough to merge?**
 6. **What changed since the last release, and is it documented?**
 
-It answers them with supply-chain commands that work without configuration, six package checks, each of which you
+It answers them with supply-chain commands that work without configuration, seven package checks, each of which you
 enable on its own, and a changelog generator.
 
 ## Features
@@ -49,6 +49,13 @@ enable on its own, and a changelog generator.
         <code>dart analyze</code> with the rules of your <code>analysis_options.yaml</code>, failing from a severity
         you choose, with <code>--fix</code> running <code>dart fix --apply</code>. %product% also ships a strict
         <a href="Lint-Preset.md">lint preset</a>. See <a href="Lint-Check.md">Lint check</a>.
+    </def>
+    <def title="Style check" id="feature-style">
+        Rules no lint covers - a license header from a template, one (public) type per file named after it,
+        documentation on public and private declarations, no comments, no <code>else</code>, no
+        <code>default</code> case - in the presets <code>recommended</code> and <code>strict</code>, with inline exceptions and SARIF output. Your own
+        rules are Dart classes against the analyzer's syntax tree. See <a href="Style-Check.md">Style check</a> and
+        <a href="Style-Custom-Rules.md">Custom style rules</a>.
     </def>
     <def title="Security and compliance scans" id="feature-trivy">
         Four scans run by <a href="Trivy-Overview.md">Trivy</a>: a <a href="Trivy-Secret-Scan.md">secret scan</a>
@@ -87,6 +94,7 @@ code; they differ in when they run and what they can see.
 | When | Every build, and continuously with `watch` | When you or CI call it |
 | Format check | When `run_on_build: true` | `format`, `format --fix` |
 | Lint check | When `run_on_build: true` | `lint`, `lint --fix` |
+| Style check | When `run_on_build: true` | `style` |
 | API dump | Written to the package path; `--only-check` verifies it | `api dump` writes it, `api check` verifies it |
 | Secret scan | On by default, over the <tooltip term="build source">build sources</tooltip> | Over the files on disk |
 | License scan | When `run_on_build: true` | Always available |

@@ -106,6 +106,27 @@ for (final issue in lint.failing) {
 | `LintLevel` | `error`, `warning`, `info`, `none`. |
 | `DartToolException` | `dart format`, `dart analyze` or `dart fix` could not run or failed. |
 
+## Running the style check {id="style"}
+
+```dart
+final StyleResult result = await runStyleCheck(config, packageRoot);
+for (final StyleViolation violation in result.violations) {
+  print(violation); // lib/a.dart:3:5: No else: return early instead. [no_else]
+}
+```
+
+| API | Description |
+|:--|:--|
+| `runStyleCheck(config, root)` | What `dart run inspectra style` does, including the JSON report. |
+| `checkStyle(config:, packageRoot:, files:, {read})` | The style check of an explicit list of files; `read` replaces reading from disk. |
+| `StyleResult` | `checked`, `rules`, `violations`, `failed`, `affectedFiles`, `render()`, `toJson()`. |
+| `StyleViolation` | `ruleId`, `path`, `line`, `column`, `message`. |
+| `StyleConfig`, `StylePreset` | The `style:` section; `runs(id)` tells whether a rule runs. |
+
+Custom rules are written against the separate library `package:inspectra/style.dart`: `StyleRule`, `StyleFile`,
+`StyleReporter`, `StyleViolation`, `StyleChecker` and `runStyleHost`. See
+[Custom style rules](Style-Custom-Rules.md#api).
+
 ## Running the Trivy scans
 
 <tabs group="scans">
