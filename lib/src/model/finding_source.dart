@@ -48,7 +48,10 @@ enum FindingSource {
   typosquat('typosquat'),
 
   /// The dependency confusion detector.
-  confusion('confusion');
+  confusion('confusion'),
+
+  /// The style check and its custom rules.
+  style('style');
 
   /// Creates a source with its stable machine readable [id].
   const FindingSource(this.id);

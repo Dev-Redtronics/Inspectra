@@ -115,7 +115,7 @@ trivy:
     skip_dirs: [.dart_tool, build, .git]
 
 # ---------------------------------------------------------------------------
-# Package quality gates: check, format, lint, api, coverage
+# Package quality gates: check, format, lint, style, api, coverage
 # ---------------------------------------------------------------------------
 
 format:
@@ -130,6 +130,21 @@ lint:
   enabled: false
   run_on_build: false
   fail_on: info                      # error, warning, info or none
+
+style:
+  enabled: false
+  run_on_build: false
+  fail_on_findings: true
+  preset: recommended                # none, recommended or strict
+  # Switch single built-in or custom rules on or off; wins over the preset.
+  # Built-in: license_header, public_docs, private_docs, one_type_per_file,
+  # one_public_type_per_file, file_named_after_type, no_comments, no_else,
+  # no_default_case, no_wildcard_case.
+  rules: {}
+  # license_header: tool/license_header.txt   # unset: no license_header rule
+  custom_rules: []                   # files with a top level styleRules list
+  include: ['**.dart']
+  exclude: ['**/.dart_tool/**', '**/build/**', '**.g.dart', '**.freezed.dart', '**.mocks.dart']
 
 api:
   enabled: false

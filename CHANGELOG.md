@@ -18,6 +18,16 @@ All notable changes to this project are documented in this file. The format foll
 - Format check (`dart format`) and lint check (`dart analyze`, `fail_on: error|warning|info|none`)
   with `--fix`, as the first steps of `check`, and as `build_runner` builders.
 - A strict lint preset, `package:inspectra/lints/strict.yaml`.
+- Style check (`inspectra style`, a step of `check`, the `inspectra:style` builder) with rules no lint
+  covers: `license_header` from a template with `{year}`, `public_docs`, `private_docs`,
+  `one_type_per_file`, `one_public_type_per_file`, `file_named_after_type`, `no_comments`,
+  `no_else`, `no_default_case` and `no_wildcard_case`; the presets `none`, `recommended` (fits
+  Flutter's widget-plus-private-`State` files) and `strict`, per-rule switches,
+  `// inspectra: ignore-style` and `ignore-style-file` comments, and text, JSON, Markdown and SARIF
+  output.
+- Custom style rules: `package:inspectra/style.dart` with `StyleRule`, `StyleFile`, `StyleReporter`
+  and `StyleChecker`; the files of `style.custom_rules` are run by a generated program through
+  `dart run`, so they work with the compiled executable as well.
 - Writerside documentation in `docs/`, published to GitHub Pages.
 
 ### Changelog

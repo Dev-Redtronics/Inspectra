@@ -1,7 +1,8 @@
 # Inspectra's own build sources. Besides the defaults they list the files
 # the secret scan should see and the files whose edits should rerun it:
-# trivy-secret.yaml, the analysis and test configuration, and the CI
-# workflows. Consumers of Inspectra are not affected by this section.
+# trivy-secret.yaml, the analysis and test configuration, the CI workflows,
+# and tool/ with the license header template of the style check. Consumers
+# of Inspectra are not affected by this section.
 targets:
   $default:
     sources:
@@ -10,6 +11,7 @@ targets:
       - bin/**
       - test/**
       - example/**
+      - tool/**
       - .github/**
       - pubspec.yaml
       - pubspec.lock
@@ -34,6 +36,13 @@ builders:
     import: "package:inspectra/builder.dart"
     builder_factories: ["lintBuilder"]
     build_extensions: {"$package$": ["inspectra/lint.json"]}
+    auto_apply: root_package
+    build_to: cache
+    required_inputs: [".dart"]
+  style:
+    import: "package:inspectra/builder.dart"
+    builder_factories: ["styleBuilder"]
+    build_extensions: {"$package$": ["inspectra/style.json"]}
     auto_apply: root_package
     build_to: cache
     required_inputs: [".dart"]

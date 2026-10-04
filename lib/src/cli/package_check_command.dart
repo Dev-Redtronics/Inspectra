@@ -34,6 +34,7 @@ import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/quality/format_check.dart';
 import 'package:inspectra/src/quality/lint.dart';
 import 'package:inspectra/src/quality/quality_command.dart';
+import 'package:inspectra/src/style/style_result.dart';
 import 'package:inspectra/src/trivy/finding.dart';
 import 'package:inspectra/src/trivy/trivy.dart';
 import 'package:inspectra/src/trivy/trivy_command.dart';
@@ -115,6 +116,18 @@ abstract class PackageCheckCommand extends Command<int> {
     packageRoot,
     overrides: ConfigOverrides(environment: context.environment),
   );
+
+  /// Runs the style check and prints the outcome.
+  ///
+  /// Returns whether it passed.
+  ///
+  /// Throws an `InvalidInputException` for a missing header template or
+  /// custom rules that cannot run.
+  Future<bool> runStyleGate(InspectraConfig config) async {
+    final StyleResult result = await runStyleCheck(config, packageRoot);
+    out.writeln(result.render());
+    return !result.failed;
+  }
 
   /// Validates the changelog and prints the outcome.
   ///

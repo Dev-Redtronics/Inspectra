@@ -13,6 +13,8 @@ Builder lintBuilder(BuilderOptions options);
 
 Builder secretScanBuilder(BuilderOptions options);
 
+Builder styleBuilder(BuilderOptions options);
+
 Builder vulnerabilityScanBuilder(BuilderOptions options);
 
 library package:inspectra/inspectra.dart
@@ -209,7 +211,7 @@ final class Finding {
 }
 
 enum FindingSource {
-  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion;
+  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion, style;
   final String id;
 }
 
@@ -292,10 +294,11 @@ final class InspectraConfig {
   final Severity minSeverity;
   final NetworkConfig network;
   final String packageName;
+  final StyleConfig style;
   final TrivyConfig trivy;
   final TrustThresholds trust;
   final TyposquatConfig typosquat;
-  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig()});
+  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig()});
   factory InspectraConfig.defaults(String packageName);
   factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides});
   factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides});
@@ -479,6 +482,52 @@ final class SourceLocation {
   String toString();
 }
 
+final class StyleConfig {
+  final List<String> customRules;
+  final bool enabled;
+  final List<String> exclude;
+  final bool failOnFindings;
+  final List<String> include;
+  final String? licenseHeader;
+  final StylePreset preset;
+  final Map<String, bool> rules;
+  final bool runOnBuild;
+  const StyleConfig({bool enabled = false, bool runOnBuild = false, bool failOnFindings = true, StylePreset preset = StylePreset.recommended, Map<String, bool> rules = const <String, bool>{}, String? licenseHeader, List<String> customRules = const <String>[], List<String> include = FormatConfig.defaultInclude, List<String> exclude = FormatConfig.defaultExclude});
+  factory StyleConfig.fromYaml(YamlReader yaml);
+  bool runs(String id);
+}
+
+enum StylePreset {
+  none, recommended, strict;
+  static final Map<String, StylePreset> byId;
+  final String id;
+  final Set<String> ruleIds;
+}
+
+final class StyleResult {
+  final int checked;
+  final bool failOnFindings;
+  final List<String> rules;
+  final List<StyleViolation> violations;
+  StyleResult({required int checked, required List<String> rules, required List<StyleViolation> violations, required bool failOnFindings});
+  int get affectedFiles;
+  bool get failed;
+  String render();
+  Map<String, Object?> toJson();
+}
+
+final class StyleViolation {
+  final int column;
+  final int line;
+  final String message;
+  final String path;
+  final String ruleId;
+  const StyleViolation({required String ruleId, required String path, required int line, required int column, required String message});
+  factory StyleViolation.fromJson(Object? json);
+  Map<String, Object?> toJson();
+  String toString();
+}
+
 final class SystemProcessRunner implements ProcessRunner {
   static const int timedOutExitCode = -1;
   const SystemProcessRunner();
@@ -596,6 +645,8 @@ ChangelogCheckResult checkChangelog(InspectraConfig config, String packageRoot);
 
 Future<FormatResult> checkFormat({required FormatConfig config, required String packageRoot, required List<String> files, bool fix = false});
 
+Future<StyleResult> checkStyle({required StyleConfig config, required String packageRoot, required List<String> files, Future<String?> Function(String)? read});
+
 Map<String, List<int>> collectFiles(String root, List<String> include, List<String> exclude);
 
 const String configEnvironmentVariable = 'INSPECTRA_CONFIG';
@@ -636,6 +687,8 @@ Future<LintResult> runLint({required LintConfig config, required String packageR
 
 Future<LintResult> runLintCheck(InspectraConfig config, String packageRoot, {bool fix = false});
 
+Future<StyleResult> runStyleCheck(InspectraConfig config, String packageRoot);
+
 Future<List<ScanResult>> runTrivyScans(InspectraConfig config, String packageRoot, {Set<TrivyScan>? only, String? executable});
 
 Future<ScanResult> scanFilesystem({required Trivy trivy, required FilesystemScanConfig config, required String packageRoot, String? secretConfig});
@@ -651,3 +704,52 @@ const String trivyExecutableVariable = 'INSPECTRA_TRIVY';
 Severity trivySeverity(Map<String, Object?> json);
 
 String trivyString(Map<String, Object?> json, String key);
+
+library package:inspectra/style.dart
+
+final class StyleChecker {
+  final List<StyleRule> rules;
+  const StyleChecker(List<StyleRule> rules);
+  List<StyleViolation> checkSource(String path, String content);
+}
+
+final class StyleFile {
+  final String content;
+  final LineInfo lineInfo;
+  final String path;
+  final CompilationUnit unit;
+  const StyleFile({required String path, required String content, required CompilationUnit unit, required LineInfo lineInfo});
+  bool get isPart;
+  String get name;
+}
+
+final class StyleReporter {
+  final StyleFile file;
+  final String ruleId;
+  final List<StyleViolation> violations;
+  StyleReporter(String ruleId, StyleFile file);
+  void reportAt(SyntacticEntity entity, String message);
+  void reportLine(int line, String message);
+  void reportOffset(int offset, String message);
+}
+
+abstract class StyleRule {
+  const StyleRule();
+  abstract String get description;
+  abstract String get id;
+  abstract void check(StyleFile file, StyleReporter reporter);
+}
+
+final class StyleViolation {
+  final int column;
+  final int line;
+  final String message;
+  final String path;
+  final String ruleId;
+  const StyleViolation({required String ruleId, required String path, required int line, required int column, required String message});
+  factory StyleViolation.fromJson(Object? json);
+  Map<String, Object?> toJson();
+  String toString();
+}
+
+Future<void> runStyleHost(List<String> arguments, List<StyleRule> rules);

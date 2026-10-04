@@ -22,8 +22,9 @@
 /// wants to run the checks programmatically: the command line itself
 /// (`InspectraCommandRunner`), the configuration model, the normalised
 /// finding model of the supply-chain commands, the Trivy scans, the public
-/// API dump, the format and lint checks, the coverage gate and the
-/// changelog check.
+/// API dump, the format, lint and style checks, the coverage gate and the
+/// changelog check. Custom style rules are written against
+/// `package:inspectra/style.dart`.
 library;
 
 export 'src/api/api_command.dart'
@@ -55,6 +56,9 @@ export 'src/model/source_location.dart';
 export 'src/quality/format_check.dart';
 export 'src/quality/lint.dart';
 export 'src/quality/quality_command.dart';
+export 'src/style/style_check.dart' show checkStyle;
+export 'src/style/style_result.dart';
+export 'src/style/style_violation.dart';
 export 'src/trivy/finding.dart';
 export 'src/trivy/package_graph.dart';
 export 'src/trivy/scans.dart';

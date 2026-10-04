@@ -20,11 +20,13 @@ import 'dart:io';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/quality/format_check.dart';
 import 'package:inspectra/src/quality/lint.dart';
+import 'package:inspectra/src/style/style_check.dart';
+import 'package:inspectra/src/style/style_result.dart';
 import 'package:inspectra/src/util/files.dart';
 import 'package:path/path.dart' as p;
 
-/// Where the command line writes the JSON reports of the format and lint
-/// checks, relative to the package root.
+/// Where the command line writes the JSON reports of the format, lint and
+/// style checks, relative to the package root.
 const qualityReportDirectory = '.dart_tool/inspectra';
 
 /// Checks - or with [fix], applies - the formatting of the package in
@@ -59,6 +61,29 @@ Future<LintResult> runLintCheck(
     fix: fix,
   );
   await _writeReport(packageRoot, 'lint', result.toJson());
+  return result;
+}
+
+/// Runs the style check on the files selected by the `style:` section of
+/// [config] in [packageRoot] and writes
+/// `.dart_tool/inspectra/style.json`.
+///
+/// Returns the result.
+///
+/// Throws an `InvalidInputException` for a missing header template or
+/// custom rules that cannot run, an `InspectraConfigException` for an
+/// unknown rule, and an `UnavailableException` when `dart` cannot start.
+Future<StyleResult> runStyleCheck(
+  InspectraConfig config,
+  String packageRoot,
+) async {
+  final StyleConfig style = config.style;
+  final StyleResult result = await checkStyle(
+    config: style,
+    packageRoot: packageRoot,
+    files: listFiles(packageRoot, style.include, style.exclude),
+  );
+  await _writeReport(packageRoot, 'style', result.toJson());
   return result;
 }
 

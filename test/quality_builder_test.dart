@@ -16,14 +16,17 @@
 
 import 'package:build/build.dart';
 import 'package:build_test/build_test.dart';
+
 import 'package:inspectra/builder.dart';
+import 'package:inspectra/src/builders/quality_builder.dart';
 import 'package:test/test.dart';
 
-/// Tests the format and lint builders.
+/// Tests the format, lint and style builders.
 void main() {
   final builders = <String, Builder>{
     'format': formatBuilder(BuilderOptions.empty),
     'lint': lintBuilder(BuilderOptions.empty),
+    'style': styleBuilder(BuilderOptions.empty),
   };
 
   for (final MapEntry(key: name, value: builder) in builders.entries) {
@@ -66,4 +69,70 @@ void main() {
       });
     });
   }
+
+  group('style on build', () {
+    const builder = QualityBuilder.style(inPackage: _everyAsset);
+    const pubspec =
+        'name: a\ninspectra:\n  style:\n    enabled: true\n'
+        '    run_on_build: true\n    preset: strict\n'
+        '    license_header: tool/header.txt\n';
+
+    test('checks the build sources and writes the report', () async {
+      final TestBuilderResult result = await testBuilder(
+        builder,
+        {
+          'a|pubspec.yaml': pubspec,
+          'a|tool/header.txt': '// Header\n',
+          'a|lib/a.dart': '// Header\n\n/// A.\nclass A {}\n',
+          'a|lib/b.dart': 'class Other {}\n',
+        },
+        rootPackage: 'a',
+        outputs: {
+          'a|inspectra/style.json': decodedMatches(
+            allOf(
+              contains('"failed": true'),
+              contains('file_named_after_type'),
+            ),
+          ),
+        },
+      );
+
+      expect(result.succeeded, isFalse);
+    });
+
+    test('reads a header template that is no build source from disk', () async {
+      final logs = <String>[];
+      final TestBuilderResult result = await testBuilder(
+        builder,
+        {
+          'a|pubspec.yaml': pubspec.replaceAll(
+            'tool/header.txt',
+            'tool/license_header.txt',
+          ),
+          'a|lib/a.dart': '/// A.\nclass A {}\n',
+        },
+        rootPackage: 'a',
+        onLog: (record) => logs.add(record.message),
+        outputs: {'a|inspectra/style.json': anything},
+      );
+
+      expect(result.succeeded, isFalse);
+      expect(logs.join('\n'), contains('is not a build_runner source'));
+      expect(logs.join('\n'), contains('[license_header]'));
+    });
+
+    test('fails without its header template', () async {
+      final TestBuilderResult result = await testBuilder(
+        builder,
+        {'a|pubspec.yaml': pubspec, 'a|lib/a.dart': 'class A {}'},
+        rootPackage: 'a',
+        outputs: {},
+      );
+
+      expect(result.succeeded, isFalse);
+    });
+  });
 }
+
+/// Treats every asset as a file of the package.
+bool _everyAsset(AssetId id) => true;

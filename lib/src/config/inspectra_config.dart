@@ -24,6 +24,7 @@ import 'package:inspectra/src/config/inspect_config.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/config/lint_config.dart';
 import 'package:inspectra/src/config/network_config.dart';
+import 'package:inspectra/src/config/style_config.dart';
 import 'package:inspectra/src/config/trivy_config.dart';
 import 'package:inspectra/src/config/trust_thresholds.dart';
 import 'package:inspectra/src/config/typosquat_config.dart';
@@ -47,11 +48,13 @@ export 'package:inspectra/src/config/lint_level.dart';
 export 'package:inspectra/src/config/network_config.dart';
 export 'package:inspectra/src/config/scan_config.dart';
 export 'package:inspectra/src/config/secret_scan_config.dart';
+export 'package:inspectra/src/config/style_config.dart';
 export 'package:inspectra/src/config/trivy_config.dart';
 export 'package:inspectra/src/config/trivy_mode.dart';
 export 'package:inspectra/src/config/trust_thresholds.dart';
 export 'package:inspectra/src/config/typosquat_config.dart';
 export 'package:inspectra/src/config/vulnerability_scan_config.dart';
+export 'package:inspectra/src/style/style_preset.dart';
 
 /// The name of the dedicated configuration file in the package root.
 const configFileName = 'inspectra.yaml';
@@ -67,7 +70,7 @@ const pubspecSectionKey = 'inspectra';
 /// `INSPECTRA_*` environment variable or on the command line (see
 /// [ConfigOverrides]).
 ///
-/// The quality features (`format`, `lint`, `api`, `trivy` scans,
+/// The quality features (`format`, `lint`, `style`, `api`, `trivy` scans,
 /// `coverage`, `changelog`) are opt-in. The supply-chain commands (`scan`,
 /// `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`) and changelog
 /// generation work without any configuration; the supply-chain commands
@@ -83,6 +86,7 @@ final class InspectraConfig {
     required this.api,
     required this.coverage,
     this.changelog = const ChangelogConfig(),
+    this.style = const StyleConfig(),
     this.failOn,
     this.minSeverity = Severity.unknown,
     this.ignore = const <IgnoreRule>[],
@@ -120,6 +124,7 @@ final class InspectraConfig {
       packageName: packageName,
       format: FormatConfig.fromYaml(root.section('format')),
       lint: LintConfig.fromYaml(root.section('lint')),
+      style: StyleConfig.fromYaml(root.section('style')),
       trivy: TrivyConfig.fromYaml(root.section('trivy')),
       api: ApiConfig.fromYaml(root.section('api'), packageName),
       coverage: CoverageConfig.fromYaml(root.section('coverage')),
@@ -211,6 +216,9 @@ final class InspectraConfig {
 
   /// The static analysis check.
   final LintConfig lint;
+
+  /// The style check.
+  final StyleConfig style;
 
   /// The Trivy scans and how Trivy is provisioned.
   final TrivyConfig trivy;

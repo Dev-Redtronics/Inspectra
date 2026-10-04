@@ -33,6 +33,9 @@ Builder formatBuilder(BuilderOptions options) => const QualityBuilder.format();
 /// Analyzes the package when `lint.run_on_build` is set.
 Builder lintBuilder(BuilderOptions options) => const QualityBuilder.lint();
 
+/// Runs the style check when `style.run_on_build` is set.
+Builder styleBuilder(BuilderOptions options) => const QualityBuilder.style();
+
 /// Writes the public API dump; see `api` in the configuration.
 Builder apiBuilder(BuilderOptions options) => ApiBuilder.fromOptions(options);
 

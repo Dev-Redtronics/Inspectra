@@ -27,6 +27,7 @@ import 'package:inspectra/src/cli/command/hook_command.dart';
 import 'package:inspectra/src/cli/command/inspect_command.dart';
 import 'package:inspectra/src/cli/command/lint_command.dart';
 import 'package:inspectra/src/cli/command/scan_command.dart';
+import 'package:inspectra/src/cli/command/style_command.dart';
 import 'package:inspectra/src/cli/command/trivy_command.dart';
 import 'package:inspectra/src/cli/command/trust_command.dart';
 import 'package:inspectra/src/cli/command/typosquat_command.dart';
@@ -39,11 +40,12 @@ import 'package:inspectra/src/version.dart';
 /// Running `inspectra` without a command, or with options only, runs
 /// `scan`. The supply-chain commands are `scan`, `audit`, `inspect`,
 /// `trust`, `typosquat`, `add`, `hook` and `trivy`; the package checks are
-/// `check`, `format`, `lint`, `api` and `coverage`; `changelog` generates,
-/// checks and prints the changelog. The global `--directory` option
-/// selects the package to work on. Usage errors exit with `64`; unexpected
-/// internal errors are caught, reported and exit with `70` instead of
-/// crashing with a stack trace (set `INSPECTRA_DEBUG=1` to print it).
+/// `check`, `format`, `lint`, `style`, `api` and `coverage`; `changelog`
+/// generates, checks and prints the changelog. The global `--directory`
+/// option selects the package to work on. Usage errors exit with `64`;
+/// unexpected internal errors are caught, reported and exit with `70`
+/// instead of crashing with a stack trace (set `INSPECTRA_DEBUG=1` to print
+/// it).
 final class InspectraCommandRunner extends CommandRunner<int> {
   /// Creates the command line for [context].
   InspectraCommandRunner(this.context)
@@ -74,6 +76,7 @@ final class InspectraCommandRunner extends CommandRunner<int> {
     addCommand(CheckCommand(context));
     addCommand(FormatCommand(context));
     addCommand(LintCommand(context));
+    addCommand(StyleCommand(context));
     addCommand(ApiCommand(context));
     addCommand(CoverageCommand(context));
     addCommand(ChangelogCommand(context));

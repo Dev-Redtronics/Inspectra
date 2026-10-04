@@ -24,8 +24,11 @@ import 'package:inspectra/src/builders/log_build_outcome.dart';
 import 'package:inspectra/src/builders/quality_outcome.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/quality/format_check.dart';
 import 'package:inspectra/src/quality/lint.dart';
+import 'package:inspectra/src/style/style_check.dart';
+import 'package:inspectra/src/style/style_result.dart';
 import 'package:inspectra/src/util/dart_tool.dart';
 import 'package:path/path.dart' as p;
 
@@ -51,6 +54,10 @@ sealed class QualityBuilder implements Builder {
   /// The builder of the lint check.
   const factory QualityBuilder.lint({bool Function(AssetId id) inPackage}) =
       _LintBuilder;
+
+  /// The builder of the style check.
+  const factory QualityBuilder.style({bool Function(AssetId id) inPackage}) =
+      _StyleBuilder;
 
   /// The name of the check, which names its report as well.
   final String _name;
@@ -106,6 +113,8 @@ sealed class QualityBuilder implements Builder {
       log.severe('$error');
     } on DartToolException catch (error) {
       log.severe('$error');
+    } on InspectraException catch (error) {
+      log.severe(error.message);
     }
   }
 
@@ -211,6 +220,72 @@ final class _LintBuilder extends QualityBuilder {
       rendered: result.render(),
       failed: result.failed,
       hasFindings: result.issues.isNotEmpty,
+    );
+  }
+}
+
+/// Runs the style check on build.
+final class _StyleBuilder extends QualityBuilder {
+  /// Creates the style builder; [inPackage] decides which build sources are
+  /// files of the package.
+  const _StyleBuilder({bool Function(AssetId id) inPackage = isInPackage})
+    : super._('style', inPackage);
+
+  /// The style check runs on build when it is enabled and its
+  /// `run_on_build` is set.
+  @override
+  bool _runsOnBuild(InspectraConfig config) =>
+      config.style.enabled && config.style.runOnBuild;
+
+  /// Reads [id] through [buildStep]; a file of the package that is not a
+  /// build source, such as a header template outside the default source
+  /// directories, is read from disk with a warning that editing it does not
+  /// rerun the check.
+  ///
+  /// Returns the text, or `null` when the file does not exist.
+  static Future<String?> _readSource(BuildStep buildStep, AssetId id) async {
+    if (await buildStep.canRead(id)) {
+      return buildStep.readAsString(id);
+    }
+    final file = File(id.path);
+    if (!file.existsSync()) {
+      return null;
+    }
+    log.warning(
+      '${id.path} is not a build_runner source, so editing it does not rerun '
+      'the style check. Add it to the sources in build.yaml.',
+    );
+    return file.readAsString();
+  }
+
+  /// Checks the selected files, reading them and the license header
+  /// template through [buildStep], and tracks the custom rule files, so
+  /// that a change to any of them reruns the check.
+  @override
+  Future<QualityOutcome> _run(
+    BuildStep buildStep,
+    InspectraConfig config,
+    String packageRoot,
+  ) async {
+    final StyleConfig style = config.style;
+    final List<String> files = await _track(
+      buildStep,
+      style.include,
+      style.exclude,
+    );
+    await _track(buildStep, style.customRules, const []);
+    final String package = buildStep.inputId.package;
+    final StyleResult result = await checkStyle(
+      config: style,
+      packageRoot: packageRoot,
+      files: files,
+      read: (path) => _readSource(buildStep, AssetId(package, path)),
+    );
+    return QualityOutcome(
+      report: result.toJson(),
+      rendered: result.render(),
+      failed: result.failed,
+      hasFindings: result.violations.isNotEmpty,
     );
   }
 }

@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-/// One breach of the repository's code rules.
-final class StyleViolation {
-  /// Creates a violation in [path] at one-based [line] described by
-  /// [message].
-  const StyleViolation(this.path, this.line, this.message);
+import 'package:inspectra/style.dart';
 
-  /// The offending file.
-  final String path;
+/// A rule that never reports, with a configurable id.
+final class NamedRule extends StyleRule {
+  /// Creates the rule with the [id].
+  const NamedRule(this.id);
 
-  /// The one-based line number.
-  final int line;
-
-  /// What is wrong and how to fix it.
-  final String message;
-
-  /// Returns `path:line: message`, the format editors can jump to.
+  /// The rule id.
   @override
-  String toString() => '$path:$line: $message';
+  final String id;
+
+  /// What the rule requires.
+  @override
+  String get description => 'Quiet.';
+
+  /// Reports nothing.
+  @override
+  void check(StyleFile file, StyleReporter reporter) {}
 }

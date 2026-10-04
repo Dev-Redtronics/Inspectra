@@ -17,6 +17,7 @@
 import 'dart:convert';
 
 import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/model/finding_source.dart';
 import 'package:inspectra/src/model/severity.dart';
 import 'package:inspectra/src/model/source_location.dart';
 import 'package:inspectra/src/report/command_report.dart';
@@ -84,8 +85,13 @@ final class SarifReportWriter {
       'shortDescription': <String, Object?>{'text': finding.title},
       'helpUri': ?url,
       'properties': <String, Object?>{
-        'tags': <String>['security', finding.source.id],
-        'security-severity': _securitySeverity[finding.severity],
+        'tags': <String>[
+          if (finding.source == FindingSource.style) 'maintainability',
+          if (finding.source != FindingSource.style) 'security',
+          finding.source.id,
+        ],
+        if (finding.source != FindingSource.style)
+          'security-severity': _securitySeverity[finding.severity],
       },
     };
   }
