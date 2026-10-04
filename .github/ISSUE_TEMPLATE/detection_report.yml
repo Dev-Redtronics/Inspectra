@@ -1,0 +1,35 @@
+name: False positive or missed detection
+description: A finding that should not be there, or a risk Inspectra did not report.
+labels: [detection]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options: [False positive, Missed detection]
+    validations:
+      required: true
+
+  - type: input
+    id: target
+    attributes:
+      label: Package and version, or project
+      description: For example `some_package 1.2.3`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: finding
+    attributes:
+      label: Finding
+      description: The JSON output (`-f json`) of the relevant finding, or what you expected to be reported.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: reasoning
+    attributes:
+      label: Why it is wrong
+    validations:
+      required: true

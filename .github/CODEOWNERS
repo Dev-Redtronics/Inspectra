@@ -1,0 +1,9 @@
+# Default owner for everything in the repository.
+*                        @Dev-Redtronics
+
+# Anything that decides what CI trusts, what is downloaded and executed, or what users rely on.
+/.github/workflows/      @Dev-Redtronics
+/lib/src/trivy/          @Dev-Redtronics
+/lib/src/archive/        @Dev-Redtronics
+/lib/inspectra.dart      @Dev-Redtronics
+/SECURITY.md             @Dev-Redtronics

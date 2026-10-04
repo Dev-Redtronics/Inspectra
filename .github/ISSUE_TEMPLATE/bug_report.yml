@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in Inspectra does not behave as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: The command you ran and the smallest pubspec, lockfile or configuration that shows the problem.
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: inspectra-version
+    attributes:
+      label: Inspectra version
+      description: Output of `inspectra --version`.
+    validations:
+      required: true
+
+  - type: input
+    id: dart-version
+    attributes:
+      label: Dart SDK version
+      description: Output of `dart --version`.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Linux, macOS, Windows]
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The output with `--verbose`, and with `INSPECTRA_DEBUG=1` for exit code 70.
+      render: text
