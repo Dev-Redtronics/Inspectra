@@ -6,8 +6,10 @@ description: >-
   automatic provisioning, format and lint gates, public API dumps and
   coverage.
 version: 1.0.0
-repository: https://github.com/Dev-Redtronics/Inspectra
-issue_tracker: https://github.com/Dev-Redtronics/Inspectra/issues
+repository: https://github.com/davils-com/Inspectra
+issue_tracker: https://github.com/davils-com/Inspectra/issues
+documentation: https://davils-com.github.io/Inspectra
+homepage: https://www.davils.com
 topics:
   - security
   - supply-chain
