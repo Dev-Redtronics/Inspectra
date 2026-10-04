@@ -47,7 +47,10 @@ false positives; `add` installs exactly the inspected version and works with Flu
   directories or Inspectra's cache, or downloaded for Linux, macOS and Windows when the download host
   is reachable, with mandatory SHA-256 verification against the release checksums and atomic
   installation. `mode`, `version` (`latest` included), `download`, `use_installed`, mirrors and the
-  database repository are configurable. `inspectra trivy --install` and `--where`.
+  database repository are configurable. `inspectra trivy --install` and `--where`; `--where`
+  never downloads.
+- `--offline` and `network.offline` keep Trivy offline as well: every scan, including the builders,
+  starts it with `--skip-db-update --offline-scan`.
 
 ### Configuration and command line
 

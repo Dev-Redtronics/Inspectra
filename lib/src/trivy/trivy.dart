@@ -28,14 +28,20 @@ export 'package:inspectra/src/trivy/trivy_result.dart';
 /// The environment variable that overrides the configured Trivy executable.
 const trivyExecutableVariable = 'INSPECTRA_TRIVY';
 
+/// The Trivy arguments that keep a scan from opening any connection: no
+/// database update and no remote lookups during the scan.
+const offlineArguments = <String>['--skip-db-update', '--offline-scan'];
+
 /// Runs the Trivy command line.
 class Trivy {
   /// Uses the executable named by `INSPECTRA_TRIVY`, else [executable], else
-  /// `trivy` from the `PATH`, and runs it in [workingDirectory].
+  /// `trivy` from the `PATH`, and runs it in [workingDirectory]; [offline]
+  /// keeps Trivy from opening any connection.
   Trivy({
     String? executable,
     Map<String, String>? environment,
     this.workingDirectory,
+    this.offline = false,
   }) : executable =
            (environment ?? Platform.environment)[trivyExecutableVariable] ??
            executable ??
@@ -51,6 +57,15 @@ class Trivy {
   /// package root makes those files apply to the package being scanned.
   /// `null` keeps the current directory.
   final String? workingDirectory;
+
+  /// Whether every scan runs without network access, as `--offline` and
+  /// `network.offline` promise.
+  ///
+  /// Trivy is then started with `--skip-db-update` and `--offline-scan`, so
+  /// it neither downloads its vulnerability database nor queries remote
+  /// registries. Without a cached database the vulnerability scan fails
+  /// with a [TrivyException] instead of silently going online.
+  final bool offline;
 
   /// Runs `trivy fs` on [target] and returns the parsed JSON report.
   ///
@@ -78,6 +93,7 @@ class Trivy {
         'json',
         '--output',
         reportFile,
+        if (offline) ...offlineArguments,
         ...arguments,
         target,
       ];

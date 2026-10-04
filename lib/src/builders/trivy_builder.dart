@@ -103,6 +103,7 @@ sealed class TrivyBuilder implements Builder {
         Trivy(
           executable: config.trivy.executable,
           workingDirectory: packageRoot,
+          offline: config.network.offline,
         ),
         packageRoot,
       );

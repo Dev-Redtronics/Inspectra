@@ -234,6 +234,12 @@ void main() {
       expect(await run(['trivy', 'vulnerability']), 0);
       expect(out.toString(), isNot(contains('secret')));
       expect(trivy.arguments, containsAllInOrder(['--scanners', 'vuln']));
+      expect(trivy.arguments, isNot(contains('--offline-scan')));
+    });
+
+    test('keeps Trivy offline with --offline', () async {
+      expect(await run(['trivy', 'secret', '--offline']), 1);
+      expect(trivy.arguments, containsAll(offlineArguments));
     });
 
     test('runs the filesystem scan on the package itself', () async {

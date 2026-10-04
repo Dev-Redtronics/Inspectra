@@ -247,6 +247,41 @@ packages:
     expect(harness.out, contains('(configured)'));
   });
 
+  test('trivy stays offline with --offline', () async {
+    final trivy = FakeProcessRunner((executable, arguments) {
+      if (arguments.contains('--version')) {
+        return const ProcessOutcome(
+          exitCode: 0,
+          stdout: 'Version: 0.75.0',
+          stderr: '',
+        );
+      }
+      return const ProcessOutcome(
+        exitCode: 0,
+        stdout: '{"Results":[]}',
+        stderr: '',
+      );
+    });
+    final TestHarness harness = project(
+      const <String, String>{},
+      processRunner: trivy,
+    );
+    expect(
+      await harness.run(<String>[
+        'trivy',
+        '--offline',
+        '--trivy-executable',
+        'trivy',
+      ]),
+      0,
+    );
+    final String scan = trivy.calls.singleWhere(
+      (call) => call.contains(' fs '),
+    );
+    expect(scan, contains('--skip-db-update'));
+    expect(scan, contains('--offline-scan'));
+  });
+
   test('typosquat prints a clean result', () async {
     final TestHarness harness = project(<String, String>{
       'pubspec.yaml': 'name: a\ndependencies:\n  http: ^1.0.0\n',

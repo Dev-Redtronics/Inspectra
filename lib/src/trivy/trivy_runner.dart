@@ -30,14 +30,27 @@ import 'package:inspectra/src/trivy/trivy_report_mapper.dart';
 /// Trivy is always started with `--exit-code 0`, so any other exit code is a
 /// failure of Trivy itself and never mistaken for a finding.
 final class TrivyRunner {
-  /// Creates a runner.
-  const TrivyRunner({required this.config, required this.processRunner});
+  /// Creates a runner; [offline] keeps Trivy from opening any connection.
+  const TrivyRunner({
+    required this.config,
+    required this.processRunner,
+    this.offline = false,
+  });
 
   /// The Trivy configuration.
   final TrivyConfig config;
 
   /// Starts the Trivy process.
   final ProcessRunner processRunner;
+
+  /// Whether the scan runs without network access, as `--offline` and
+  /// `network.offline` promise.
+  ///
+  /// Trivy is then started with `--skip-db-update` and `--offline-scan`.
+  /// Without a cached database Trivy fails, which surfaces as an
+  /// [UnavailableException]: skipped in `auto` mode, exit code `69` in
+  /// `required` mode.
+  final bool offline;
 
   /// Builds the Trivy command line for scanning [directory]. Scanners,
   /// severities and skipped directories come from `trivy.filesystem`.
@@ -64,7 +77,8 @@ final class TrivyRunner {
       ],
       '--timeout',
       '${config.timeout.inSeconds}s',
-      if (config.skipDbUpdate) '--skip-db-update',
+      if (config.skipDbUpdate || offline) '--skip-db-update',
+      if (offline) '--offline-scan',
       if (dbRepository != null) ...<String>['--db-repository', dbRepository],
       if (cacheDirectory != null) ...<String>['--cache-dir', cacheDirectory],
       ...config.extraArgs,

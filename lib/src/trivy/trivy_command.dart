@@ -34,7 +34,8 @@ export 'package:inspectra/src/trivy/trivy_scan.dart';
 ///
 /// Each result is also written as JSON to the configured report directory.
 /// [executable] is the provisioned Trivy binary; without it the configured
-/// executable or `trivy` on the `PATH` is used.
+/// executable or `trivy` on the `PATH` is used. With `network.offline` set,
+/// Trivy runs without network access, see [Trivy.offline].
 Future<List<ScanResult>> runTrivyScans(
   InspectraConfig config,
   String packageRoot, {
@@ -45,6 +46,7 @@ Future<List<ScanResult>> runTrivyScans(
   final trivy = Trivy(
     executable: executable ?? trivyConfig.executable,
     workingDirectory: packageRoot,
+    offline: config.network.offline,
   );
   final Set<TrivyScan> selected =
       only ??

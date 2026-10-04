@@ -252,6 +252,7 @@ final class CommandSession {
     runner: TrivyRunner(
       config: config.trivy,
       processRunner: context.processRunner,
+      offline: config.network.offline,
     ),
   );
 

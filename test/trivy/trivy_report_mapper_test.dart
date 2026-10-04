@@ -110,5 +110,24 @@ void main() {
       '--debug',
       '/project',
     ]);
+    expect(arguments, isNot(contains('--offline-scan')));
+  });
+
+  test('keeps Trivy offline in offline mode', () {
+    /// The arguments of an offline runner, with or without
+    /// `skip_db_update` configured.
+    List<String> offlineArguments({required bool skipDbUpdate}) => TrivyRunner(
+      config: TrivyConfig(skipDbUpdate: skipDbUpdate),
+      processRunner: const SystemProcessRunner(),
+      offline: true,
+    ).arguments('/project');
+
+    for (final skipDbUpdate in <bool>[false, true]) {
+      final List<String> arguments = offlineArguments(
+        skipDbUpdate: skipDbUpdate,
+      );
+      expect(arguments.where((a) => a == '--skip-db-update'), hasLength(1));
+      expect(arguments, contains('--offline-scan'));
+    }
   });
 }

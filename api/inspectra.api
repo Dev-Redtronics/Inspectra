@@ -445,8 +445,9 @@ final class SystemProcessRunner implements ProcessRunner {
 
 class Trivy {
   final String executable;
+  final bool offline;
   final String? workingDirectory;
-  Trivy({String? executable, Map<String, String>? environment, String? workingDirectory});
+  Trivy({String? executable, Map<String, String>? environment, String? workingDirectory, bool offline = false});
   Future<TrivyReport> scanFilesystem({required String target, required List<String> scanners, required List<Severity> severity, List<String> arguments = const []});
 }
 
@@ -566,6 +567,8 @@ Future<String> dumpApi(InspectraConfig config, String packageRoot);
 const String inspectraVersion = '1.0.0';
 
 InspectraConfig loadConfig(String packageRoot, {ConfigOverrides? overrides, String? configFile, bool requirePubspec = true});
+
+const List<String> offlineArguments = <String>['--skip-db-update', '--offline-scan'];
 
 List<LintIssue> parseAnalyzerOutput(String output, String packageRoot);
 
