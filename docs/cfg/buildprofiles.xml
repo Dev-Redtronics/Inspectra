@@ -10,20 +10,20 @@
         <download-title>pub.dev</download-title>
         <header-logo>inspectra.svg</header-logo>
         <enable-browser-edits>true</enable-browser-edits>
-        <browser-edits-url>https://github.com/Dev-Redtronics/Inspectra/edit/main/docs/</browser-edits-url>
+        <browser-edits-url>https://github.com/davils-com/Inspectra/edit/main/docs/</browser-edits-url>
     </variables>
 
     <footer>
-        <social type="github" href="https://github.com/Dev-Redtronics/Inspectra"/>
-        <link href="https://github.com/Dev-Redtronics/Inspectra/issues">Issue tracker</link>
-        <link href="https://github.com/Dev-Redtronics/Inspectra/blob/main/CHANGELOG.md">Changelog</link>
+        <social type="github" href="https://github.com/davils-com/Inspectra"/>
+        <link href="https://github.com/davils-com/Inspectra/issues">Issue tracker</link>
+        <link href="https://github.com/davils-com/Inspectra/blob/main/CHANGELOG.md">Changelog</link>
         <copyright>2026 Redtronics</copyright>
     </footer>
 
     <build-profile instance="d">
         <variables>
             <noindex-content>false</noindex-content>
-            <product-web-url>https://github.com/Dev-Redtronics/Inspectra</product-web-url>
+            <product-web-url>https://github.com/davils-com/Inspectra</product-web-url>
         </variables>
     </build-profile>
 
