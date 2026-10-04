@@ -13,7 +13,7 @@ Security fixes are released for the latest minor version of the current major re
 **Do not open a public issue for a security problem.**
 
 Report it privately through GitHub's
-[private vulnerability reporting](https://github.com/Dev-Redtronics/inspectra/security/advisories/new).
+[private vulnerability reporting](https://github.com/davils-com/Inspectra/security/advisories/new).
 
 Please include:
 
