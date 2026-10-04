@@ -46,12 +46,14 @@ jobs:
         run: dart pub get
 
       # Dogfooding: Inspectra provisions the Trivy its own integration tests run
-      # against (checksum verified), instead of a third-party setup action.
+      # against (checksum verified), instead of a third-party setup action. It
+      # goes on PATH rather than into INSPECTRA_TRIVY, which would override the
+      # fake Trivy executables the unit tests configure.
       - name: Provision Trivy with Inspectra
         if: runner.os != 'Windows'
         run: |
           dart run bin/inspectra.dart trivy --install --format json --output "$RUNNER_TEMP/trivy.json"
-          echo "INSPECTRA_TRIVY=$(jq -r .trivy.executable "$RUNNER_TEMP/trivy.json")" >> "$GITHUB_ENV"
+          dirname "$(jq -r .trivy.executable "$RUNNER_TEMP/trivy.json")" >> "$GITHUB_PATH"
 
       - name: Cache the Trivy database
         if: runner.os != 'Windows'
@@ -88,6 +90,13 @@ jobs:
 
       - name: Resolve dependencies
         run: dart pub get
+
+      # The Trivy builders and the coverage run of the integration tests need
+      # Trivy on PATH; INSPECTRA_TRIVY would override the unit tests' fakes.
+      - name: Provision Trivy with Inspectra
+        run: |
+          dart run bin/inspectra.dart trivy --install --format json --output "$RUNNER_TEMP/trivy.json"
+          dirname "$(jq -r .trivy.executable "$RUNNER_TEMP/trivy.json")" >> "$GITHUB_PATH"
 
       - name: build_runner --only-check
         run: dart run build_runner build --only-check
