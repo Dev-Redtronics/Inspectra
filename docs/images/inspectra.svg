@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Inspectra">
+  <path d="M32 4 8 13v17c0 15 10.2 26.6 24 30 13.8-3.4 24-15 24-30V13L32 4z" fill="#0B7FD1"/>
+  <circle cx="29" cy="29" r="11" fill="none" stroke="#fff" stroke-width="5"/>
+  <path d="m37 37 9 9" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+</svg>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'locked_package.dart';
+import 'lockfile_entry.dart';
 
 /// A parsed `pubspec.lock` file.
 final class Lockfile {
@@ -25,7 +25,7 @@ final class Lockfile {
   final String path;
 
   /// All packages, direct dependencies first and then sorted by name.
-  final List<LockedPackage> packages;
+  final List<LockfileEntry> packages;
 
   /// The registry URLs considered public, which OSV.dev indexes.
   static const Set<String> publicRegistries = <String>{
@@ -51,7 +51,7 @@ final class Lockfile {
   /// OSV.dev.
   ///
   /// Returns the auditable packages.
-  List<LockedPackage> auditable(String mirrorUrl) => packages
+  List<LockfileEntry> auditable(String mirrorUrl) => packages
       .where(
         (pkg) => pkg.isHosted && isPublicRegistry(pkg.hostedUrl, mirrorUrl),
       )
@@ -61,7 +61,7 @@ final class Lockfile {
   /// OSV.dev and are the targets of dependency confusion attacks.
   ///
   /// Returns the privately hosted packages.
-  List<LockedPackage> privatelyHosted(String mirrorUrl) => packages
+  List<LockfileEntry> privatelyHosted(String mirrorUrl) => packages
       .where(
         (pkg) => pkg.isHosted && !isPublicRegistry(pkg.hostedUrl, mirrorUrl),
       )
@@ -71,6 +71,6 @@ final class Lockfile {
   /// advisory database covers.
   ///
   /// Returns the unauditable packages.
-  List<LockedPackage> get unhosted =>
+  List<LockfileEntry> get unhosted =>
       packages.where((pkg) => !pkg.isHosted).toList();
 }

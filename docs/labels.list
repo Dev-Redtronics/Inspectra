@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE labels SYSTEM "https://resources.jetbrains.com/writerside/1.0/labels.dtd">
+<labels>
+    <!-- Primary labels: how a feature is run. Exactly one per topic. -->
+    <primary-label id="builder" name="build_runner builder" short-name="Builder">
+        Runs as part of dart run build_runner build, and can also be run from the command line.
+    </primary-label>
+    <primary-label id="cli" name="Command line" short-name="CLI">
+        Runs from the inspectra command line, dart run inspectra.
+    </primary-label>
+    <primary-label id="config" name="Configuration" short-name="Config">
+        Describes the Inspectra configuration in pubspec.yaml or inspectra.yaml.
+    </primary-label>
+    <primary-label id="library" name="Dart library" short-name="Library">
+        Describes the Dart API of package:inspectra.
+    </primary-label>
+    <primary-label id="guide" name="Guide" short-name="Guide">
+        A walkthrough that spans several features.
+    </primary-label>
+
+    <!-- Secondary labels: what a feature needs and how it behaves by default. -->
+    <secondary-label id="opt-in" name="Opt-in" color="blue">
+        Off until enabled in the configuration.
+    </secondary-label>
+    <secondary-label id="requires-trivy" name="Requires Trivy" color="tangerine">
+        Needs the Trivy executable on the PATH, in trivy.executable or in INSPECTRA_TRIVY.
+    </secondary-label>
+    <secondary-label id="database" name="Downloads data" color="purple">
+        Downloads the Trivy vulnerability database on its first run, and when it is outdated.
+    </secondary-label>
+    <secondary-label id="on-build" name="Runs on build" color="strawberry">
+        Runs on every dart run build_runner build by default.
+    </secondary-label>
+    <secondary-label id="cli-only" name="Command line only" color="purple">
+        Has no build_runner builder; it runs from the inspectra command line only.
+    </secondary-label>
+    <secondary-label id="no-network" name="Offline" color="blue">
+        Needs no network access.
+    </secondary-label>
+    <secondary-label id="since-1-0" name="Since 1.0.0" color="blue">
+        Available since Inspectra 1.0.0.
+    </secondary-label>
+</labels>

@@ -27,9 +27,9 @@ void main() {
     expect(Severity.parse(null), Severity.unknown);
   });
 
-  test('tryParseStrict rejects aliases and typos', () {
-    expect(Severity.tryParseStrict('high'), Severity.high);
-    expect(Severity.tryParseStrict('moderate'), isNull);
+  test('tryParse rejects aliases and typos', () {
+    expect(Severity.tryParse('high'), Severity.high);
+    expect(Severity.tryParse('moderate'), isNull);
   });
 
   test('isAtLeast orders from critical to unknown', () {

@@ -18,9 +18,9 @@ import 'dart:io';
 
 import 'package:yaml/yaml.dart';
 
-import '../config/config_source.dart';
+import '../util/yaml_plain.dart';
 import '../model/inspectra_exception.dart';
-import 'locked_package.dart';
+import 'lockfile_entry.dart';
 import 'lockfile.dart';
 
 /// Parses `pubspec.lock` files.
@@ -54,24 +54,24 @@ final class LockfileParser {
   Lockfile parse(String content, {required String path}) {
     final Object? document;
     try {
-      document = ConfigSource.toPlainValue(loadYaml(content));
+      document = toPlainValue(loadYaml(content));
     } on YamlException catch (error) {
       throw InvalidInputException('$path is not valid YAML: ${error.message}');
     }
     if (document == null) {
-      return Lockfile(path: path, packages: const <LockedPackage>[]);
+      return Lockfile(path: path, packages: const <LockfileEntry>[]);
     }
     if (document is! Map<String, Object?>) {
       throw InvalidInputException('$path is not a pubspec.lock file.');
     }
     final packages = document['packages'];
     if (packages == null) {
-      return Lockfile(path: path, packages: const <LockedPackage>[]);
+      return Lockfile(path: path, packages: const <LockfileEntry>[]);
     }
     if (packages is! Map<String, Object?>) {
       throw InvalidInputException('"packages" in $path must be a mapping.');
     }
-    final parsed = <LockedPackage>[
+    final parsed = <LockfileEntry>[
       for (final entry in packages.entries)
         _parsePackage(entry.key, entry.value, path),
     ]..sort(_compare);
@@ -81,7 +81,7 @@ final class LockfileParser {
   /// Orders direct dependencies first and then by name.
   ///
   /// Returns a negative, zero or positive comparison result.
-  static int _compare(LockedPackage a, LockedPackage b) {
+  static int _compare(LockfileEntry a, LockfileEntry b) {
     if (a.isDirect != b.isDirect) {
       return a.isDirect ? -1 : 1;
     }
@@ -93,7 +93,7 @@ final class LockfileParser {
   /// Returns the locked package.
   ///
   /// Throws an [InvalidInputException] when the entry is not a mapping.
-  LockedPackage _parsePackage(String name, Object? value, String path) {
+  LockfileEntry _parsePackage(String name, Object? value, String path) {
     if (value is! Map<String, Object?>) {
       throw InvalidInputException(
         'The entry of package "$name" in $path must be a mapping.',
@@ -102,7 +102,7 @@ final class LockfileParser {
     final description = value['description'];
     final url = description is Map<String, Object?> ? description['url'] : null;
     final hostedUrl = url is String ? url : null;
-    return LockedPackage(
+    return LockfileEntry(
       name: name,
       version: '${value['version'] ?? ''}',
       source: '${value['source'] ?? 'unknown'}',

@@ -91,9 +91,8 @@ void main() {
       throwsA(isA<UnavailableException>()),
     );
     expect(
-      await transport(
-        offline: true,
-      ).probe(Uri.parse(server.baseUrl), const Duration(seconds: 1)),
+      await transport(offline: true)
+          .probe(Uri.parse(server.baseUrl), const Duration(seconds: 1)),
       isFalse,
     );
     expect(server.requests, isEmpty);

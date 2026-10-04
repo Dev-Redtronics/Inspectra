@@ -21,6 +21,8 @@ import 'package:path/path.dart' as p;
 import '../add/safe_package_adder.dart';
 import '../audit/audit_service.dart';
 import '../config/inspectra_config.dart';
+import '../config/network_config.dart';
+import '../config/trivy_config.dart';
 import '../host/cache_directory.dart';
 import '../inspect/package_inspector.dart';
 import '../io/console.dart';
@@ -55,6 +57,7 @@ final class CommandSession {
     required this.config,
     required this.console,
     required this.cliIgnores,
+    required this.workingDirectory,
   });
 
   /// The outside world.
@@ -69,15 +72,39 @@ final class CommandSession {
   /// The ids given with `--ignore`.
   final List<String> cliIgnores;
 
+  /// The project directory the command works in; relative paths of the
+  /// command line and the configuration are resolved against it.
+  final String workingDirectory;
+
   /// The lazily created HTTP transport.
   HttpTransport? _transport;
 
   /// The HTTP transport, created on first use.
   HttpTransport get transport => _transport ??= HttpTransport(
-    config: config.network,
+    config: _resolvedNetwork,
     environment: context.environment,
     sleep: context.sleep,
   );
+
+  /// The network settings with the CA bundle resolved against the project.
+  NetworkConfig get _resolvedNetwork {
+    final network = config.network;
+    final certificates = network.caCertificates;
+    if (certificates == null) {
+      return network;
+    }
+    return NetworkConfig(
+      offline: network.offline,
+      timeout: network.timeout,
+      maxAttempts: network.maxAttempts,
+      retryBaseDelay: network.retryBaseDelay,
+      concurrency: network.concurrency,
+      proxy: network.proxy,
+      caCertificates: resolve(certificates),
+      osvUrl: network.osvUrl,
+      pubHostedUrl: network.pubHostedUrl,
+    );
+  }
 
   /// Releases network resources.
   void close() => _transport?.close();
@@ -85,11 +112,10 @@ final class CommandSession {
   /// Resolves [path] against the working directory.
   ///
   /// Returns the absolute, normalised path.
-  String resolve(String path) =>
-      p.normalize(p.join(context.workingDirectory, path));
+  String resolve(String path) => p.normalize(p.join(workingDirectory, path));
 
   /// Returns [path] as shown in reports.
-  String display(String path) => displayPath(path, context.workingDirectory);
+  String display(String path) => displayPath(path, workingDirectory);
 
   /// The per-user cache directory, falling back to the temp directory.
   String get cacheRoot {
@@ -187,11 +213,14 @@ final class CommandSession {
     config: config.inspect,
   );
 
+  /// The Trivy settings with their paths resolved against the project.
+  TrivyConfig get trivyConfig => config.trivy.withResolvedPaths(resolve);
+
   /// Creates the Trivy provisioner.
   ///
   /// Returns the provisioner.
   TrivyProvisioner trivyProvisioner() {
-    final trivy = config.trivy;
+    final trivy = trivyConfig;
     final binaryName = context.host.isWindows ? 'trivy.exe' : 'trivy';
     final installRoot = trivy.installDirectory ?? p.join(cacheRoot, 'trivy');
     return TrivyProvisioner(

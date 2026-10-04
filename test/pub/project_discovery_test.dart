@@ -42,18 +42,16 @@ void main() {
   tearDown(() => root.deleteSync(recursive: true));
 
   test('finds only the root lockfile without recursion', () {
-    final found = ProjectDiscovery(
-      root.path,
-    ).find('pubspec.lock', recursive: false);
+    final found = ProjectDiscovery(root.path)
+        .find('pubspec.lock', recursive: false);
     expect(found.map((f) => displayPath(f, root.path)), <String>[
       'pubspec.lock',
     ]);
   });
 
   test('skips build output, tool caches and vendored folders', () {
-    final found = ProjectDiscovery(
-      root.path,
-    ).find('pubspec.lock', recursive: true);
+    final found = ProjectDiscovery(root.path)
+        .find('pubspec.lock', recursive: true);
     expect(found.map((f) => displayPath(f, root.path)), <String>[
       'packages/a/pubspec.lock',
       'packages/b/pubspec.lock',

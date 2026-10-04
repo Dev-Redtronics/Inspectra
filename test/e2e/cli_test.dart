@@ -318,7 +318,7 @@ dependencies:
         'trivy',
         '--offline',
         '--set',
-        'trivy.useInstalled=false',
+        'trivy.use_installed=false',
       ]);
       expect(code, 0);
       expect(harness.out, contains('Trivy skipped'));

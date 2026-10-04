@@ -21,7 +21,7 @@ import 'package:inspectra/inspectra.dart';
 import 'package:inspectra/src/net/http_transport.dart';
 import 'package:inspectra/src/osv/osv_cache.dart';
 import 'package:inspectra/src/osv/osv_client.dart';
-import 'package:inspectra/src/pub/locked_package.dart';
+import 'package:inspectra/src/pub/lockfile_entry.dart';
 import 'package:test/test.dart';
 
 import '../support/fake_http_server.dart';
@@ -51,13 +51,13 @@ void main() {
     cache: OsvCache(cacheDirectory.path),
   );
 
-  const http = LockedPackage(
+  const http = LockfileEntry(
     name: 'http',
     version: '0.13.0',
     source: 'hosted',
     dependency: 'direct main',
   );
-  const path = LockedPackage(
+  const path = LockfileEntry(
     name: 'path',
     version: '1.0.0',
     source: 'hosted',
@@ -110,18 +110,18 @@ void main() {
           'summary': 'Second',
         }),
       );
-    final result = await client().query(<LockedPackage>[http, path]);
+    final result = await client().query(<LockfileEntry>[http, path]);
     expect(result[http]!.map((v) => v.id), <String>['GHSA-A', 'GHSA-B']);
     expect(result[path], isEmpty);
     server.requests.clear();
-    await client().query(<LockedPackage>[http, path]);
+    await client().query(<LockfileEntry>[http, path]);
     expect(server.requests.where((r) => r.startsWith('GET')), isEmpty);
   });
 
   test('reports OSV outages as unavailable', () async {
     server.on('POST', '/v1/querybatch', const FakeResponse(400));
     expect(
-      () => client().query(<LockedPackage>[http]),
+      () => client().query(<LockfileEntry>[http]),
       throwsA(isA<UnavailableException>()),
     );
   });

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE buildprofiles SYSTEM "https://resources.jetbrains.com/writerside/1.0/build-profiles.dtd">
+<buildprofiles xsi:noNamespaceSchemaLocation="https://resources.jetbrains.com/writerside/1.0/build-profiles.xsd"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <variables>
+        <primary-color>#0B7FD1</primary-color>
+        <showDownloadButton>true</showDownloadButton>
+        <download-page>https://pub.dev/packages/inspectra</download-page>
+        <download-title>pub.dev</download-title>
+        <header-logo>inspectra.svg</header-logo>
+        <enable-browser-edits>true</enable-browser-edits>
+        <browser-edits-url>https://github.com/Dev-Redtronics/Inspectra/edit/main/docs/</browser-edits-url>
+    </variables>
+
+    <footer>
+        <social type="github" href="https://github.com/Dev-Redtronics/Inspectra"/>
+        <link href="https://github.com/Dev-Redtronics/Inspectra/issues">Issue tracker</link>
+        <link href="https://github.com/Dev-Redtronics/Inspectra/blob/main/CHANGELOG.md">Changelog</link>
+        <copyright>2026 Redtronics</copyright>
+    </footer>
+
+    <build-profile instance="d">
+        <variables>
+            <noindex-content>false</noindex-content>
+            <product-web-url>https://github.com/Dev-Redtronics/Inspectra</product-web-url>
+        </variables>
+    </build-profile>
+
+</buildprofiles>

@@ -56,7 +56,7 @@ final class HookCommand extends InspectraCommand {
   ) async {
     final manager = GitHookManager(
       processRunner: session.context.processRunner,
-      workingDirectory: session.context.workingDirectory,
+      workingDirectory: session.workingDirectory,
       host: session.context.host,
     );
     final remove =

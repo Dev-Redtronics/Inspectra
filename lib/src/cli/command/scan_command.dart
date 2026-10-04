@@ -63,7 +63,7 @@ final class ScanCommand extends InspectraCommand {
       typosquatDetector: session.typosquatDetector(),
       confusionDetector: session.confusionDetector(),
       trivyService: session.trivyService(),
-      workingDirectory: session.context.workingDirectory,
+      workingDirectory: session.workingDirectory,
     );
     final result = await service.scan(
       root,

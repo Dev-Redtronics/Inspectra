@@ -18,7 +18,7 @@ import 'dart:io';
 
 import 'package:yaml/yaml.dart';
 
-import '../config/config_source.dart';
+import '../util/yaml_plain.dart';
 import '../model/inspectra_exception.dart';
 import 'dependency_kind.dart';
 import 'dependency_spec.dart';
@@ -53,7 +53,7 @@ final class PubspecParser {
   Pubspec parse(String content, {required String path}) {
     final Object? document;
     try {
-      document = ConfigSource.toPlainValue(loadYaml(content));
+      document = toPlainValue(loadYaml(content));
     } on YamlException catch (error) {
       throw InvalidInputException('$path is not valid YAML: ${error.message}');
     }

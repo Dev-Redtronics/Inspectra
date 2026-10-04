@@ -15,7 +15,7 @@
  */
 
 import '../model/finding.dart';
-import '../pub/locked_package.dart';
+import '../pub/lockfile_entry.dart';
 
 /// The raw outcome of auditing one lockfile, before reporting policies are
 /// applied.
@@ -32,11 +32,11 @@ final class AuditScan {
   final String lockfilePath;
 
   /// The packages that were checked against OSV.dev.
-  final List<LockedPackage> scanned;
+  final List<LockfileEntry> scanned;
 
   /// The packages that could not be checked: Git, path and SDK sources and
   /// packages from private registries.
-  final List<LockedPackage> skipped;
+  final List<LockfileEntry> skipped;
 
   /// One finding per vulnerable package and advisory.
   final List<Finding> findings;

@@ -1,3 +1,5 @@
+import 'package:inspectra/src/config/yaml_reader.dart';
+
 /*
  * Copyright 2026 Redtronics
  *
@@ -26,6 +28,39 @@ final class TrustThresholds {
     this.minDownloads = 100,
     this.minPointsRatio = 0.5,
   });
+
+  /// Reads the thresholds from the `trust:` section in [yaml].
+  ///
+  /// Returns the thresholds.
+  ///
+  /// Throws an `InspectraConfigException` for unknown keys or invalid
+  /// values.
+  factory TrustThresholds.fromYaml(YamlReader yaml) {
+    const defaults = TrustThresholds();
+    const large = 1 << 30;
+    final config = TrustThresholds(
+      freshPackageDays:
+          yaml.optionalInt('fresh_package_days', min: 0, max: large) ??
+          defaults.freshPackageDays,
+      youngPackageDays:
+          yaml.optionalInt('young_package_days', min: 0, max: large) ??
+          defaults.youngPackageDays,
+      freshReleaseHours:
+          yaml.optionalInt('fresh_release_hours', min: 0, max: large) ??
+          defaults.freshReleaseHours,
+      minLikes:
+          yaml.optionalInt('min_likes', min: 0, max: large) ??
+          defaults.minLikes,
+      minDownloads:
+          yaml.optionalInt('min_downloads', min: 0, max: large) ??
+          defaults.minDownloads,
+      minPointsRatio:
+          yaml.optionalNumber('min_points_ratio', min: 0, max: 1) ??
+          defaults.minPointsRatio,
+    );
+    yaml.ensureFullyRead();
+    return config;
+  }
 
   /// A package first published less than this many days ago is CRITICAL.
   final int freshPackageDays;

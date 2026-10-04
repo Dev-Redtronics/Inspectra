@@ -1,69 +1,147 @@
-# Inspectra configuration. Copy to inspectra.yaml in your project root.
+# Inspectra configuration with every option and its default.
 #
-# Precedence (highest first): command line flags and --set key=value,
-# INSPECTRA_<SECTION>_<KEY> environment variables (e.g. INSPECTRA_TRIVY_VERSION),
-# this file, built-in defaults. Unknown keys are rejected.
+# Put these keys into inspectra.yaml next to pubspec.yaml, or under an
+# `inspectra:` section of pubspec.yaml. Precedence (highest first):
+# --set key=value and dedicated flags, INSPECTRA_<PATH> environment variables
+# (e.g. INSPECTRA_TRIVY_VERSION, INSPECTRA_NETWORK_PROXY), this file, defaults.
+# Unknown keys are rejected.
 
-# Minimum severity that makes a command exit with 1. Default: the command's own
-# (any finding for audit/scan/trivy, high for typosquat, critical for trust).
-# failOn: high
+# ---------------------------------------------------------------------------
+# Supply-chain commands: scan, audit, inspect, trust, typosquat, add, hook
+# ---------------------------------------------------------------------------
+
+# Minimum severity that makes a command exit with 1. Unset: the command's own
+# default (any finding for scan/audit/trivy, high for typosquat, critical for
+# trust). One of critical, high, medium, low, unknown.
+# fail_on: high
 
 # Findings below this severity are not reported at all.
-# minSeverity: low
+min_severity: unknown
 
 # Documented suppressions. A reason is mandatory; expired rules stop matching.
 ignore:
-  - id: GHSA-xxxx-yyyy-zzzz        # rule id, advisory id or alias (CVE)
-    package: http                  # optional: only for this package
+  - id: GHSA-xxxx-yyyy-zzzz          # rule id, advisory id or alias (CVE)
+    package: http                    # optional: only for this package
     reason: Not reachable, we never parse untrusted multipart bodies.
-    expires: 2027-01-31            # optional: revisit after this day
+    expires: 2027-01-31              # optional: revisit after this day
 
 network:
-  offline: false                   # true: never open a connection
+  offline: false                     # true: never open a connection
   timeout: 30s
-  maxAttempts: 3                   # retries with back-off and Retry-After
-  retryBaseDelay: 1s
+  max_attempts: 3                    # retries with back-off and Retry-After
+  retry_base_delay: 1s
   concurrency: 8
-  # proxy: http://proxy.corp:3128  # default: HTTPS_PROXY / HTTP_PROXY / NO_PROXY
-  # caCertificates: certs/corp-ca.pem
-  osvUrl: https://api.osv.dev
-  # pubHostedUrl: https://pub.dev  # default: PUB_HOSTED_URL or https://pub.dev
+  # proxy: http://proxy.corp:3128    # default: HTTPS_PROXY / HTTP_PROXY / NO_PROXY
+  # ca_certificates: certs/corp-ca.pem
+  osv_url: https://api.osv.dev
+  # pub_hosted_url: https://pub.dev  # default: PUB_HOSTED_URL or https://pub.dev
 
 inspect:
-  failScore: 30                    # risk score at which inspect fails and add blocks
-  maxArchiveBytes: 67108864
-  maxExtractedBytes: 268435456
-  maxEntries: 20000
-  entropyExcludes: [.g.dart, .freezed.dart, .mocks.dart, .pb.dart, .gr.dart]
-  excludeDirectories: [test, integration_test, example, benchmark, doc, docs, tool, extension]
-  trustedHosts: []                 # extra hosts the URL rule never reports
+  fail_score: 30                     # risk score at which inspect fails and add blocks
+  max_archive_bytes: 67108864
+  max_extracted_bytes: 268435456
+  max_entries: 20000
+  entropy_excludes: [.g.dart, .freezed.dart, .mocks.dart, .pb.dart, .gr.dart]
+  exclude_directories: [test, integration_test, example, benchmark, doc, docs, tool, extension]
+  trusted_hosts: []                  # extra hosts the URL rule never reports
 
 trust:
-  freshPackageDays: 7
-  youngPackageDays: 30
-  freshReleaseHours: 24
-  minLikes: 5
-  minDownloads: 100
-  minPointsRatio: 0.5
+  fresh_package_days: 7
+  young_package_days: 30
+  fresh_release_hours: 24
+  min_likes: 5
+  min_downloads: 100
+  min_points_ratio: 0.5
 
 typosquat:
-  allow: []                        # names never reported
-  popular: []                      # extra names to protect, e.g. internal packages
+  allow: []                          # names never reported
+  popular: []                        # extra names to protect, e.g. internal packages
+
+# ---------------------------------------------------------------------------
+# Trivy: provisioning (all commands) and the configured scans (check, trivy,
+# build_runner)
+# ---------------------------------------------------------------------------
 
 trivy:
-  mode: auto                       # auto | required | disabled
-  version: 0.75.0                  # exact version or "latest"
-  useInstalled: true               # use an installed Trivy even if its version differs
-  download: true                   # download Trivy when missing (only when online)
-  # executable: /opt/trivy/trivy   # use exactly this binary
-  # installDirectory: .tools/trivy # default: <user cache>/inspectra/trivy
-  downloadBaseUrl: https://github.com/aquasecurity/trivy/releases/download
-  latestReleaseUrl: https://github.com/aquasecurity/trivy/releases/latest
-  scanners: [vuln, secret, misconfig]   # add license to scan licenses
-  severities: [UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL]
-  skipDbUpdate: false
-  # dbRepository: registry.corp/aquasecurity/trivy-db
-  # cacheDirectory: .cache/trivy
+  enabled: false                     # run the configured scans in check/trivy/builders
+  mode: auto                         # auto | required | disabled
+  version: 0.75.0                    # exact version or "latest"
+  use_installed: true                # use an installed Trivy even if its version differs
+  download: true                     # download Trivy when missing (only when online)
+  # executable: /opt/trivy/trivy     # use exactly this binary; INSPECTRA_TRIVY overrides it
+  # install_directory: .tools/trivy  # default: <user cache>/inspectra/trivy
+  download_base_url: https://github.com/aquasecurity/trivy/releases/download
+  latest_release_url: https://github.com/aquasecurity/trivy/releases/latest
+  report_directory: .dart_tool/inspectra/trivy
+  skip_db_update: false
+  # db_repository: registry.corp/aquasecurity/trivy-db
+  # cache_directory: .cache/trivy
   timeout: 10m
-  connectivityTimeout: 3s
-  extraArgs: []
+  connectivity_timeout: 3s
+  extra_args: []
+
+  secret:
+    enabled: true
+    run_on_build: true
+    fail_on_findings: true
+    severity: [CRITICAL, HIGH, MEDIUM, LOW]
+    # config: trivy-secret.yaml      # used when present; required when set explicitly
+    include: ['**.dart', '**.yaml', '**.yml', '**.json', '**.env', '**.properties']
+    exclude: ['**/.dart_tool/**', '**/build/**', '**/.git/**']
+
+  license:
+    enabled: true
+    run_on_build: false
+    fail_on_findings: true
+    severity: [CRITICAL, HIGH, UNKNOWN]
+    ignored_licenses: []             # SPDX ids, e.g. [LGPL-3.0]
+    ignored_packages: []
+    include_dev_dependencies: false
+
+  vulnerability:
+    enabled: true
+    run_on_build: false
+    fail_on_findings: true
+    severity: [CRITICAL, HIGH, MEDIUM, LOW]
+    include_dev_dependencies: true
+    ignore_unfixed: false
+    ignored_vulnerabilities: []      # CVE or GHSA ids
+
+  filesystem:                        # also used by `inspectra scan`
+    enabled: false
+    fail_on_findings: true
+    severity: [CRITICAL, HIGH, MEDIUM, LOW]
+    scanners: [vuln, secret, misconfig]   # also: license
+    skip_dirs: [.dart_tool, build, .git]
+
+# ---------------------------------------------------------------------------
+# Package quality gates: check, format, lint, api, coverage
+# ---------------------------------------------------------------------------
+
+format:
+  enabled: false
+  run_on_build: false
+  fail_on_findings: true
+  include: ['**.dart']
+  exclude: ['**/.dart_tool/**', '**/build/**', '**.g.dart', '**.freezed.dart', '**.mocks.dart']
+  # page_width: 80                   # unset: formatter.page_width of analysis_options.yaml
+
+lint:
+  enabled: false
+  run_on_build: false
+  fail_on: info                      # error, warning, info or none
+
+api:
+  enabled: false
+  # output: api/<package>.api        # the committed dump
+  ignored_libraries: []
+  non_public_annotations: [internal, visibleForTesting]
+
+coverage:
+  enabled: false
+  runner: dart                       # or flutter
+  output_directory: coverage
+  report_on: [lib]
+  exclude: ['**.g.dart', '**.freezed.dart', '**.mocks.dart']
+  # min_line_coverage: 80            # unset: report only
+  test_arguments: []

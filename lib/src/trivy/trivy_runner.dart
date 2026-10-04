@@ -37,10 +37,12 @@ final class TrivyRunner {
   /// Starts the Trivy process.
   final ProcessRunner processRunner;
 
-  /// Builds the Trivy command line for scanning [directory].
+  /// Builds the Trivy command line for scanning [directory]. Scanners,
+  /// severities and skipped directories come from `trivy.filesystem`.
   ///
   /// Returns the arguments.
   List<String> arguments(String directory) {
+    final filesystem = config.filesystem;
     final dbRepository = config.dbRepository;
     final cacheDirectory = config.cacheDirectory;
     return <String>[
@@ -51,13 +53,13 @@ final class TrivyRunner {
       '--exit-code',
       '0',
       '--scanners',
-      config.scanners.join(','),
+      filesystem.scanners.join(','),
       '--severity',
-      config.severities.join(','),
-      '--skip-dirs',
-      '**/.dart_tool',
-      '--skip-dirs',
-      '**/build',
+      filesystem.severity.map((severity) => severity.trivyName).join(','),
+      for (final directory in filesystem.skipDirectories) ...<String>[
+        '--skip-dirs',
+        directory,
+      ],
       '--timeout',
       '${config.timeout.inSeconds}s',
       if (config.skipDbUpdate) '--skip-db-update',

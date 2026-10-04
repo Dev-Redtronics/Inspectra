@@ -156,13 +156,13 @@ final class SharedOptions {
       overrides[key] = assignment.substring(separator + 1).trim();
     }
     final mapping = <String, String>{
-      'fail-on': 'failOn',
-      'min-severity': 'minSeverity',
+      'fail-on': 'fail_on',
+      'min-severity': 'min_severity',
       'trivy-mode': 'trivy.mode',
       'trivy-version': 'trivy.version',
       'trivy-executable': 'trivy.executable',
       'trivy-download': 'trivy.download',
-      'trivy-use-installed': 'trivy.useInstalled',
+      'trivy-use-installed': 'trivy.use_installed',
     };
     for (final entry in mapping.entries) {
       final defined = results.options.contains(entry.key);

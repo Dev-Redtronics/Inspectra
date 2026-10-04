@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/yaml_reader.dart';
+
 /// Network settings shared by every remote call Inspectra makes.
 ///
 /// Corresponds to the `network:` section of `inspectra.yaml`. Every value can
 /// also be set through `INSPECTRA_NETWORK_<KEY>` environment variables or the
-/// `--set network.<key>=<value>` flag.
+/// `--set network.<key>=<value>` flag, for example `INSPECTRA_NETWORK_PROXY`.
 final class NetworkConfig {
   /// Creates network settings; every parameter has a production default.
   const NetworkConfig({
@@ -32,6 +34,46 @@ final class NetworkConfig {
     this.osvUrl = defaultOsvUrl,
     this.pubHostedUrl = defaultPubHostedUrl,
   });
+
+  /// Reads the settings from the `network:` section in [yaml]. The pub
+  /// repository defaults to the `PUB_HOSTED_URL` environment variable.
+  ///
+  /// Returns the settings.
+  ///
+  /// Throws an `InspectraConfigException` for unknown keys or invalid
+  /// values.
+  factory NetworkConfig.fromYaml(YamlReader yaml) {
+    const defaults = NetworkConfig();
+    final pubHosted =
+        yaml.overrides.environment['PUB_HOSTED_URL'] ?? defaults.pubHostedUrl;
+    final config = NetworkConfig(
+      offline: yaml.boolean('offline', fallback: defaults.offline),
+      timeout: yaml.duration('timeout', fallback: defaults.timeout),
+      maxAttempts:
+          yaml.optionalInt('max_attempts', min: 1, max: 100) ??
+          defaults.maxAttempts,
+      retryBaseDelay: yaml.duration(
+        'retry_base_delay',
+        fallback: defaults.retryBaseDelay,
+      ),
+      concurrency:
+          yaml.optionalInt('concurrency', min: 1, max: 256) ??
+          defaults.concurrency,
+      proxy: yaml.optionalString('proxy'),
+      caCertificates: yaml.optionalString('ca_certificates'),
+      osvUrl: _trimSlash(yaml.string('osv_url', fallback: defaults.osvUrl)),
+      pubHostedUrl: _trimSlash(
+        yaml.string('pub_hosted_url', fallback: pubHosted),
+      ),
+    );
+    yaml.ensureFullyRead();
+    return config;
+  }
+
+  /// Removes trailing slashes from [url] so paths can be appended safely.
+  ///
+  /// Returns the trimmed URL.
+  static String _trimSlash(String url) => url.replaceAll(RegExp(r'/+$'), '');
 
   /// The public OSV.dev API endpoint.
   static const String defaultOsvUrl = 'https://api.osv.dev';

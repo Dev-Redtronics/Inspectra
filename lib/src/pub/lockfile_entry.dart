@@ -15,13 +15,13 @@
  */
 
 /// One package entry of a `pubspec.lock` file.
-final class LockedPackage {
+final class LockfileEntry {
   /// Creates a locked package.
   ///
   /// [source] is the pub source (`hosted`, `git`, `path` or `sdk`),
   /// [dependency] the lockfile's dependency kind such as `direct main` or
   /// `transitive`, and [hostedUrl] the registry of hosted packages.
-  const LockedPackage({
+  const LockfileEntry({
     required this.name,
     required this.version,
     required this.source,

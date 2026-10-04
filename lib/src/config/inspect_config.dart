@@ -1,3 +1,5 @@
+import 'package:inspectra/src/config/yaml_reader.dart';
+
 /*
  * Copyright 2026 Redtronics
  *
@@ -27,6 +29,45 @@ final class InspectConfig {
     this.excludeDirectories = defaultExcludeDirectories,
     this.trustedHosts = const <String>[],
   });
+
+  /// Reads the settings from the `inspect:` section in [yaml].
+  ///
+  /// Returns the settings.
+  ///
+  /// Throws an `InspectraConfigException` for unknown keys or invalid
+  /// values.
+  factory InspectConfig.fromYaml(YamlReader yaml) {
+    const defaults = InspectConfig();
+    const maxBytes = 1 << 40;
+    final config = InspectConfig(
+      failScore:
+          yaml.optionalInt('fail_score', min: 1, max: 100) ??
+          defaults.failScore,
+      maxArchiveBytes:
+          yaml.optionalInt('max_archive_bytes', min: 1, max: maxBytes) ??
+          defaults.maxArchiveBytes,
+      maxExtractedBytes:
+          yaml.optionalInt('max_extracted_bytes', min: 1, max: maxBytes) ??
+          defaults.maxExtractedBytes,
+      maxEntries:
+          yaml.optionalInt('max_entries', min: 1, max: 10000000) ??
+          defaults.maxEntries,
+      entropyExcludes: yaml.strings(
+        'entropy_excludes',
+        fallback: defaults.entropyExcludes,
+      ),
+      excludeDirectories: yaml.strings(
+        'exclude_directories',
+        fallback: defaults.excludeDirectories,
+      ),
+      trustedHosts: yaml.strings(
+        'trusted_hosts',
+        fallback: defaults.trustedHosts,
+      ),
+    );
+    yaml.ensureFullyRead();
+    return config;
+  }
 
   /// Top level package directories whose code never runs in a dependent
   /// project and is therefore not scanned for code patterns: tests,

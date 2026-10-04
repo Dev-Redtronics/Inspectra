@@ -99,11 +99,20 @@ enum Severity {
   /// command line flag or configuration file into a precise error message.
   ///
   /// Returns the parsed severity, or `null` when [value] is not recognised.
-  static Severity? tryParseStrict(String value) {
+  static Severity? tryParse(String value) {
     final normalised = value.trim().toUpperCase();
     final matches = Severity.values.where((s) => s.label == normalised);
     return matches.firstOrNull;
   }
+
+  /// The accepted spellings, for error messages, for example
+  /// `CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN`.
+  static String get expected =>
+      values.map((severity) => severity.label).join(', ');
+
+  /// The spelling Trivy uses on its command line and in its reports, which
+  /// is the canonical [label].
+  String get trivyName => label;
 
   /// Maps a CVSS base [score] between `0.0` and `10.0` to a severity.
   ///

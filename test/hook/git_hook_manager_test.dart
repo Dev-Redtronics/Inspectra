@@ -57,9 +57,8 @@ void main() {
   });
 
   test('honours the path reported by git, e.g. core.hooksPath', () async {
-    final (path, _) = await manager(
-      gitPath: 'custom/hooks/pre-commit',
-    ).install();
+    final (path, _) = await manager(gitPath: 'custom/hooks/pre-commit')
+        .install();
     expect(
       path,
       endsWith(

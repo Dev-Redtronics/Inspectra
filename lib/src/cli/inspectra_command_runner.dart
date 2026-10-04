@@ -18,6 +18,11 @@ import 'package:args/command_runner.dart';
 
 import '../version.dart';
 import 'command/add_command.dart';
+import 'command/api_command.dart';
+import 'command/check_command.dart';
+import 'command/coverage_command.dart';
+import 'command/format_command.dart';
+import 'command/lint_command.dart';
 import 'command/audit_command.dart';
 import 'command/hook_command.dart';
 import 'command/inspect_command.dart';
@@ -31,7 +36,10 @@ import 'exit_code.dart';
 /// The `inspectra` command line.
 ///
 /// Running `inspectra` without a command, or with options only, runs
-/// `scan`. Usage errors exit with `64`; unexpected internal errors are
+/// `scan`. The supply-chain commands are `scan`, `audit`, `inspect`,
+/// `trust`, `typosquat`, `add`, `hook` and `trivy`; the package checks are
+/// `check`, `format`, `lint`, `api` and `coverage`. The global
+/// `--directory` option selects the package to work on. Usage errors exit with `64`; unexpected internal errors are
 /// caught, reported and exit with `70` instead of crashing with a stack
 /// trace (set `INSPECTRA_DEBUG=1` to print it).
 final class InspectraCommandRunner extends CommandRunner<int> {
@@ -41,11 +49,18 @@ final class InspectraCommandRunner extends CommandRunner<int> {
         'inspectra',
         'Supply-chain security scanner for Dart and Flutter projects.',
       ) {
-    argParser.addFlag(
-      'version',
-      negatable: false,
-      help: 'Print the Inspectra version and exit.',
-    );
+    argParser
+      ..addFlag(
+        'version',
+        negatable: false,
+        help: 'Print the Inspectra version and exit.',
+      )
+      ..addOption(
+        'directory',
+        abbr: 'C',
+        help: 'The package or project to work on.',
+        valueHelp: 'path',
+      );
     addCommand(ScanCommand(context));
     addCommand(AuditCommand(context));
     addCommand(InspectCommand(context));
@@ -54,13 +69,24 @@ final class InspectraCommandRunner extends CommandRunner<int> {
     addCommand(AddCommand(context));
     addCommand(HookCommand(context));
     addCommand(TrivyCommand(context));
+    addCommand(CheckCommand(context));
+    addCommand(FormatCommand(context));
+    addCommand(LintCommand(context));
+    addCommand(ApiCommand(context));
+    addCommand(CoverageCommand(context));
   }
 
   /// The outside world.
   final CommandContext context;
 
   /// The arguments that are handled by the runner itself.
-  static const Set<String> _runnerFlags = <String>{'-h', '--help', '--version'};
+  static const Set<String> _runnerFlags = <String>{
+    '-h',
+    '--help',
+    '--version',
+    '-C',
+    '--directory',
+  };
 
   /// Prints the usage to standard output of the [context].
   @override
@@ -96,16 +122,36 @@ final class InspectraCommandRunner extends CommandRunner<int> {
 
   /// Inserts the default `scan` command when no command is given.
   ///
+  /// Global options (`--directory`) may precede it; `--help` and
+  /// `--version` are left to the runner.
+  ///
   /// Returns the arguments to parse.
   List<String> _withDefaultCommand(List<String> args) {
-    if (args.isEmpty) {
-      return <String>['scan'];
+    var index = 0;
+    while (index < args.length) {
+      final argument = args[index];
+      if (_runnerFlags.contains(argument) && !_takesValue(argument)) {
+        return args;
+      }
+      if (_takesValue(argument)) {
+        index += 2;
+        continue;
+      }
+      if (argument.startsWith('--directory=')) {
+        index++;
+        continue;
+      }
+      if (!argument.startsWith('-')) {
+        return args;
+      }
+      return <String>[...args.take(index), 'scan', ...args.skip(index)];
     }
-    final first = args.first;
-    final isOption = first.startsWith('-') && !_runnerFlags.contains(first);
-    if (isOption) {
-      return <String>['scan', ...args];
-    }
-    return args;
+    return <String>[...args, 'scan'];
   }
+
+  /// Whether the global [argument] consumes the next argument as its value.
+  ///
+  /// Returns `true` for `-C` and `--directory`.
+  bool _takesValue(String argument) =>
+      argument == '-C' || argument == '--directory';
 }

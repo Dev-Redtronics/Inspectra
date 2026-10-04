@@ -48,9 +48,9 @@ void main() {
   ]);
 
   test('JSON documents carry schema and tool metadata', () {
-    final json =
-        jsonDecode(const JsonReportWriter().render(report, DateTime.utc(2026)))
-            as Map<String, Object?>;
+    final json = jsonDecode(
+      const JsonReportWriter().render(report, DateTime.utc(2026)),
+    ) as Map<String, Object?>;
     expect(json['schemaVersion'], 1);
     expect((json['tool'] as Map)['version'], inspectraVersion);
     expect(json['command'], 'sample');

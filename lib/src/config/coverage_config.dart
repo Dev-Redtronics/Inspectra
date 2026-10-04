@@ -1,0 +1,67 @@
+import 'package:inspectra/src/config/coverage_runner.dart';
+import 'package:inspectra/src/config/generated_files.dart';
+import 'package:inspectra/src/config/yaml_reader.dart';
+
+/// The test coverage gate, the `coverage:` section.
+final class CoverageConfig {
+  /// Creates the coverage settings.
+  const CoverageConfig({
+    required this.enabled,
+    required this.runner,
+    required this.outputDirectory,
+    required this.reportOn,
+    required this.exclude,
+    required this.minLineCoverage,
+    required this.testArguments,
+  });
+
+  /// Reads the settings from the `coverage:` section in [yaml].
+  ///
+  /// Returns the settings.
+  ///
+  /// Throws an `InspectraConfigException` for unknown keys or invalid
+  /// values.
+  factory CoverageConfig.fromYaml(YamlReader yaml) {
+    final config = CoverageConfig(
+      enabled: yaml.boolean('enabled', fallback: false),
+      runner: yaml.choice('runner', <String, CoverageRunner>{
+        for (final runner in CoverageRunner.values) runner.name: runner,
+      }, fallback: CoverageRunner.dart),
+      outputDirectory: yaml.string('output_directory', fallback: 'coverage'),
+      reportOn: yaml.strings('report_on', fallback: const ['lib']),
+      exclude: yaml.strings('exclude', fallback: generatedFiles),
+      minLineCoverage: yaml.optionalNumber(
+        'min_line_coverage',
+        min: 0,
+        max: 100,
+      ),
+      testArguments: yaml.strings('test_arguments', fallback: const []),
+    );
+    yaml.ensureFullyRead();
+    return config;
+  }
+
+  /// Whether the coverage command does anything. Off by default.
+  final bool enabled;
+
+  /// Which test runner collects the coverage.
+  final CoverageRunner runner;
+
+  /// Where the raw coverage and `lcov.info` are written.
+  final String outputDirectory;
+
+  /// Directories whose files are reported, relative to the package root.
+  final List<String> reportOn;
+
+  /// Globs of files left out of the report, relative to the package root.
+  final List<String> exclude;
+
+  /// The line coverage in percent below which the gate fails.
+  ///
+  /// Unset by default on purpose: measure first, then set a threshold.
+  final double? minLineCoverage;
+
+  /// Extra arguments passed to the test runner, for example
+  /// `['--exclude-tags', 'slow']`.
+  final List<String> testArguments;
+}

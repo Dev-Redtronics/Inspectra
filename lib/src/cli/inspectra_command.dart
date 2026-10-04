@@ -18,8 +18,11 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:path/path.dart' as p;
 
 import '../config/config_loader.dart';
+import '../config/config_overrides.dart';
+import '../config/inspectra_config_exception.dart';
 import '../io/ansi_styler.dart';
 import '../io/console.dart';
 import '../io/verbosity.dart';
@@ -63,6 +66,17 @@ abstract class InspectraCommand extends Command<int> {
   /// Returns the report to render.
   Future<CommandReport> execute(CommandSession session, ArgResults results);
 
+  /// The directory the command works in: the global `--directory` option
+  /// resolved against the working directory of the [context].
+  String get projectDirectory {
+    final global = globalResults?['directory'] as String?;
+    final base = context.workingDirectory;
+    if (global == null) {
+      return base;
+    }
+    return p.normalize(p.join(base, global));
+  }
+
   /// Prints the usage to standard output of the [context].
   @override
   void printUsage() => context.out.writeln(usage);
@@ -79,19 +93,22 @@ abstract class InspectraCommand extends Command<int> {
     final console = _console(results);
     CommandSession? session;
     try {
-      final config =
-          ConfigLoader(
-            environment: context.environment,
-            workingDirectory: context.workingDirectory,
-          ).load(
-            overrides: SharedOptions.overrides(results),
-            explicitPath: results['config'] as String?,
-          );
+      final directory = projectDirectory;
+      final config = loadConfig(
+        directory,
+        overrides: ConfigOverrides(
+          cli: SharedOptions.overrides(results),
+          environment: context.environment,
+        ),
+        configFile: results['config'] as String?,
+        requirePubspec: false,
+      );
       final active = CommandSession(
         context: context,
         config: config,
         console: console,
         cliIgnores: results['ignore'] as List<String>,
+        workingDirectory: directory,
       );
       session = active;
       _warnAboutExpiredRules(active);
@@ -100,6 +117,9 @@ abstract class InspectraCommand extends Command<int> {
     } on InspectraException catch (error) {
       console.error(error.message);
       return ExitCode.of(error).code;
+    } on InspectraConfigException catch (error) {
+      console.error('$error');
+      return ExitCode.dataError.code;
     } finally {
       session?.close();
     }

@@ -5,6 +5,8 @@ on:
     branches: ['**']
   pull_request:
     branches: [main, develop]
+  schedule:
+    - cron: '0 4 * * 1'
   workflow_dispatch:
 
 concurrency:
@@ -17,7 +19,7 @@ jobs:
   verify:
     name: Verify (${{ matrix.os }}, Dart ${{ matrix.sdk }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     permissions:
       contents: read
@@ -29,7 +31,7 @@ jobs:
         sdk: [stable]
         include:
           - os: ubuntu-latest
-            sdk: '3.11.0'
+            sdk: '3.13.4'
 
     steps:
       - name: Checkout
@@ -43,13 +45,29 @@ jobs:
       - name: Resolve dependencies
         run: dart pub get
 
+      # Dogfooding: Inspectra provisions the Trivy its own integration tests run
+      # against (checksum verified), instead of a third-party setup action.
+      - name: Provision Trivy with Inspectra
+        if: runner.os != 'Windows'
+        run: |
+          dart run bin/inspectra.dart trivy --install --format json --output "$RUNNER_TEMP/trivy.json"
+          echo "INSPECTRA_TRIVY=$(jq -r .trivy.executable "$RUNNER_TEMP/trivy.json")" >> "$GITHUB_ENV"
+
+      - name: Cache the Trivy database
+        if: runner.os != 'Windows'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: trivy-db-${{ runner.os }}-
+
       - name: Verify (format, analyze, style, test)
         run: dart run tool/verify.dart
 
-  coverage:
-    name: Coverage gate
+  inspectra:
+    name: Inspectra on itself
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     permissions:
       contents: read
@@ -61,13 +79,23 @@ jobs:
       - name: Set up Dart
         uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
 
+      - name: Cache the Trivy database
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: trivy-db-${{ runner.os }}-
+
       - name: Resolve dependencies
         run: dart pub get
 
-      - name: Test with coverage (at least 90 %)
-        run: |
-          dart pub global activate coverage
-          dart pub global run coverage:test_with_coverage --fail-under 90
+      - name: build_runner --only-check
+        run: dart run build_runner build --only-check
+
+      # Format, lint, API dump, every Trivy scan (Trivy is provisioned by
+      # Inspectra itself) and the 90 % coverage gate of pubspec.yaml.
+      - name: inspectra check
+        run: dart run inspectra check
 
       - name: Upload the coverage report
         if: always()
@@ -75,7 +103,17 @@ jobs:
         with:
           name: coverage
           path: coverage/lcov.info
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload the Trivy reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: trivy-reports
+          path: .dart_tool/inspectra/trivy/
           retention-days: 30
+          if-no-files-found: warn
 
   compile:
     name: Native executable (${{ matrix.os }})

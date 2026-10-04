@@ -1,3 +1,5 @@
+import 'package:inspectra/src/config/yaml_reader.dart';
+
 /*
  * Copyright 2026 Redtronics
  *
@@ -22,6 +24,21 @@ final class TyposquatConfig {
     this.allow = const <String>[],
     this.popular = const <String>[],
   });
+
+  /// Reads the settings from the `typosquat:` section in [yaml].
+  ///
+  /// Returns the settings.
+  ///
+  /// Throws an `InspectraConfigException` for unknown keys or invalid
+  /// values.
+  factory TyposquatConfig.fromYaml(YamlReader yaml) {
+    final config = TyposquatConfig(
+      allow: yaml.strings('allow', fallback: const <String>[]),
+      popular: yaml.strings('popular', fallback: const <String>[]),
+    );
+    yaml.ensureFullyRead();
+    return config;
+  }
 
   /// Package names that are never reported, for example internal packages
   /// whose names happen to resemble popular ones.

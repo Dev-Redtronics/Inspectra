@@ -77,16 +77,14 @@ final class RegexRules {
     ),
     RegexRule(
       id: 'SHELL_INJECTION',
-      pattern:
-          r'''Process\.(?:run|runSync|start)\s*\(\s*['"](?:bash|sh|cmd|powershell|pwsh|zsh|/bin/)''',
+      pattern: r'''Process\.(?:run|runSync|start)\s*\(\s*['"](?:bash|sh|cmd|powershell|pwsh|zsh|/bin/)''',
       severity: Severity.critical,
       description: 'Direct shell invocation',
       extensions: _dart,
     ),
     RegexRule(
       id: 'SENSITIVE_FILE_ACCESS',
-      pattern:
-          r'''File\s*\(\s*['"](?:/etc/|/proc/|~?/\.ssh/|~?/\.aws/|~?/\.config/gcloud|C:\\Windows\\|[^'"]*AppData\\)''',
+      pattern: r'''File\s*\(\s*['"](?:/etc/|/proc/|~?/\.ssh/|~?/\.aws/|~?/\.config/gcloud|C:\\Windows\\|[^'"]*AppData\\)''',
       severity: Severity.high,
       description: 'Access to sensitive system path',
       extensions: _dart,
@@ -100,8 +98,7 @@ final class RegexRules {
     ),
     RegexRule(
       id: 'BASE64_EVAL',
-      pattern:
-          r'base64(?:Decode|\.decode)[\s\S]{0,200}?(?:Isolate\.spawn|loadLibrary|Process\.)',
+      pattern: r'base64(?:Decode|\.decode)[\s\S]{0,200}?(?:Isolate\.spawn|loadLibrary|Process\.)',
       severity: Severity.high,
       description: 'Base64-decoded data used with dynamic code execution',
       extensions: _dart,
@@ -139,8 +136,7 @@ final class RegexRules {
     ),
     RegexRule(
       id: 'DATA_EXFIL',
-      pattern:
-          r'(?:SharedPreferences|FlutterSecureStorage|Keychain)[\s\S]{0,200}?https?://',
+      pattern: r'(?:SharedPreferences|FlutterSecureStorage|Keychain)[\s\S]{0,200}?https?://',
       severity: Severity.high,
       description: 'Stored data potentially sent to external URL',
       extensions: _dart,
@@ -162,8 +158,7 @@ final class RegexRules {
     ),
     RegexRule(
       id: 'DOWNLOAD_AND_EXECUTE',
-      pattern:
-          r'(?:curl|wget|iwr|Invoke-WebRequest)\b[^|\n]*\|\s*(?:sh|bash|zsh|iex|Invoke-Expression)\b',
+      pattern: r'(?:curl|wget|iwr|Invoke-WebRequest)\b[^|\n]*\|\s*(?:sh|bash|zsh|iex|Invoke-Expression)\b',
       severity: Severity.critical,
       description: 'Downloads a script and pipes it into a shell',
       extensions: _scripts,

@@ -6,46 +6,54 @@ All notable changes to this project are documented in this file. The format foll
 
 ## 1.0.0
 
-First release. Inspectra covers every command of `dart_audit` 0.3.1 with the same names, flags,
-rule ids, JSON fields and the exit codes `0`, `1` and `64`, and adds:
+### Package quality gates
 
-### Added
+- Trivy scans for secrets, dependency licenses, dependency vulnerabilities and a plain filesystem
+  scan, configurable per scan and runnable from `build_runner` or the `inspectra` command line.
+- Public API dump of every public library, written by the `inspectra:api` builder and checked with
+  `build_runner build --only-check` or `inspectra api check`; constants and `const` primary
+  constructors are recorded and changes are shown as a unified diff.
+- Coverage gate on top of `package:coverage` with an optional line coverage threshold; files marked
+  `// coverage:ignore-file` are not listed as untested.
+- Format check (`dart format`) and lint check (`dart analyze`, `fail_on: error|warning|info|none`)
+  with `--fix`, as the first steps of `check`, and as `build_runner` builders.
+- A strict lint preset, `package:inspectra/lints/strict.yaml`.
+- Writerside documentation in `docs/`, published to GitHub Pages.
+
+### Supply-chain security
+
+Every command of `dart_audit` 0.3.1 with the same names, flags, rule ids, JSON fields and the exit
+codes `0`, `1` and `64`:
 
 - `scan`, the default command: OSV.dev audit, pubspec rules, typosquatting, dependency confusion
-  and Trivy in one report, with `--recursive` for monorepos and pub workspaces.
-- `trivy`: locates an installed Trivy or downloads a pinned, checksum verified release for Linux,
-  macOS and Windows when (and only when) the download host is reachable. Mode, version (`latest`
-  included), download, executable, mirror, scanners, severities and database mirror are all
-  configurable.
-- Configuration through `inspectra.yaml`, `INSPECTRA_*` variables and `--set key=value`, with
-  validation of every key and value.
+  and a Trivy filesystem scan in one report, with `--recursive` for monorepos and pub workspaces.
+- `audit`, `inspect`, `trust [version]`, `typosquat`, `add [--dev] [--force] [--dry-run]`, `hook`.
+- Output formats `json` (versioned), `sarif` (GitHub code scanning) and `markdown`; `--output`,
+  `--fail-on`, `--min-severity`, `--ignore`, `--exit-zero`, `--offline`, `--quiet`, `--verbose`,
+  `--color`.
 - Ignore rules with mandatory reason, optional package scope and expiry date.
-- Output formats `json` (versioned), `sarif` (GitHub code scanning) and `markdown`; `--output`.
-- Exit codes `65` (invalid input) and `69` (verification incomplete); `--exit-zero` never hides
-  them. `--fail-on`, `--min-severity`, `--offline`, `--quiet`, `--verbose`, `--color`.
 - Proxy, custom CA bundle, `PUB_HOSTED_URL`, OSV mirror, retries with back-off and `Retry-After`,
   response size limits and an OSV advisory cache.
-- New rules: `TAG_CHARACTER`, `LINK_ENTRY`, `SPECIAL_FILE`, `SETUID_BIT`, `DUPLICATE_ENTRY`,
-  `CASE_COLLISION`, `NATIVE_BINARY`, `BUILD_HOOK`, `INSECURE_URL`, `DOWNLOAD_AND_EXECUTE`,
-  `ENCODED_POWERSHELL`, `RETRACTED_VERSION`, `DISCONTINUED`, `DEPENDENCY_CONFUSION`.
-- `add --dry-run`; `trust <package> [version]`.
 
-### Fixed compared to dart_audit
+Fixed compared to `dart_audit`: full OSV records with pagination, CVSS v3/v2 scoring and per-range
+fix versions; checksum verified, in-memory package inspection without zip-slip or decompression
+bombs; the archive and pubspec scanners actually run; correct pub.dev trust endpoints for the
+requested version; code point based Unicode scanning; exact URL host matching; far fewer typosquat
+false positives; `add` installs exactly the inspected version and works with Flutter on Windows.
 
-- OSV advisories are fetched in full (`querybatch` only returns ids), paginated, and their CVSS
-  v3/v2 vectors are scored, so severities and fix versions are no longer "unknown".
-- The fix version is taken from the range that contains the installed version.
-- Package archives are verified against `archive_sha256` and read in memory: no zip-slip, no
-  decompression bombs. The archive and pubspec scanners actually run.
-- Trust signals use the endpoints pub.dev really provides (publisher, version history) and assess
-  the requested version.
-- The Unicode scanner works on code points, so supplementary plane carriers are detected; emoji
-  presentation selectors and non-Latin prose are no longer reported.
-- The URL rule matches hosts exactly (`github.com.evil.io` is no longer trusted) and ignores
-  comments and links in messages; tests, examples and binaries are not scanned for code patterns.
-- Typosquatting reports the closest popular package once and no longer flags `lints`, `http2`,
-  `sqlite3`, `flutter_bloc` and similar official packages.
-- `add` installs exactly the inspected version and works with Flutter on Windows.
-- The Git hook reports its real location, covers nested packages and falls back to
-  `dart run inspectra`.
-- Running without a command runs the default command; `--version` reports Inspectra's version.
+### Trivy provisioning
+
+- Trivy is taken from `trivy.executable` / `INSPECTRA_TRIVY`, the `PATH`, package manager
+  directories or Inspectra's cache, or downloaded for Linux, macOS and Windows when the download host
+  is reachable, with mandatory SHA-256 verification against the release checksums and atomic
+  installation. `mode`, `version` (`latest` included), `download`, `use_installed`, mirrors and the
+  database repository are configurable. `inspectra trivy --install` and `--where`.
+
+### Configuration and command line
+
+- One configuration, in the `inspectra:` section of `pubspec.yaml` or in `inspectra.yaml`, with
+  strict validation of every key; configuration errors name the key and, for YAML syntax errors, the
+  line and column.
+- Every option can be overridden with `INSPECTRA_*` environment variables and `--set key=value`.
+- Exit codes follow `sysexits.h`: `65` for invalid input or configuration, `69` for unavailable
+  services and tools, `70` for internal errors.

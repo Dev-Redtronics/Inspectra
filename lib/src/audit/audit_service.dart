@@ -19,7 +19,7 @@ import '../model/finding_source.dart';
 import '../model/source_location.dart';
 import '../osv/osv_client.dart';
 import '../osv/osv_vulnerability.dart';
-import '../pub/locked_package.dart';
+import '../pub/lockfile_entry.dart';
 import '../pub/lockfile.dart';
 import 'audit_scan.dart';
 
@@ -46,7 +46,7 @@ final class AuditService {
     void Function(int done, int total)? onProgress,
   }) async {
     final scanned = lockfile.auditable(mirrorUrl);
-    final skipped = <LockedPackage>[
+    final skipped = <LockfileEntry>[
       ...lockfile.unhosted,
       ...lockfile.privatelyHosted(mirrorUrl),
     ];
@@ -76,7 +76,7 @@ final class AuditService {
   ///
   /// Returns the finding located at the lockfile [displayPath].
   Finding _finding(
-    LockedPackage package,
+    LockfileEntry package,
     OsvVulnerability advisory,
     String displayPath,
   ) {

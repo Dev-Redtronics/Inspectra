@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-import '../model/finding.dart';
+import 'package:inspectra/src/config/inspectra_config_exception.dart';
+import 'package:inspectra/src/config/yaml_reader.dart';
+import 'package:inspectra/src/model/finding.dart';
 
 /// A documented decision to suppress a finding.
 ///
@@ -40,6 +42,85 @@ final class IgnoreRule {
     this.package,
     this.expires,
   });
+
+  /// Reads the `ignore:` list of the configuration in [yaml]; only the
+  /// configuration file can express it.
+  ///
+  /// Returns the rules, empty when the list is absent.
+  ///
+  /// Throws an [InspectraConfigException] for malformed entries, entries
+  /// without `id` or `reason`, unknown keys and invalid expiry dates.
+  static List<IgnoreRule> listFromYaml(YamlReader yaml) {
+    final raw = yaml.structured('ignore');
+    if (raw == null) {
+      return const <IgnoreRule>[];
+    }
+    if (raw is! List) {
+      throw const InspectraConfigException(
+        'ignore',
+        'expected a list of entries with id and reason.',
+      );
+    }
+    return <IgnoreRule>[
+      for (var index = 0; index < raw.length; index++)
+        _fromEntry(raw[index], 'ignore[$index]'),
+    ];
+  }
+
+  /// Parses one entry of the `ignore:` list at [path].
+  ///
+  /// Returns the rule.
+  ///
+  /// Throws an [InspectraConfigException] for malformed entries.
+  static IgnoreRule _fromEntry(Object? entry, String path) {
+    if (entry is! Map) {
+      throw InspectraConfigException(
+        path,
+        'expected a mapping with id and '
+        'reason.',
+      );
+    }
+    const allowed = <String>{'id', 'reason', 'package', 'expires'};
+    final unknown = entry.keys.where((key) => !allowed.contains('$key'));
+    if (unknown.isNotEmpty) {
+      throw InspectraConfigException(
+        '$path.${unknown.first}',
+        'unknown option. Known options here: id, package, reason, expires.',
+      );
+    }
+    final id = _text(entry['id']);
+    final reason = _text(entry['reason']);
+    if (id == null || reason == null) {
+      throw InspectraConfigException(
+        path,
+        'requires both "id" and '
+        '"reason"; every suppression must be justified.',
+      );
+    }
+    final expiresText = _text(entry['expires']);
+    final expires = expiresText == null ? null : DateTime.tryParse(expiresText);
+    if (expiresText != null && expires == null) {
+      throw InspectraConfigException(
+        '$path.expires',
+        'expected a date in the form YYYY-MM-DD, got "$expiresText".',
+      );
+    }
+    return IgnoreRule(
+      id: id,
+      reason: reason,
+      package: _text(entry['package']),
+      expires: expires,
+    );
+  }
+
+  /// Returns [value] as trimmed text, or `null` when absent or blank.
+  static String? _text(Object? value) {
+    if (value == null) {
+      return null;
+    }
+    final text = '$value'.trim();
+    return text.isEmpty ? null : text;
+  }
 
   /// The rule id, advisory id or alias to suppress.
   final String id;

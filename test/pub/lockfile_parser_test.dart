@@ -46,14 +46,14 @@ packages:
 
   test('sorts direct dependencies first and classifies sources', () {
     final lockfile = const LockfileParser().parse(content, path: 'p.lock');
-    expect(lockfile.packages.map((p) => p.name), <String>[
+    expect(lockfile.packages.map((entry) => entry.name), <String>[
       'alpha',
       'internal',
       'local',
       'zeta',
     ]);
     final auditable = lockfile.auditable('https://pub.dev');
-    expect(auditable.map((p) => p.name), <String>['alpha', 'zeta']);
+    expect(auditable.map((entry) => entry.name), <String>['alpha', 'zeta']);
     expect(lockfile.privatelyHosted('https://pub.dev').single.name, 'internal');
     expect(lockfile.unhosted.single.name, 'local');
   });

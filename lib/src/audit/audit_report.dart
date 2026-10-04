@@ -17,7 +17,7 @@
 import '../io/ansi_styler.dart';
 import '../model/finding.dart';
 import '../model/severity.dart';
-import '../pub/locked_package.dart';
+import '../pub/lockfile_entry.dart';
 import '../report/command_report.dart';
 import '../report/severity_breakdown.dart';
 import 'audit_scan.dart';
@@ -58,13 +58,13 @@ final class AuditReport implements CommandReport {
   /// The findings of [package].
   ///
   /// Returns the findings in report order.
-  List<Finding> _findingsOf(LockedPackage package) => findings
+  List<Finding> _findingsOf(LockfileEntry package) => findings
       .where((f) => f.packageName == package.name)
       .where((f) => f.packageVersion == package.version)
       .toList();
 
   /// The scanned packages with at least one finding.
-  List<LockedPackage> get vulnerablePackages =>
+  List<LockfileEntry> get vulnerablePackages =>
       scan.scanned.where((pkg) => _findingsOf(pkg).isNotEmpty).toList();
 
   /// Fails when any finding reaches [threshold].
@@ -91,9 +91,9 @@ final class AuditReport implements CommandReport {
             'name': package.name,
             'version': package.version,
             'isDirect': package.isDirect,
-            'vulnerabilities': _findingsOf(
-              package,
-            ).map(_vulnerability).toList(),
+            'vulnerabilities': _findingsOf(package)
+                .map(_vulnerability)
+                .toList(),
           },
       ],
       'skipped': <Object?>[
@@ -170,7 +170,7 @@ final class AuditReport implements CommandReport {
   void _writePackage(
     StringBuffer out,
     AnsiStyler style,
-    LockedPackage package,
+    LockfileEntry package,
   ) {
     final kind = package.isDirect ? ' (direct)' : ' (transitive)';
     out.writeln(

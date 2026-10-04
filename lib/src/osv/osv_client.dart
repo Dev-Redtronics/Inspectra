@@ -16,7 +16,7 @@
 
 import '../model/inspectra_exception.dart';
 import '../net/http_transport.dart';
-import '../pub/locked_package.dart';
+import '../pub/lockfile_entry.dart';
 import '../util/bounded_concurrency.dart';
 import 'osv_cache.dart';
 import 'osv_vulnerability.dart';
@@ -63,11 +63,11 @@ final class OsvClient {
   /// map to an empty list.
   ///
   /// Throws an [UnavailableException] when OSV.dev cannot be queried.
-  Future<Map<LockedPackage, List<OsvVulnerability>>> query(
-    List<LockedPackage> packages, {
+  Future<Map<LockfileEntry, List<OsvVulnerability>>> query(
+    List<LockfileEntry> packages, {
     void Function(int done, int total)? onProgress,
   }) async {
-    final references = <LockedPackage, Map<String, String>>{};
+    final references = <LockfileEntry, Map<String, String>>{};
     for (var start = 0; start < packages.length; start += batchSize) {
       final end = start + batchSize > packages.length
           ? packages.length
@@ -78,7 +78,7 @@ final class OsvClient {
     }
     final ids = <String, String>{for (final refs in references.values) ...refs};
     final records = await _fetchAll(ids);
-    return <LockedPackage, List<OsvVulnerability>>{
+    return <LockfileEntry, List<OsvVulnerability>>{
       for (final entry in references.entries)
         entry.key: <OsvVulnerability>[
           for (final id in entry.value.keys) ?records[id],
@@ -89,18 +89,18 @@ final class OsvClient {
   /// Runs `querybatch` for [batch], following pagination tokens.
   ///
   /// Returns the advisory ids and modification times per package.
-  Future<Map<LockedPackage, Map<String, String>>> _queryBatch(
-    List<LockedPackage> batch,
+  Future<Map<LockfileEntry, Map<String, String>>> _queryBatch(
+    List<LockfileEntry> batch,
   ) async {
-    final found = <LockedPackage, Map<String, String>>{
+    final found = <LockfileEntry, Map<String, String>>{
       for (final package in batch) package: <String, String>{},
     };
-    var pending = <(LockedPackage, String?)>[
+    var pending = <(LockfileEntry, String?)>[
       for (final package in batch) (package, null),
     ];
     while (pending.isNotEmpty) {
       final results = await _post(pending);
-      final next = <(LockedPackage, String?)>[];
+      final next = <(LockfileEntry, String?)>[];
       for (var index = 0; index < pending.length; index++) {
         final package = pending[index].$1;
         final result = index < results.length ? results[index] : null;
@@ -119,7 +119,7 @@ final class OsvClient {
   /// Returns the `results` list.
   ///
   /// Throws an [UnavailableException] for non-success responses.
-  Future<List<Object?>> _post(List<(LockedPackage, String?)> queries) async {
+  Future<List<Object?>> _post(List<(LockfileEntry, String?)> queries) async {
     final uri = Uri.parse('$baseUrl/v1/querybatch');
     final body = <String, Object?>{
       'queries': <Map<String, Object?>>[

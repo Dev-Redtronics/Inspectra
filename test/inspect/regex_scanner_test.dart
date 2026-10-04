@@ -24,9 +24,8 @@ import '../support/entries.dart';
 void main() {
   /// Scans one Dart file with [content] and returns the rule ids.
   List<String> rulesFor(String content, {String path = 'lib/a.dart'}) {
-    final findings = RegexScanner(
-      excludedDirectories: const <String>['test'],
-    ).scan([textEntry(path, content)]);
+    final findings = RegexScanner(excludedDirectories: const <String>['test'])
+        .scan([textEntry(path, content)]);
     return findings.map((f) => f.ruleId).toList();
   }
 

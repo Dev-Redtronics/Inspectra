@@ -82,9 +82,8 @@ final class ScanService {
     required void Function(String message) onStatus,
   }) async {
     final rootDisplay = displayPath(root, workingDirectory);
-    final lockfiles = ProjectDiscovery(
-      root,
-    ).find('pubspec.lock', recursive: recursive);
+    final lockfiles = ProjectDiscovery(root)
+        .find('pubspec.lock', recursive: recursive);
     if (lockfiles.isEmpty) {
       throw InvalidInputException(
         'No pubspec.lock found in $rootDisplay. Run "dart pub get" first.',

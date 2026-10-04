@@ -1,33 +1,64 @@
 name: inspectra
 description: >-
-  Enterprise-grade supply-chain security scanner for Dart and Flutter projects:
-  OSV.dev vulnerability audit, package source inspection, trust and typosquat
-  analysis, safe dependency installation, Git hooks and Trivy integration.
+  Enterprise software assurance and supply-chain security for Dart and
+  Flutter: OSV.dev audit, package source inspection, trust and typosquat
+  analysis, safe dependency installation, Git hooks, Trivy scans with
+  automatic provisioning, format and lint gates, public API dumps and
+  coverage.
 version: 1.0.0
-repository: https://github.com/dev-redtronics/inspectra
-issue_tracker: https://github.com/dev-redtronics/inspectra/issues
+repository: https://github.com/Dev-Redtronics/Inspectra
+issue_tracker: https://github.com/Dev-Redtronics/Inspectra/issues
 topics:
   - security
-  - audit
-  - vulnerability
   - supply-chain
-  - cli
+  - coverage
+  - secret-scanning
+  - api-surface
 
 environment:
-  sdk: ^3.11.0
-
-executables:
-  inspectra: inspectra
+  sdk: ^3.13.4
 
 dependencies:
+  analyzer: ^14.4.0
   archive: ^4.0.7
   args: ^2.7.0
+  build: ^4.0.11
+  coverage: ^1.15.1
   crypto: ^3.0.6
+  glob: ^2.2.0
   path: ^1.9.1
   pub_semver: ^2.2.0
-  yaml: ^3.1.3
+  yaml: ^3.1.4
 
 dev_dependencies:
-  analyzer: ^14.0.0
+  build_runner: ^2.16.1
+  build_test: ^3.5.20
   lints: ^6.1.0
   test: ^1.30.0
+
+executables:
+  inspectra:
+
+# Inspectra checks itself with every feature it ships. See docs/ and
+# inspectra.example.yaml for what each option does.
+inspectra:
+  format:
+    enabled: true
+    run_on_build: true
+  lint:
+    enabled: true
+    run_on_build: true
+  api:
+    enabled: true
+  trivy:
+    enabled: true
+    license:
+      run_on_build: true
+    vulnerability:
+      run_on_build: true
+    filesystem:
+      enabled: true
+      scanners: [vuln, secret, misconfig]
+  coverage:
+    enabled: true
+    min_line_coverage: 90

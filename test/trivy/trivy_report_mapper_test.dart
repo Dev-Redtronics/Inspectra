@@ -22,56 +22,55 @@ import 'package:test/test.dart';
 /// Tests the translation of Trivy reports and command lines.
 void main() {
   test('maps every supported result section', () {
-    final findings = const TrivyReportMapper(pathPrefix: 'app').map(
-      <String, Object?>{
-        'Results': <Object?>[
-          <String, Object?>{
-            'Target': 'pubspec.lock',
-            'Vulnerabilities': <Object?>[
-              <String, Object?>{
-                'VulnerabilityID': 'CVE-2020-35669',
-                'PkgName': 'http',
-                'InstalledVersion': '0.13.0',
-                'FixedVersion': '0.13.3',
-                'Severity': 'MEDIUM',
-                'Title': 'header injection',
-                'PrimaryURL': 'https://avd.aquasec.com/nvd/cve-2020-35669',
-              },
-            ],
-          },
-          <String, Object?>{
-            'Target': 'lib/keys.dart',
-            'Secrets': <Object?>[
-              <String, Object?>{
-                'RuleID': 'aws-access-key-id',
-                'Severity': 'CRITICAL',
-                'Title': 'AWS Access Key ID',
-                'StartLine': 3,
-                'Match': 'const key = "****";',
-              },
-            ],
-            'Misconfigurations': <Object?>[
-              <String, Object?>{'ID': 'DS002', 'Status': 'PASS'},
-              <String, Object?>{
-                'ID': 'DS001',
-                'Status': 'FAIL',
-                'Severity': 'HIGH',
-                'Title': 'Root user',
-                'CauseMetadata': <String, Object?>{'StartLine': 7},
-              },
-            ],
-            'Licenses': <Object?>[
-              <String, Object?>{
-                'Name': 'GPL-3.0',
-                'Category': 'restricted',
-                'Severity': 'HIGH',
-                'PkgName': 'x',
-              },
-            ],
-          },
-        ],
-      },
-    );
+    final findings = const TrivyReportMapper(pathPrefix: 'app')
+        .map(<String, Object?>{
+          'Results': <Object?>[
+            <String, Object?>{
+              'Target': 'pubspec.lock',
+              'Vulnerabilities': <Object?>[
+                <String, Object?>{
+                  'VulnerabilityID': 'CVE-2020-35669',
+                  'PkgName': 'http',
+                  'InstalledVersion': '0.13.0',
+                  'FixedVersion': '0.13.3',
+                  'Severity': 'MEDIUM',
+                  'Title': 'header injection',
+                  'PrimaryURL': 'https://avd.aquasec.com/nvd/cve-2020-35669',
+                },
+              ],
+            },
+            <String, Object?>{
+              'Target': 'lib/keys.dart',
+              'Secrets': <Object?>[
+                <String, Object?>{
+                  'RuleID': 'aws-access-key-id',
+                  'Severity': 'CRITICAL',
+                  'Title': 'AWS Access Key ID',
+                  'StartLine': 3,
+                  'Match': 'const key = "****";',
+                },
+              ],
+              'Misconfigurations': <Object?>[
+                <String, Object?>{'ID': 'DS002', 'Status': 'PASS'},
+                <String, Object?>{
+                  'ID': 'DS001',
+                  'Status': 'FAIL',
+                  'Severity': 'HIGH',
+                  'Title': 'Root user',
+                  'CauseMetadata': <String, Object?>{'StartLine': 7},
+                },
+              ],
+              'Licenses': <Object?>[
+                <String, Object?>{
+                  'Name': 'GPL-3.0',
+                  'Category': 'restricted',
+                  'Severity': 'HIGH',
+                  'PkgName': 'x',
+                },
+              ],
+            },
+          ],
+        });
     expect(findings.map((f) => f.ruleId), <String>[
       'CVE-2020-35669',
       'aws-access-key-id',
