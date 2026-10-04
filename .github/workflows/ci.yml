@@ -148,5 +148,8 @@ jobs:
         shell: bash
         run: |
           dart pub get
-          dart compile exe bin/inspectra.dart -o build/inspectra
-          ./build/inspectra --version
+          mkdir -p build
+          exe=build/inspectra
+          if [ "$RUNNER_OS" = "Windows" ]; then exe=build/inspectra.exe; fi
+          dart compile exe bin/inspectra.dart -o "$exe"
+          "./$exe" --version
