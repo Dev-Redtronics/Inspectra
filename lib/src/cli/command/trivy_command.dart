@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/cli/inspectra_command.dart';
@@ -25,6 +27,7 @@ import 'package:inspectra/src/trivy/configured_scans_report.dart';
 import 'package:inspectra/src/trivy/finding.dart';
 import 'package:inspectra/src/trivy/trivy_command.dart';
 import 'package:inspectra/src/trivy/trivy_command_report.dart';
+import 'package:inspectra/src/trivy/trivy_exception.dart';
 import 'package:inspectra/src/trivy/trivy_outcome.dart';
 import 'package:inspectra/src/trivy/trivy_provision.dart';
 
@@ -49,7 +52,9 @@ final class TrivyCommand extends InspectraCommand {
       ..addFlag(
         'where',
         negatable: false,
-        help: 'Only print which Trivy executable would be used.',
+        help:
+            'Only print which Trivy executable would be used, '
+            'without downloading one.',
       );
   }
 
@@ -73,9 +78,10 @@ final class TrivyCommand extends InspectraCommand {
   ///
   /// Returns the report.
   ///
-  /// Throws an [InvalidUsageException] for unknown scan names and an
-  /// [UnavailableException] when configured scans need an unavailable
-  /// Trivy.
+  /// Throws an [InvalidUsageException] for unknown scan names, an
+  /// [UnavailableException] when `--install`, `--where` or the configured
+  /// scans find no usable Trivy or Trivy fails, and an
+  /// [InvalidInputException] when the package has not been resolved.
   @override
   Future<CommandReport> execute(
     CommandSession session,
@@ -84,12 +90,15 @@ final class TrivyCommand extends InspectraCommand {
     final String root = session.workingDirectory;
     final String display = session.display(root);
     final Set<TrivyScan> named = _scans(results.rest);
-    final bool provisionOnly =
-        results['install'] == true || results['where'] == true;
+    final install = results['install'] == true;
+    final bool provisionOnly = install || results['where'] == true;
     if (provisionOnly) {
       final TrivyProvision provision = await session
           .trivyProvisioner()
-          .provision(onStatus: session.console.info);
+          .provision(onStatus: session.console.info, allowDownload: install);
+      if (provision case TrivyUnavailable(:final reason)) {
+        throw UnavailableException(reason);
+      }
       return TrivyCommandReport(
         target: display,
         outcome: TrivyOutcome(provision: provision, findings: const []),
@@ -117,7 +126,9 @@ final class TrivyCommand extends InspectraCommand {
   ///
   /// Returns the report.
   ///
-  /// Throws an [UnavailableException] when Trivy is unavailable.
+  /// Throws an [UnavailableException] when Trivy is unavailable or fails,
+  /// and an [InvalidInputException] when `pubspec.lock` or the package
+  /// configuration is missing.
   Future<CommandReport> _configuredScans(
     CommandSession session,
     Set<TrivyScan> named,
@@ -130,14 +141,32 @@ final class TrivyCommand extends InspectraCommand {
       case TrivyUnavailable(:final reason):
         throw UnavailableException(reason);
       case TrivyAvailable(:final executable):
-        final List<ScanResult> scanResults = await runTrivyScans(
-          session.config,
-          session.workingDirectory,
-          only: named.isEmpty ? null : named,
-          executable: executable,
-        );
-        return ConfiguredScansReport(results: scanResults, outcome: outcome);
+        try {
+          final List<ScanResult> scanResults = await runTrivyScans(
+            session.config,
+            session.workingDirectory,
+            only: named.isEmpty ? null : named,
+            executable: executable,
+          );
+          return ConfiguredScansReport(results: scanResults, outcome: outcome);
+        } on TrivyException catch (error) {
+          throw UnavailableException(error.message);
+        } on FileSystemException catch (error) {
+          throw InvalidInputException(_describe(error));
+        }
     }
+  }
+
+  /// Describes [error] as one sentence: its message and, when known, the
+  /// path it is about.
+  ///
+  /// Returns the description.
+  String _describe(FileSystemException error) {
+    final String? path = error.path;
+    if (path == null) {
+      return error.message;
+    }
+    return '${error.message} ($path)';
   }
 
   /// Parses the scan names in [arguments].

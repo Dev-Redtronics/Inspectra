@@ -192,6 +192,21 @@ void main() {
     expect(server.requests, isEmpty);
   });
 
+  test('never probes or downloads without allowDownload', () async {
+    serveRelease('0.75.0');
+    final TrivyProvision result = await provisioner(config())
+        .provision(onStatus: (_) {}, allowDownload: false);
+    expect(
+      result,
+      isA<TrivyUnavailable>().having(
+        (r) => r.reason,
+        'reason',
+        contains('trivy --install'),
+      ),
+    );
+    expect(server.requests, isEmpty);
+  });
+
   test('does not touch the network in offline mode', () async {
     final TrivyProvision result = await run(
       provisioner(config(), offline: true),

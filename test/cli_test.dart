@@ -244,6 +244,22 @@ void main() {
       );
       expect(trivy.arguments.last, root);
     });
+
+    test('exits with 69 when Trivy itself fails', () async {
+      final failing = FakeTrivy(temporaryDirectory(), exitCode: 2);
+      writeFile(
+        root,
+        'inspectra.yaml',
+        'trivy:\n  enabled: true\n  executable: ${failing.executable}\n',
+      );
+      expect(await run(['trivy', 'secret']), ExitCode.unavailable.code);
+    });
+
+    test('exits with 65 when the package is not resolved', () async {
+      File(p.join(root, 'pubspec.lock')).deleteSync();
+      expect(await run(['trivy', 'license']), ExitCode.dataError.code);
+      expect(err.toString(), contains('pubspec.lock'));
+    });
   });
 
   test('coverage runs the tests and checks the threshold', () async {

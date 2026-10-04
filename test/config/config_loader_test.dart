@@ -85,6 +85,21 @@ network:
     expect(load().typosquat.allow, <String>['htpp']);
   });
 
+  test('names broken ignore rules of pubspec.yaml by their full path', () {
+    File('${directory.path}/pubspec.yaml')
+        .writeAsStringSync('name: demo\ninspectra:\n  ignore:\n    - id: X\n');
+    expect(
+      load,
+      throwsA(
+        isA<InspectraConfigException>().having(
+          (e) => e.path,
+          'path',
+          startsWith('inspectra.ignore[0]'),
+        ),
+      ),
+    );
+  });
+
   test('environment variables override the file', () {
     writeConfig('trivy:\n  version: 0.70.1\n');
     final InspectraConfig config = load(

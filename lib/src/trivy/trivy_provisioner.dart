@@ -69,10 +69,15 @@ final class TrivyProvisioner {
 
   /// Makes Trivy available; [onStatus] receives progress messages.
   ///
+  /// With [allowDownload] set to `false` only executables that already exist
+  /// are considered: no connectivity probe and no download happen, which is
+  /// what `inspectra trivy --where` needs to answer without side effects.
+  ///
   /// Returns the provision outcome; failures to download are reported as
   /// [TrivyUnavailable] so that the caller can apply the configured mode.
   Future<TrivyProvision> provision({
     required void Function(String message) onStatus,
+    bool allowDownload = true,
   }) async {
     if (config.mode == TrivyMode.disabled) {
       return const TrivyUnavailable('Trivy is disabled (trivy.mode).');
@@ -92,7 +97,7 @@ final class TrivyProvisioner {
         return installed;
       }
     }
-    final bool online = await _isOnline();
+    final bool online = allowDownload && await _isOnline();
     final String? version = await _desiredVersion(online);
     if (version == null) {
       return const TrivyUnavailable(
@@ -107,6 +112,12 @@ final class TrivyProvisioner {
     final TrivyAvailable? exactInstalled = await _installedOfVersion(version);
     if (exactInstalled != null) {
       return exactInstalled;
+    }
+    if (!allowDownload) {
+      return TrivyUnavailable(
+        'Trivy $version is neither installed nor cached; '
+        '"inspectra trivy --install" downloads it.',
+      );
     }
     return _download(version, online: online, onStatus: onStatus);
   }
