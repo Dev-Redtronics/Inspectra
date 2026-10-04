@@ -29,8 +29,8 @@
     <var name="trivy_env" value="INSPECTRA_TRIVY"/>
 
     <!-- Links -->
-    <var name="repo" value="https://github.com/Dev-Redtronics/Inspectra"/>
-    <var name="issues" value="https://github.com/Dev-Redtronics/Inspectra/issues"/>
+    <var name="repo" value="https://github.com/davils-com/Inspectra"/>
+    <var name="issues" value="https://github.com/davils-com/Inspectra/issues"/>
     <var name="trivy_docs" value="https://trivy.dev/latest/docs"/>
     <var name="trivy_install" value="https://trivy.dev/latest/getting-started/installation/"/>
     <var name="kreate" value="https://github.com/davils-com/kreate"/>

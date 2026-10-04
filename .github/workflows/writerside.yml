@@ -1,9 +1,10 @@
 name: Documentation
 
 on:
+  # Every push to main publishes: a release merge that does not
+  # touch docs/ still has to redeploy the site.
   push:
     branches: [main]
-    paths: ['docs/**', '.github/workflows/writerside.yml']
   pull_request:
     branches: [main, develop]
     paths: ['docs/**', '.github/workflows/writerside.yml']
