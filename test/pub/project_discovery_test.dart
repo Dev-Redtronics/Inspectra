@@ -18,6 +18,7 @@ import 'dart:io';
 
 import 'package:inspectra/src/pub/project_discovery.dart';
 import 'package:inspectra/src/util/display_path.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 /// Tests lockfile discovery in monorepos and display paths.
@@ -61,6 +62,11 @@ void main() {
 
   test('displayPath keeps outside paths absolute and uses slashes', () {
     expect(displayPath(root.path, root.path), '.');
-    expect(displayPath('/elsewhere/x', root.path), '/elsewhere/x');
+    final String outside = p.join(
+      p.rootPrefix(p.absolute(root.path)),
+      'elsewhere',
+      'x',
+    );
+    expect(displayPath(outside, root.path), outside.replaceAll(r'\', '/'));
   });
 }

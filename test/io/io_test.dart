@@ -23,6 +23,7 @@ import 'package:inspectra/src/io/ansi_styler.dart';
 import 'package:inspectra/src/io/console.dart';
 import 'package:inspectra/src/io/executable_resolver.dart';
 import 'package:inspectra/src/io/verbosity.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 /// Tests the console, colour detection, executable lookup and processes.
@@ -111,8 +112,9 @@ void main() {
         'resolver_',
       );
       addTearDown(() => directory.deleteSync(recursive: true));
-      final tool = File('${directory.path}/tool')..writeAsStringSync('x');
-      final plain = File('${directory.path}/plain')..writeAsStringSync('x');
+      final tool = File(p.join(directory.path, 'tool'))..writeAsStringSync('x');
+      final plain = File(p.join(directory.path, 'plain'))
+        ..writeAsStringSync('x');
       if (!Platform.isWindows) {
         Process.runSync('chmod', <String>['755', tool.path]);
       }

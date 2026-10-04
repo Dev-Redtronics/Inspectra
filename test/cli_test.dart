@@ -307,7 +307,7 @@ void main() {
     expect(out.toString(), isNot(contains('lib/ignored.dart')));
     expect(
       File(p.join(root, 'coverage', 'lcov.info')).readAsStringSync(),
-      contains('SF:lib/app.dart'),
+      contains('SF:${p.join('lib', 'app.dart')}'),
     );
 
     expect(await run(['coverage', '--min', '50']), 0);
