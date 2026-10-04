@@ -75,7 +75,7 @@ dev_dependencies:
 ```
 
 Native executables for Linux, macOS and Windows with SHA-256 checksums are attached to every
-[GitHub release](https://github.com/Dev-Redtronics/Inspectra/releases).
+[GitHub release](https://github.com/davils-com/Inspectra/releases).
 
 ## Quick start
 
