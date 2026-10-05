@@ -75,6 +75,8 @@ print(config.trivy.secret.severity);     // [Severity.critical, Severity.high, .
 | `InspectraConfig.parse(node, packageName:)` | From a parsed YAML or plain map. |
 | `InspectraConfig.defaults(packageName)` | Every default; every feature off. |
 | `loadConfig(root, {overrides, configFile, requirePubspec})` | With `ConfigOverrides` for `--set` values and `INSPECTRA_*` variables, and another configuration file. |
+| `loadConfig(root, {recorder})`, `parse(…, recorder:)`, `fromSources(…, recorder:)` | With a `ConfigRecorder`, which afterwards holds a `ConfigEntry` per option: `key`, `kind` (`ConfigKind`), `value`, `defaultValue`, `origin` (`ConfigOrigin`: `defaults`, `file`, `environment`, `commandLine`), `variable`, `line`, `options`, `minimum`, `maximum`; `recorder.source` names the file. This is what `config show --explain` prints. |
+| `ConfigOverrides.resolve(path)` | The override of an option as a `ConfigOverride` with `value`, `origin` and `variable`; `knownPaths` lists every option that can be overridden. |
 | `configFileName`, `pubspecSectionKey` | `'%config_file%'`, `'%pubspec_key%'` |
 
 The configuration classes - `FormatConfig`, `LintConfig`, `TrivyConfig`, `SecretScanConfig`, `LicenseScanConfig`,
@@ -213,7 +215,7 @@ configured scans - report the normalised `Finding`, which the JSON, SARIF and Ma
 | API | Description |
 |:--|:--|
 | `Finding` | `ruleId`, `source`, `severity`, `title`, `description`, `location`, `packageName`, `packageVersion`, `fixedVersion`, `aliases`, `url`, `snippet`, `attributes`; `identifiers`, `fingerprint` (a stable SHA-256), `toJson()`. |
-| `FindingSource` | The scanner: `osv`, `trivy`, `regex`, `entropy`, `unicode`, `archive`, `pubspec`, `trust`, `typosquat`, `confusion`; `id`. |
+| `FindingSource` | The scanner: `osv`, `trivy`, `regex`, `entropy`, `unicode`, `archive`, `pubspec`, `trust`, `typosquat`, `confusion`, `style`, `config`; `id`. |
 | `SourceLocation(path, {line})` | The file and line a finding refers to. |
 | `Severity` | `critical`, `high`, `medium`, `low`, `unknown`; `label`, `trivyName`, `isAtLeast(threshold)`, `parse`, `tryParse`, `fromCvssScore`. Shared by `Finding` and `ScanFinding`. |
 | `IgnoreRule({id:, reason:, package, expires})` | An `ignore:` entry; `matches(finding)`, `isExpired(now)`. |

@@ -54,6 +54,7 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra changelog generate [--write]` | The changelog section of the next release from Conventional Commits, with a suggested version (`--from`, `--to`, `--release`, `--date`) |
 | `inspectra changelog check` | Fail when `CHANGELOG.md` is malformed or misses the version of `pubspec.yaml` |
 | `inspectra changelog notes [version]` | Print the section of a release, for example as GitHub release notes |
+| `inspectra config show\|validate\|lint\|schema` | Effective configuration with the origin of each value (`--explain`), validation of referenced files, risky settings, JSON Schema |
 | `inspectra baseline create\|prune` | Record today's findings so that only new ones fail (`--only scan,lint,style,trivy`), or remove the fixed ones |
 
 `-C <path>` before the command works on another package. The supply-chain commands share
@@ -142,9 +143,25 @@ precedence first:
 3. the configuration file;
 4. built-in defaults.
 
-Unknown keys and wrong types are errors that name the offending key, for example
-`Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option`.
+Unknown keys and wrong types are errors that name the offending key and the closest valid one, for example
+`Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Did you mean "secret"?`.
 [`inspectra.example.yaml`](inspectra.example.yaml) lists every option with its default.
+
+### Configuration tools
+
+```bash
+dart run inspectra config show --explain    # every effective value and where it comes from
+dart run inspectra config validate          # the configuration and every file it refers to
+dart run inspectra config lint              # risky settings, misspelled INSPECTRA_* variables
+dart run inspectra config schema            # JSON Schema for completion in the editor
+```
+
+`config show --explain` comments each value with its origin - `inspectra.yaml:12`, `environment variable
+INSPECTRA_TRIVY_MODE`, `command line` or `default` - and `--only-changed` shows only what a package configures.
+`config lint` reports insecure service URLs, a disabled or unpinned Trivy, ignore rules without or past their expiry,
+gates that never fail and `INSPECTRA_*` variables that name no option, as findings with `-f sarif` and `--fail-on`.
+For completion and validation as you type, start `inspectra.yaml` with
+`# yaml-language-server: $schema=https://raw.githubusercontent.com/davils-com/Inspectra/main/inspectra.schema.json`.
 
 > **Note** — `pubspec.yaml` is always a `build_runner` source, so editing the section reruns the
 > builders. `inspectra.yaml` and `trivy-secret.yaml` are not sources by default: list them under

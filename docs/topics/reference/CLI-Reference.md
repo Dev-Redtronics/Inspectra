@@ -7,7 +7,7 @@
 
 <link-summary>Every command and option of the inspectra command line, with output and exit codes.</link-summary>
 
-<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog and baseline; options and exit codes.</card-summary>
+<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog, baseline and config; options and exit codes.</card-summary>
 
 ```text
 Supply-chain security scanner for Dart and Flutter projects.
@@ -26,6 +26,7 @@ Available commands:
   baseline    Record the accepted findings, so that only new ones fail, or prune the fixed ones.
   changelog   Generate the changelog from Conventional Commits, check it and print release notes.
   check       Run every enabled package check: format, lint, style, API, changelog, Trivy scans and coverage.
+  config      Show where each configuration value comes from, validate and lint the configuration, print its JSON Schema.
   coverage    Run the tests with coverage, write lcov.info and check the threshold.
   format      Check that the Dart files are formatted, or format them with --fix.
   hook        Install or remove the Git pre-commit hook.
@@ -69,7 +70,7 @@ inspectra --version
 ## Shared options {id="shared-options"}
 
 The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook` - `trivy`, `style`,
-`changelog generate`, `changelog notes` and `baseline create|prune` share these options:
+`changelog generate`, `changelog notes`, `baseline create|prune` and `config show|validate|lint` share these options:
 
 | Option | Description |
 |:--|:--|
@@ -86,7 +87,7 @@ The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `a
 | `-i`, `--ignore <ID>` | Ignore a rule, advisory id or alias. Repeatable. For a documented, expiring suppression use the [`ignore`](Configuration-Reference.md#ignore) list. |
 | `--exit-zero` | Exit with `0` even when findings reach the threshold. Never hides usage, input or availability errors. |
 
-`scan`, `trivy` and `baseline create|prune` also take the Trivy provisioning options:
+`scan`, `trivy`, `baseline create|prune` and `config show|validate|lint` also take the Trivy provisioning options:
 
 | Option | Configuration key | Description |
 |:--|:--|:--|
@@ -518,6 +519,67 @@ Runs the scopes like [`baseline create`](#baseline-create) and removes what was 
 of findings that still occur, and entries without any are removed. Nothing is ever added. Options, report and exit
 codes are those of `baseline create`.
 
+## config show {id="config-show"}
+
+```bash
+dart run inspectra config show --explain
+dart run inspectra config show --only-changed -f json
+```
+
+Prints the effective configuration as YAML; options without a value are commented out. The shared options apply, so
+`--config`, `--set` and the Trivy flags change what is shown exactly as they change what other commands use. See
+[Configuration tools](Configuration-Tools.md#show).
+
+| Option | Description |
+|:--|:--|
+| `--explain` | Comment every value with its origin: `default`, the file and line, an environment variable or `command line`. |
+| `--only-changed` | Show only values that do not come from the defaults. |
+
+With `-f json` the report holds `source` and `values`, one object per option with `key`, `value`, `default`,
+`origin` and, where known, `variable` and `line`. Exit code `0`, or `65` for an invalid configuration.
+
+## config validate {id="config-validate"}
+
+```bash
+dart run inspectra config validate
+```
+
+Loads the configuration and checks that every file it refers to exists and that the baseline file is well-formed.
+See [Configuration tools](Configuration-Tools.md#validate).
+
+| Result | Exit code |
+|:--|:--|
+| Valid; with `-f json`: `source`, `valid` and `files` | `0` |
+| An invalid key or value, or missing referenced files - all listed at once | `65` |
+
+## config lint {id="config-lint"}
+
+```bash
+dart run inspectra config lint
+dart run inspectra config lint -f sarif -o config.sarif --fail-on medium
+```
+
+Reports risky settings as findings of the source `config`: insecure URLs, a disabled or unpinned Trivy, misspelled
+`INSPECTRA_*` variables, ignore rules without or past their expiry, gates that never fail, hidden findings, a coverage
+gate without threshold and a baseline without `max_severity`. See the rules in
+[Configuration tools](Configuration-Tools.md#lint).
+
+| Result | Exit code |
+|:--|:--|
+| No finding at or above `--fail-on` (default: any) | `0` |
+| Findings | `1` |
+| An invalid configuration | `65` |
+
+## config schema {id="config-schema"}
+
+```bash
+dart run inspectra config schema -o inspectra.schema.json
+```
+
+Prints the JSON Schema (draft-07) of `inspectra.yaml`, generated from the options the configuration reads. It reads no
+project configuration and takes only `-o`, `--output <path>`. Exit code `0`, or `69` when the file cannot be written.
+See [Editor support](Configuration-Tools.md#schema).
+
 ## Exit codes {id="exit-codes"}
 
 <include from="lib.topic" element-id="exit-codes"/>
@@ -540,6 +602,7 @@ Every exit code other than `0` and `1` comes with a message on standard error na
 | `error: The changelog CHANGELOG.md has no section for version 1.2.0.` | `65` |
 | `error: The license header template tool/header.txt (style.license_header) does not exist.` | `65` |
 | `error: The baseline …/inspectra-baseline.json needs an "entries" list.` | `65` |
+| `error: The configuration has 2 problem(s): …` | `65` |
 | `error: The custom style rules of style.custom_rules could not be run (dart run exited with 254). …` | `65` |
 | `error: Git is not installed or not on the PATH.` | `69` |
 | `error: Trivy is not installed and downloading is disabled (trivy.download: false). Trivy is required (trivy.mode: required).` | `69` |
