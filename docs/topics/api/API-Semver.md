@@ -116,7 +116,7 @@ runs in a shallow clone. See <a href="CI-Integration.md">CI integration</a>.
 
 ## Release workflow
 
-<procedure title="Release with a checked version" id="release-workflow">
+<procedure title="Release with a checked version" id="release-workflow_1">
     <step>
         <p>Keep the dump current: <code>dart run build_runner build</code> or <code>dart run %package% api dump</code>,
         and commit it with the code.</p>
