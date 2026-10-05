@@ -6,3 +6,4 @@ tags:
   # custom style rules under "dart run" in a package depending on Inspectra.
   slow:
     timeout: 3m
+concurrency: 8
