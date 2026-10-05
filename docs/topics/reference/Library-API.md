@@ -79,7 +79,7 @@ print(config.trivy.secret.severity);     // [Severity.critical, Severity.high, .
 
 The configuration classes - `FormatConfig`, `LintConfig`, `TrivyConfig`, `SecretScanConfig`, `LicenseScanConfig`,
 `VulnerabilityScanConfig`, `FilesystemScanConfig`, `ApiConfig`, `CoverageConfig`, and for the supply-chain commands
-`NetworkConfig`, `InspectConfig`, `TrustThresholds`, `TyposquatConfig` and `IgnoreRule` - are immutable and have
+`NetworkConfig`, `InspectConfig`, `TrustThresholds`, `TyposquatConfig`, `IgnoreRule` and `BaselineConfig` - are immutable and have
 `const` constructors, so tooling can also build a configuration without YAML.
 
 ## Running the format and lint checks
@@ -96,12 +96,12 @@ for (final issue in lint.failing) {
 | API | Description |
 |:--|:--|
 | `runFormatCheck(config, root, {fix})` | What `dart run inspectra format` does, including the JSON report. |
-| `runLintCheck(config, root, {fix})` | What `dart run inspectra lint` does, including the JSON report. |
+| `runLintCheck(config, root, {fix})` | What `dart run inspectra lint` does, including the JSON report, but without applying the [baseline](Baseline.md). |
 | `checkFormat(config:, packageRoot:, files:, {fix})` | `dart format` on an explicit list of files. |
 | `runLint(config:, packageRoot:, {fix})` | `dart analyze`, optionally after `dart fix --apply`. |
 | `parseAnalyzerOutput(output, root)` | The diagnostics of `dart analyze --format=machine`. |
 | `FormatResult` | `checked`, `unformatted`, `fixed`, `failed`, `render()`, `toJson()`. |
-| `LintResult` | `issues`, `failing`, `failOn`, `failed`, `render()`, `toJson()`. |
+| `LintResult` | `issues`, `failing`, `failOn`, `failed`, `baseline`, `render()`, `toJson()`. |
 | `LintIssue` | `severity`, `type`, `code`, `path`, `line`, `column`, `message`. |
 | `LintLevel` | `error`, `warning`, `info`, `none`. |
 | `DartToolException` | `dart format`, `dart analyze` or `dart fix` could not run or failed. |
@@ -117,9 +117,9 @@ for (final StyleViolation violation in result.violations) {
 
 | API | Description |
 |:--|:--|
-| `runStyleCheck(config, root)` | What `dart run inspectra style` does, including the JSON report. |
+| `runStyleCheck(config, root)` | What `dart run inspectra style` does, including the JSON report, but without applying the [baseline](Baseline.md). |
 | `checkStyle(config:, packageRoot:, files:, {read})` | The style check of an explicit list of files; `read` replaces reading from disk. |
-| `StyleResult` | `checked`, `rules`, `violations`, `failed`, `affectedFiles`, `render()`, `toJson()`. |
+| `StyleResult` | `checked`, `rules`, `violations`, `failed`, `affectedFiles`, `baseline`, `render()`, `toJson()`. |
 | `StyleViolation` | `ruleId`, `path`, `line`, `column`, `message`. |
 | `StyleConfig`, `StylePreset` | The `style:` section; `runs(id)` tells whether a rule runs. |
 
@@ -166,7 +166,8 @@ final ScanResult licenses = await scanLicenses(
 | `runTrivyScans(config, root, {only, executable})` | Every enabled scan, or the ones in `only`; writes the reports. With `network.offline`, Trivy runs offline. |
 | `scanSecrets`, `scanLicenses`, `scanVulnerabilities`, `scanFilesystem` | One scan each, on explicit inputs. |
 | `Trivy({executable, environment, workingDirectory, offline})` | The Trivy runner; `scanFilesystem` returns a parsed `TrivyReport`. `offline: true` adds `--skip-db-update --offline-scan` to every `trivy fs` call. |
-| `ScanResult` | `scan`, `findings`, `failed`, `skipped`, `render()`, `toJson()`. |
+| `ScanResult` | `scan`, `findings`, `failed`, `skipped`, `baseline`, `render()`, `toJson()`. |
+| `BaselineSummary` | What a baseline did to a check result: `covered`, `stale`, `failOnStale`, `failed`. |
 | `ScanFinding` | One finding of a scan: `severity`, `target`, `id`, `title`, `detail`. |
 | `TrivyScan` | `secret`, `license`, `vulnerability`, `filesystem`; `isEnabled(config)`. |
 | `PackageGraph.load(root)` | The dependency graph; `reachable(includeDev:)`, `directoryOf(name)`, `lock`. |

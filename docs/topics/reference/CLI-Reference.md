@@ -7,7 +7,7 @@
 
 <link-summary>Every command and option of the inspectra command line, with output and exit codes.</link-summary>
 
-<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage and changelog; options and exit codes.</card-summary>
+<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog and baseline; options and exit codes.</card-summary>
 
 ```text
 Supply-chain security scanner for Dart and Flutter projects.
@@ -23,6 +23,7 @@ Available commands:
   add         Audit a package and add its exact version to pubspec.yaml.
   api         Record or check the public API dump.
   audit       Scan pubspec.lock against the OSV.dev vulnerability database.
+  baseline    Record the accepted findings, so that only new ones fail, or prune the fixed ones.
   changelog   Generate the changelog from Conventional Commits, check it and print release notes.
   check       Run every enabled package check: format, lint, style, API, changelog, Trivy scans and coverage.
   coverage    Run the tests with coverage, write lcov.info and check the threshold.
@@ -67,8 +68,8 @@ inspectra --version
 
 ## Shared options {id="shared-options"}
 
-The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook` - and `trivy` share these
-options:
+The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook` - `trivy`, `style`,
+`changelog generate`, `changelog notes` and `baseline create|prune` share these options:
 
 | Option | Description |
 |:--|:--|
@@ -85,7 +86,7 @@ options:
 | `-i`, `--ignore <ID>` | Ignore a rule, advisory id or alias. Repeatable. For a documented, expiring suppression use the [`ignore`](Configuration-Reference.md#ignore) list. |
 | `--exit-zero` | Exit with `0` even when findings reach the threshold. Never hides usage, input or availability errors. |
 
-`scan` and `trivy` also take the Trivy provisioning options:
+`scan`, `trivy` and `baseline create|prune` also take the Trivy provisioning options:
 
 | Option | Configuration key | Description |
 |:--|:--|:--|
@@ -368,6 +369,9 @@ violation is a finding of the source `style` in JSON, SARIF and Markdown. See [S
 | A missing header template or custom rule file, custom rules that do not compile or have invalid ids, an unknown rule in `style.rules` | `65` |
 | `dart` cannot be started for the custom rules | `69` |
 
+When the package has a [baseline](Baseline.md), the violations it covers are not reported; the text report counts them
+and the JSON result has `"baseline": {"covered": …, "stale": …}`.
+
 ## api dump {id="api-dump"}
 
 ```bash
@@ -480,6 +484,40 @@ in `pubspec.yaml` and matches `## 1.2.0`, `## [1.2.0]` and `## v1.2.0` alike. Wi
 | No version given and none in `pubspec.yaml` | `64` |
 | The changelog is missing, or has no or an empty section for the version | `65` |
 
+## baseline create {id="baseline-create"}
+
+```bash
+dart run inspectra baseline create
+dart run inspectra baseline create --only style,lint
+```
+
+Runs the scopes and records their findings in `baseline.file` (default `inspectra-baseline.json`), replacing the entries
+of those scopes and keeping the others. Without `--only`, the scopes are `scan` and, when enabled, `lint`, `style` and
+`trivy`. Ignore rules and `--min-severity` apply first. The file is only written when it changes. With `-f json` the
+report holds `action`, `file`, `changed`, `total` and `scopes` with the recorded findings `before` and `after` per
+scope. See [Baseline](Baseline.md).
+
+| Option | Description |
+|:--|:--|
+| `--only <scope>` | `scan`, `lint`, `style` or `trivy`. Repeatable or comma-separated. |
+| `-r`, `--recursive` | Also scan nested packages for the `scan` scope. |
+
+| Result | Exit code |
+|:--|:--|
+| The baseline was written, or is unchanged | `0` |
+| A malformed baseline file, lockfile or configuration | `65` |
+| A scope cannot run completely: OSV.dev unreachable or offline, `dart analyze` failing, Trivy unavailable; nothing is written | `69` |
+
+## baseline prune {id="baseline-prune"}
+
+```bash
+dart run inspectra baseline prune
+```
+
+Runs the scopes like [`baseline create`](#baseline-create) and removes what was fixed: every count drops to the number
+of findings that still occur, and entries without any are removed. Nothing is ever added. Options, report and exit
+codes are those of `baseline create`.
+
 ## Exit codes {id="exit-codes"}
 
 <include from="lib.topic" element-id="exit-codes"/>
@@ -501,6 +539,7 @@ Every exit code other than `0` and `1` comes with a message on standard error na
 | `error: No pubspec.yaml found; run Inspectra from a package root.: …` | `65` |
 | `error: The changelog CHANGELOG.md has no section for version 1.2.0.` | `65` |
 | `error: The license header template tool/header.txt (style.license_header) does not exist.` | `65` |
+| `error: The baseline …/inspectra-baseline.json needs an "entries" list.` | `65` |
 | `error: The custom style rules of style.custom_rules could not be run (dart run exited with 254). …` | `65` |
 | `error: Git is not installed or not on the PATH.` | `69` |
 | `error: Trivy is not installed and downloading is disabled (trivy.download: false). Trivy is required (trivy.mode: required).` | `69` |

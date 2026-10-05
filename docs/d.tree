@@ -13,6 +13,7 @@
     <toc-element toc-title="Configuration">
         <toc-element topic="Configuration-Overview.md"/>
         <toc-element topic="Configuration-Reference.md"/>
+        <toc-element topic="Baseline.md"/>
         <toc-element topic="Build-Sources.md"/>
     </toc-element>
 

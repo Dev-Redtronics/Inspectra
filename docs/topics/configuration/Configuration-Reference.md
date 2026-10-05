@@ -29,6 +29,12 @@ inspectra:
 
   ignore: []                       # entries: id, package, reason, expires
 
+  baseline:
+    enabled: true
+    file: inspectra-baseline.json
+    # max_severity: high             # unset: the baseline covers every severity
+    fail_on_stale: false
+
   network:
     offline: false
     timeout: 30s
@@ -197,6 +203,18 @@ inspectra:
 | `expires` | date, `YYYY-MM-DD` | no | The last day on which the entry applies. Afterwards it stops matching and every run warns about it. |
 
 `ignore` can only be written in the file. `--ignore <ID>` suppresses an id for one run, without a reason.
+
+## baseline {id="baseline"}
+
+The file of accepted findings that `baseline create` records and `scan`, `audit`, `typosquat`, `trivy`, `lint`,
+`style`, `check` and the builders do not report. Details: [Baseline](Baseline.md).
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `enabled` | bool | `true` | Apply the baseline file when it exists. `--set baseline.enabled=false` shows every finding. |
+| `file` | string | `inspectra-baseline.json` | The baseline file, relative to the package root. |
+| `max_severity` | severity | unset | Findings more severe than this are never covered by the baseline. |
+| `fail_on_stale` | bool | `false` | Fail a check while recorded findings have been fixed and `baseline prune` has not run. |
 
 ## network {id="network"}
 

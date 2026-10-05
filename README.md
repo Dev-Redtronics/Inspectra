@@ -54,6 +54,7 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra changelog generate [--write]` | The changelog section of the next release from Conventional Commits, with a suggested version (`--from`, `--to`, `--release`, `--date`) |
 | `inspectra changelog check` | Fail when `CHANGELOG.md` is malformed or misses the version of `pubspec.yaml` |
 | `inspectra changelog notes [version]` | Print the section of a release, for example as GitHub release notes |
+| `inspectra baseline create\|prune` | Record today's findings so that only new ones fail (`--only scan,lint,style,trivy`), or remove the fixed ones |
 
 `-C <path>` before the command works on another package. The supply-chain commands share
 `--format text|json|sarif|markdown`, `--output`, `--fail-on`, `--min-severity`, `--ignore`,
@@ -161,6 +162,21 @@ ignore:
 
 `--ignore <id>` (repeatable) works as in `dart_audit`. Trivy scans additionally have their own
 `ignored_vulnerabilities`, `ignored_licenses` and `ignored_packages`.
+
+### Baseline for existing code
+
+```bash
+dart run inspectra baseline create      # record today's findings in inspectra-baseline.json
+dart run inspectra baseline prune       # remove the fixed ones; never adds anything
+```
+
+Introducing a gate into a code base that is years old no longer means fixing hundreds of findings first: commit the
+baseline, and `scan`, `audit`, `typosquat`, `trivy`, `lint`, `style`, `check` and the builders report only findings
+that are not recorded. Entries are matched by scope, source, rule, package and file, without line numbers or package
+versions, and count their occurrences, so moving code does not make a finding new but a further occurrence does.
+`--only scan,lint,style,trivy` selects scopes; a run that cannot complete (offline, Trivy unavailable) writes nothing.
+`baseline.max_severity` keeps severe findings out of the baseline, `baseline.fail_on_stale` fails a check until fixed
+findings are pruned, and `--set baseline.enabled=false` shows everything.
 
 ### Enterprise networks
 

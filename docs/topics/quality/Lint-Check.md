@@ -139,6 +139,11 @@ for most lints there is one - and then analyzes the result. What is left needs a
 <code>dart fix --apply</code> changes your files. Run it on a clean working tree, read the diff, and run the tests.
 </warning>
 
+## Existing diagnostics {id="baseline"}
+
+`dart run inspectra baseline create --only lint` records the diagnostics a package has today; `lint`, `check` and the
+builder then fail only on new ones. See [Baseline](Baseline.md).
+
 ## On build
 
 With `run_on_build: true`, the `inspectra:lint` builder runs `dart analyze` on every `build_runner build`:
