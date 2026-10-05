@@ -24,6 +24,7 @@ final class ApiConfig {
     required this.output,
     required this.ignoredLibraries,
     required this.nonPublicAnnotations,
+    this.semver = false,
   });
 
   /// Reads the settings from the `api:` section in [yaml] for the package
@@ -42,6 +43,7 @@ final class ApiConfig {
         'non_public_annotations',
         fallback: const ['internal', 'visibleForTesting'],
       ),
+      semver: yaml.boolean('semver', fallback: false),
     );
     yaml.ensureFullyRead();
     return config;
@@ -49,6 +51,10 @@ final class ApiConfig {
 
   /// Whether the API dump is written and checked. Off by default.
   final bool enabled;
+
+  /// Whether `check` and `report` compare the API with the last release
+  /// and require a large enough version. Off by default.
+  final bool semver;
 
   /// The dump file, relative to the package root.
   final String output;

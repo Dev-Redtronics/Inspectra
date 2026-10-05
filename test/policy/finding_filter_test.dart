@@ -15,6 +15,10 @@
  */
 
 import 'package:inspectra/inspectra.dart';
+import 'package:inspectra/src/baseline/baseline.dart';
+import 'package:inspectra/src/baseline/baseline_entry.dart';
+import 'package:inspectra/src/baseline/baseline_matcher.dart';
+import 'package:inspectra/src/baseline/baseline_scope.dart';
 import 'package:inspectra/src/policy/filter_outcome.dart';
 import 'package:inspectra/src/policy/finding_filter.dart';
 import 'package:test/test.dart';
@@ -61,5 +65,43 @@ void main() {
     expect(outcome.kept.map((f) => f.ruleId), <String>['c']);
     expect(outcome.suppressed, hasLength(2));
     expect(outcome.expiredRules.single.id, 'c');
+  });
+
+  test('leaves out what the baseline covers after the ignore rules', () {
+    final filter = FindingFilter(
+      minSeverity: Severity.unknown,
+      rules: const <IgnoreRule>[],
+      cliIgnores: const <String>['b'],
+      now: DateTime.utc(2026),
+      baseline: BaselineMatcher(
+        baseline: Baseline(const <BaselineEntry>[
+          BaselineEntry(
+            scope: BaselineScope.scan,
+            source: 'osv',
+            rule: 'a',
+            count: 1,
+            severity: Severity.low,
+            title: 'a',
+          ),
+          BaselineEntry(
+            scope: BaselineScope.scan,
+            source: 'osv',
+            rule: 'b',
+            count: 1,
+            severity: Severity.low,
+            title: 'b',
+          ),
+        ]),
+        config: const BaselineConfig(),
+      ),
+    );
+    final FilterOutcome outcome = filter.apply(<Finding>[
+      finding('a', Severity.low),
+      finding('a', Severity.low),
+      finding('b', Severity.low),
+    ]);
+    expect(outcome.kept.map((f) => f.ruleId), <String>['a']);
+    expect(outcome.baselined.map((f) => f.ruleId), <String>['a']);
+    expect(outcome.suppressed.map((f) => f.ruleId), <String>['b']);
   });
 }

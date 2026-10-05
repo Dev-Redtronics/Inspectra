@@ -16,6 +16,7 @@
 
 import 'package:inspectra/inspectra.dart';
 import 'package:test/test.dart';
+import 'package:yaml/yaml.dart';
 
 /// Tests reading the `style:` section of the configuration.
 void main() {
@@ -132,5 +133,26 @@ void main() {
     );
     expect(error(<String, Object?>{'preset': 'loose'}), contains('strict'));
     expect(error(<String, Object?>{'unknown': 1}), contains('unknown option'));
+  });
+
+  test('describes a list or mapping of the wrong kind read from YAML', () {
+    for (final (String yaml, String described) in <(String, String)>[
+      ('style:\n  rules: [no_else]\n', 'got a list'),
+      ('style:\n  preset: {strict: true}\n', 'got a mapping'),
+    ]) {
+      expect(
+        () => InspectraConfig.parse(
+          loadYaml(yaml) as Map<Object?, Object?>,
+          packageName: 'demo',
+        ),
+        throwsA(
+          isA<InspectraConfigException>().having(
+            (error) => '$error',
+            'message',
+            contains(described),
+          ),
+        ),
+      );
+    }
   });
 }

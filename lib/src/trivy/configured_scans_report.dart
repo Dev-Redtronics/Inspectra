@@ -47,7 +47,7 @@ final class ConfiguredScansReport implements CommandReport {
   @override
   List<Finding> get findings => <Finding>[
     for (final result in results)
-      for (final finding in result.findings) _normalise(result.scan, finding),
+      for (final finding in result.findings) normalise(result.scan, finding),
   ];
 
   /// Fails when any scan failed under its own settings.
@@ -76,7 +76,7 @@ final class ConfiguredScansReport implements CommandReport {
   /// Converts a scan finding of [scan] into the normalised model.
   ///
   /// Returns the finding.
-  Finding _normalise(String scan, ScanFinding finding) {
+  static Finding normalise(String scan, ScanFinding finding) {
     final String? detail = finding.detail;
     return Finding(
       ruleId: finding.id,

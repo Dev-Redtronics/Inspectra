@@ -15,9 +15,19 @@
  */
 
 import 'package:inspectra/src/config/api_config.dart';
+import 'package:inspectra/src/config/baseline_config.dart';
 import 'package:inspectra/src/config/changelog_config.dart';
+import 'package:inspectra/src/config/config_base_reference.dart';
+import 'package:inspectra/src/config/config_layer.dart';
+import 'package:inspectra/src/config/config_layer_kind.dart';
+import 'package:inspectra/src/config/config_layer_stack.dart';
+import 'package:inspectra/src/config/config_layers.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
+import 'package:inspectra/src/config/config_policy.dart';
+import 'package:inspectra/src/config/config_policy_check.dart';
+import 'package:inspectra/src/config/config_recorder.dart';
 import 'package:inspectra/src/config/coverage_config.dart';
+import 'package:inspectra/src/config/dependency_policy_config.dart';
 import 'package:inspectra/src/config/format_config.dart';
 import 'package:inspectra/src/config/ignore_rule.dart';
 import 'package:inspectra/src/config/inspect_config.dart';
@@ -30,14 +40,27 @@ import 'package:inspectra/src/config/trust_thresholds.dart';
 import 'package:inspectra/src/config/typosquat_config.dart';
 import 'package:inspectra/src/config/yaml_reader.dart';
 import 'package:inspectra/src/model/severity.dart';
-import 'package:yaml/yaml.dart';
 
 export 'package:inspectra/src/changelog/changelog_section.dart';
 export 'package:inspectra/src/config/api_config.dart';
+export 'package:inspectra/src/config/baseline_config.dart';
 export 'package:inspectra/src/config/build_scan_config.dart';
 export 'package:inspectra/src/config/changelog_config.dart';
+export 'package:inspectra/src/config/config_base_reference.dart';
+export 'package:inspectra/src/config/config_entry.dart';
+export 'package:inspectra/src/config/config_kind.dart';
+export 'package:inspectra/src/config/config_layer.dart';
+export 'package:inspectra/src/config/config_layer_kind.dart';
+export 'package:inspectra/src/config/config_layer_stack.dart';
+export 'package:inspectra/src/config/config_origin.dart';
+export 'package:inspectra/src/config/config_override.dart';
+export 'package:inspectra/src/config/config_policy.dart';
+export 'package:inspectra/src/config/config_recorder.dart';
+export 'package:inspectra/src/config/config_strictness.dart';
 export 'package:inspectra/src/config/coverage_config.dart';
 export 'package:inspectra/src/config/coverage_runner.dart';
+export 'package:inspectra/src/config/denied_package.dart';
+export 'package:inspectra/src/config/dependency_policy_config.dart';
 export 'package:inspectra/src/config/filesystem_scan_config.dart';
 export 'package:inspectra/src/config/format_config.dart';
 export 'package:inspectra/src/config/ignore_rule.dart';
@@ -75,7 +98,9 @@ const pubspecSectionKey = 'inspectra';
 /// `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`) and changelog
 /// generation work without any configuration; the supply-chain commands
 /// are tuned by `fail_on`, `min_severity`, `ignore`, `network`, `inspect`,
-/// `trust`, `typosquat` and the provisioning keys of `trivy`.
+/// `trust`, `typosquat` and the provisioning keys of `trivy`. `baseline`
+/// names the file of accepted findings that `scan`, `audit`, `typosquat`,
+/// `trivy`, `lint`, `style` and `check` do not report.
 final class InspectraConfig {
   /// Creates a configuration from its parts.
   const InspectraConfig({
@@ -94,6 +119,8 @@ final class InspectraConfig {
     this.inspect = const InspectConfig(),
     this.trust = const TrustThresholds(),
     this.typosquat = const TyposquatConfig(),
+    this.baseline = const BaselineConfig(),
+    this.dependencyPolicy = const DependencyPolicyConfig(),
   });
 
   /// The configuration with every default, for the package [packageName].
@@ -103,20 +130,100 @@ final class InspectraConfig {
       InspectraConfig.parse(null, packageName: packageName);
 
   /// Parses the configuration mapping [node], which lives at [path], with
-  /// the [overrides] layered on top.
+  /// the [overrides] layered on top; a [recorder] records every value with
+  /// its origin. `extends` is not followed; [InspectraConfig.fromSources]
+  /// and `loadConfig` resolve the bases.
   ///
   /// Returns the configuration.
   ///
-  /// Throws an [InspectraConfigException] for an unknown key or a value of
-  /// the wrong type.
+  /// Throws an [InspectraConfigException] for an unknown key, a value of
+  /// the wrong type, or a value that violates the node's own policy.
   factory InspectraConfig.parse(
     Object? node, {
     required String packageName,
     String path = '',
     ConfigOverrides? overrides,
+    ConfigRecorder? recorder,
+  }) => InspectraConfig.fromLayers(
+    ConfigLayerStack(
+      layers: <ConfigLayer>[
+        ConfigLayer(
+          label: recorder?.source ?? 'the configuration',
+          kind: ConfigLayerKind.project,
+          node: node,
+          yamlPath: path,
+        ),
+      ],
+      starts: const <int>[0],
+    ),
+    packageName: packageName,
+    overrides: overrides,
+    recorder: recorder,
+  );
+
+  /// Parses the layers of [stack], the project's configuration and the
+  /// bases it extends, with the [overrides] layered on top, and enforces
+  /// the policies of the layers; a [recorder] records every value with its
+  /// origin and the layer it comes from.
+  ///
+  /// Returns the configuration.
+  ///
+  /// Throws an [InspectraConfigException] for an unknown key, a value of
+  /// the wrong type, or a value that violates a policy.
+  factory InspectraConfig.fromLayers(
+    ConfigLayerStack stack, {
+    required String packageName,
+    ConfigOverrides? overrides,
+    ConfigRecorder? recorder,
   }) {
-    final ConfigOverrides layers = overrides ?? ConfigOverrides.none();
-    final root = YamlReader(node, path, overrides: layers, keyPath: '');
+    final bool policies = stack.layers.any(
+      (layer) => !ConfigPolicy.of(layer).isEmpty,
+    );
+    final ConfigRecorder? target =
+        recorder ??
+        (policies ? (ConfigRecorder()..source = stack.project.label) : null);
+    if (stack.layers.length > 1) {
+      target?.layers = stack.layers;
+    }
+    final config = InspectraConfig._parseLayers(
+      stack.layers,
+      packageName,
+      overrides ?? ConfigOverrides.none(),
+      target,
+    );
+    if (policies && target != null) {
+      checkConfigPolicies(stack, target, (layers) {
+        final reference = ConfigRecorder();
+        InspectraConfig._parseLayers(
+          layers,
+          packageName,
+          ConfigOverrides.none(),
+          reference,
+        );
+        return reference;
+      });
+    }
+    return config;
+  }
+
+  /// Parses [layers] for the package [packageName] with [overrides] on
+  /// top, recording every value in [recorder].
+  ///
+  /// Returns the configuration.
+  ///
+  /// Throws an [InspectraConfigException] for an unknown key or a value of
+  /// the wrong type.
+  factory InspectraConfig._parseLayers(
+    List<ConfigLayer> layers,
+    String packageName,
+    ConfigOverrides overrides,
+    ConfigRecorder? recorder,
+  ) {
+    final root = YamlReader.layered(
+      layers,
+      overrides: overrides,
+      recorder: recorder,
+    )..reserve(const <String>['extends', 'policy']);
     final severities = <String, Severity?>{
       for (final severity in Severity.values) severity.name: severity,
     };
@@ -131,16 +238,20 @@ final class InspectraConfig {
       changelog: ChangelogConfig.fromYaml(root.section('changelog')),
       failOn: root.choice('fail_on', severities, fallback: null),
       minSeverity:
-          root.choice('min_severity', severities, fallback: null) ??
+          root.choice('min_severity', severities, fallback: Severity.unknown) ??
           Severity.unknown,
       ignore: IgnoreRule.listFromYaml(root),
       network: NetworkConfig.fromYaml(root.section('network')),
       inspect: InspectConfig.fromYaml(root.section('inspect')),
       trust: TrustThresholds.fromYaml(root.section('trust')),
       typosquat: TyposquatConfig.fromYaml(root.section('typosquat')),
+      baseline: BaselineConfig.fromYaml(root.section('baseline')),
+      dependencyPolicy: DependencyPolicyConfig.fromYaml(
+        root.section('dependency_policy'),
+      ),
     );
     root.ensureFullyRead();
-    layers.ensureAllConsumed();
+    overrides.ensureAllConsumed();
     return config;
   }
 
@@ -148,21 +259,31 @@ final class InspectraConfig {
   ///
   /// [pubspec] is the content of `pubspec.yaml`, or `null` outside of a
   /// package; [configFile] that of `inspectra.yaml`, or `null` when there
-  /// is none, and wins when both are present.
+  /// is none, and wins when both are present. A [recorder] records every
+  /// value with its origin and the file it was read from.
+  ///
+  /// With [packageRoot], the bases named by `extends` are resolved: paths
+  /// relative to [configDirectory] (default: [packageRoot]), packages
+  /// through its `.dart_tool/package_config.json`, and remote bases from
+  /// the cache in [cacheRoot].
   ///
   /// Returns the configuration.
   ///
-  /// Throws an [InspectraConfigException] when the files are malformed or
-  /// the package has no name.
+  /// Throws an [InspectraConfigException] when the files are malformed, a
+  /// base is missing, a policy is violated or the package has no name.
   factory InspectraConfig.fromSources({
     required String? pubspec,
     String? configFile,
     String configFileLabel = configFileName,
     ConfigOverrides? overrides,
+    ConfigRecorder? recorder,
+    String? packageRoot,
+    String? cacheRoot,
+    String? configDirectory,
   }) {
     final Object? pubspecYaml = pubspec == null
         ? null
-        : _load(pubspec, 'pubspec.yaml');
+        : loadConfigYaml(pubspec, 'pubspec.yaml');
     final Object? name = pubspecYaml is Map ? pubspecYaml['name'] : null;
     if (pubspec != null && name is! String) {
       throw const InspectraConfigException(
@@ -170,42 +291,35 @@ final class InspectraConfig {
         'the package has no name.',
       );
     }
-    final String packageName = name is String ? name : 'package';
-    if (configFile != null) {
-      return InspectraConfig.parse(
-        _load(configFile, configFileLabel),
-        packageName: packageName,
-        overrides: overrides,
+    final ConfigLayer project = projectConfigLayer(
+      pubspecYaml: pubspecYaml,
+      configFile: configFile,
+      configFileLabel: configFileLabel,
+      directory: configDirectory ?? packageRoot,
+    );
+    final bool hasSource = configFile != null || project.node != null;
+    recorder?.source = hasSource ? project.label : null;
+    final root = packageRoot;
+    final ConfigLayerStack stack = root == null
+        ? ConfigLayerStack(
+            layers: <ConfigLayer>[project],
+            starts: const <int>[0],
+          )
+        : resolveConfigLayers(project, packageRoot: root, cacheRoot: cacheRoot);
+    final RemoteBaseReference? missing = stack.missing.firstOrNull;
+    if (missing != null) {
+      throw InspectraConfigException(
+        'extends',
+        'the base ${missing.label} is not in the cache; run '
+            '"dart run inspectra config fetch" while online.',
       );
     }
-    final Object? section = pubspecYaml is Map
-        ? pubspecYaml[pubspecSectionKey]
-        : null;
-    return InspectraConfig.parse(
-      section,
-      packageName: packageName,
-      path: section == null ? '' : pubspecSectionKey,
+    return InspectraConfig.fromLayers(
+      stack,
+      packageName: name is String ? name : 'package',
       overrides: overrides,
+      recorder: recorder,
     );
-  }
-
-  /// Parses the YAML [text] of the file [source].
-  ///
-  /// Returns the document.
-  ///
-  /// Throws an [InspectraConfigException] naming the line and column of a
-  /// syntax error.
-  static Object? _load(String text, String source) {
-    try {
-      return loadYaml(text, sourceUrl: Uri.file(source));
-    } on YamlException catch (error) {
-      final int? line = error.span?.start.line;
-      final int? column = error.span?.start.column;
-      final location = line == null || column == null
-          ? ''
-          : 'line ${line + 1}, column ${column + 1}: ';
-      throw InspectraConfigException(source, '$location${error.message}');
-    }
   }
 
   /// The name of the package this configuration belongs to.
@@ -254,4 +368,10 @@ final class InspectraConfig {
 
   /// Typosquat detector settings.
   final TyposquatConfig typosquat;
+
+  /// The baseline of accepted findings.
+  final BaselineConfig baseline;
+
+  /// The rules for the dependencies of the package.
+  final DependencyPolicyConfig dependencyPolicy;
 }

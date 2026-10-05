@@ -206,6 +206,13 @@ targets:
         enabled: false
 ```
 
+## Inherited configuration {id="inheritance"}
+
+The builders follow [`extends`](Configuration-Inheritance.md) like the command line and enforce its policies, but never
+download anything: file and `package:` bases are read from disk and remote bases from the cache that
+`dart run inspectra config fetch` fills. Editing a base does not rerun the builders; the next build with another reason
+to run picks it up.
+
 <seealso>
     <category ref="reference">
         <a href="CLI-Reference.md">Command line reference</a>

@@ -30,7 +30,9 @@ dependencies:
   glob: ^2.2.0
   path: ^1.9.1
   pub_semver: ^2.2.0
+  xml: ^7.1.0
   yaml: ^3.1.4
+  yaml_edit: ^2.2.4
 
 dev_dependencies:
   build_runner: ^2.16.1
@@ -76,3 +78,13 @@ inspectra:
     min_line_coverage: 90
   changelog:
     enabled: true
+  # The dependency rules Inspectra holds itself to; it is the one package
+  # meant for pub.dev.
+  dependency_policy:
+    enabled: true
+    require_upper_bound: true
+    min_sdk: 3.13.4
+    dev_only: [build_runner, build_test, lints, test]
+    require_publish_to: true
+    published_packages: [inspectra]
+    check_imports: true

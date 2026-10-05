@@ -22,9 +22,6 @@ import 'package:inspectra/src/changelog/changelog_entry.dart';
 import 'package:inspectra/src/changelog/changelog_generator.dart';
 import 'package:inspectra/src/changelog/changelog_release.dart';
 import 'package:inspectra/src/changelog/changelog_writer.dart';
-import 'package:inspectra/src/changelog/git_commit.dart';
-import 'package:inspectra/src/changelog/git_history.dart';
-import 'package:inspectra/src/changelog/version_bump.dart';
 import 'package:test/test.dart';
 
 import '../support/fake_git.dart';

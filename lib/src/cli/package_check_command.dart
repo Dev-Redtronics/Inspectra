@@ -18,19 +18,32 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:inspectra/src/api/api_command.dart';
+import 'package:inspectra/src/api/semver_check.dart';
+import 'package:inspectra/src/api/semver_result.dart';
+import 'package:inspectra/src/baseline/baseline_gates.dart';
+import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/changelog/changelog_check.dart';
 import 'package:inspectra/src/changelog/changelog_check_result.dart';
+import 'package:inspectra/src/changelog/git_history.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/config_bases.dart';
 import 'package:inspectra/src/cli/exit_code.dart';
 import 'package:inspectra/src/config/config_loader.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/coverage/coverage_gate.dart';
+import 'package:inspectra/src/deps/dependency_policy.dart';
+import 'package:inspectra/src/deps/deps_report.dart';
+import 'package:inspectra/src/deps/deps_result.dart';
+import 'package:inspectra/src/deps/deps_service.dart';
 import 'package:inspectra/src/io/ansi_styler.dart';
 import 'package:inspectra/src/io/console.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
+import 'package:inspectra/src/policy/finding_filter.dart';
 import 'package:inspectra/src/quality/format_check.dart';
 import 'package:inspectra/src/quality/lint.dart';
 import 'package:inspectra/src/quality/quality_command.dart';
@@ -82,6 +95,7 @@ abstract class PackageCheckCommand extends Command<int> {
   @override
   Future<int> run() async {
     try {
+      await prepareConfigBases(context, packageRoot);
       final bool passed = await runChecks();
       return passed ? ExitCode.success.code : ExitCode.findings.code;
     } on InspectraConfigException catch (error) {
@@ -106,16 +120,29 @@ abstract class PackageCheckCommand extends Command<int> {
   }
 
   /// Reads the configuration of the package, with `INSPECTRA_*`
-  /// environment variables layered on top.
+  /// environment variables and the command line values [cli] layered on
+  /// top.
   ///
   /// Returns the configuration.
   ///
   /// Throws a [FileSystemException] without `pubspec.yaml` and an
   /// [InspectraConfigException] for invalid configuration.
-  InspectraConfig loadPackageConfig() => loadConfig(
+  InspectraConfig loadPackageConfig({
+    Map<String, String> cli = const <String, String>{},
+  }) => loadConfig(
     packageRoot,
-    overrides: ConfigOverrides(environment: context.environment),
+    overrides: ConfigOverrides(cli: cli, environment: context.environment),
+    cacheRoot: cacheRootOf(context),
   );
+
+  /// Loads the baseline of the package as [config] names it.
+  ///
+  /// Returns the matcher, which covers nothing when the baseline is
+  /// disabled or its file does not exist.
+  ///
+  /// Throws an `InvalidInputException` when the baseline file is malformed.
+  BaselineMatcher baselineMatcher(InspectraConfig config) =>
+      BaselineMatcher.load(config.baseline, packageRoot);
 
   /// Runs the style check and prints the outcome.
   ///
@@ -124,9 +151,46 @@ abstract class PackageCheckCommand extends Command<int> {
   /// Throws an `InvalidInputException` for a missing header template or
   /// custom rules that cannot run.
   Future<bool> runStyleGate(InspectraConfig config) async {
-    final StyleResult result = await runStyleCheck(config, packageRoot);
+    final StyleResult result = baselineStyle(
+      await runStyleCheck(config, packageRoot),
+      baselineMatcher(config),
+    );
     out.writeln(result.render());
     return !result.failed;
+  }
+
+  /// Checks the pubspec of the package against the pubspec rules and the
+  /// dependency policy, with the ignore rules and the baseline applied, and
+  /// prints the outcome.
+  ///
+  /// Returns whether no finding reached `fail_on`.
+  ///
+  /// Throws an `InvalidInputException` for a malformed pubspec or lockfile.
+  Future<bool> runDependencyPolicy(InspectraConfig config) async {
+    final DepsResult result = DepsService(
+      workingDirectory: packageRoot,
+      policy: DependencyPolicy(
+        config: config.dependencyPolicy,
+        defaultRegistry: config.network.pubHostedUrl,
+      ),
+    ).run(packageRoot, recursive: false);
+    final FilterOutcome outcome = FindingFilter(
+      minSeverity: config.minSeverity,
+      rules: config.ignore,
+      cliIgnores: const <String>[],
+      now: context.clock.now(),
+      baseline: baselineMatcher(config),
+    ).apply(result.findings);
+    final report = DepsReport(
+      result: result,
+      findings: outcome.kept,
+      suppressedCount: outcome.suppressed.length,
+      baselinedCount: outcome.baselined.length,
+    );
+    final text = StringBuffer();
+    report.writeText(text, const AnsiStyler(enabled: false));
+    out.write('Dependency policy: $text');
+    return !report.isFailing(config.failOn ?? Severity.unknown);
   }
 
   /// Validates the changelog and prints the outcome.
@@ -136,6 +200,26 @@ abstract class PackageCheckCommand extends Command<int> {
   /// Throws an `InvalidInputException` when `pubspec.yaml` is malformed.
   Future<bool> runChangelogCheck(InspectraConfig config) async {
     final ChangelogCheckResult result = checkChangelog(config, packageRoot);
+    out.writeln(result.render());
+    return !result.failed;
+  }
+
+  /// Compares the API with the last release and checks the version in
+  /// `pubspec.yaml`, printing the outcome.
+  ///
+  /// Returns whether the version follows the API changes.
+  ///
+  /// Throws an `InvalidUsageException` outside of a Git repository and an
+  /// `UnavailableException` when Git is missing.
+  Future<bool> runSemverGate(InspectraConfig config) async {
+    final SemverResult result = await checkSemver(
+      config,
+      packageRoot,
+      GitHistory(
+        processRunner: context.processRunner,
+        workingDirectory: packageRoot,
+      ),
+    );
     out.writeln(result.render());
     return !result.failed;
   }
@@ -157,11 +241,14 @@ abstract class PackageCheckCommand extends Command<int> {
   /// Throws a [TrivyException] when Trivy is not available.
   Future<bool> runScans(InspectraConfig config, {Set<TrivyScan>? scans}) async {
     final String executable = await provisionTrivy(config);
-    final List<ScanResult> results = await runTrivyScans(
-      config,
-      packageRoot,
-      only: scans,
-      executable: executable,
+    final List<ScanResult> results = baselineScans(
+      await runTrivyScans(
+        config,
+        packageRoot,
+        only: scans,
+        executable: executable,
+      ),
+      baselineMatcher(config),
     );
     for (final result in results) {
       out.writeln(result.render());
@@ -220,7 +307,10 @@ abstract class PackageCheckCommand extends Command<int> {
   ///
   /// Returns `true` when the check passed.
   Future<bool> runLintGate(InspectraConfig config, {bool fix = false}) async {
-    final LintResult result = await runLintCheck(config, packageRoot, fix: fix);
+    final LintResult result = baselineLint(
+      await runLintCheck(config, packageRoot, fix: fix),
+      baselineMatcher(config),
+    );
     out.writeln(result.render());
     return !result.failed;
   }

@@ -65,6 +65,7 @@ final class ScanCommand extends InspectraCommand {
       confusionDetector: session.confusionDetector(),
       trivyService: session.trivyService(),
       workingDirectory: session.workingDirectory,
+      dependencyPolicy: session.dependencyPolicy(),
     );
     final ScanResult result = await service.scan(
       root,
@@ -82,6 +83,7 @@ final class ScanCommand extends InspectraCommand {
       result: result,
       findings: outcome.kept,
       suppressedCount: outcome.suppressed.length,
+      baselinedCount: outcome.baselined.length,
     );
   }
 }

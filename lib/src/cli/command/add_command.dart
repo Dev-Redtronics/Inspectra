@@ -78,7 +78,7 @@ final class AddCommand extends InspectraCommand {
       force: results['force'] == true,
       dryRun: results['dry-run'] == true,
       projectDirectory: session.workingDirectory,
-      filter: session.filter(),
+      filter: session.filter(baseline: false),
       onStatus: (message) => session.console.info('  $message'),
     );
   }

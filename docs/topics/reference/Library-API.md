@@ -75,11 +75,16 @@ print(config.trivy.secret.severity);     // [Severity.critical, Severity.high, .
 | `InspectraConfig.parse(node, packageName:)` | From a parsed YAML or plain map. |
 | `InspectraConfig.defaults(packageName)` | Every default; every feature off. |
 | `loadConfig(root, {overrides, configFile, requirePubspec})` | With `ConfigOverrides` for `--set` values and `INSPECTRA_*` variables, and another configuration file. |
+| `loadConfig(root, {recorder})`, `parse(…, recorder:)`, `fromSources(…, recorder:)` | With a `ConfigRecorder`, which afterwards holds a `ConfigEntry` per option: `key`, `kind` (`ConfigKind`), `value`, `defaultValue`, `origin` (`ConfigOrigin`: `defaults`, `file`, `environment`, `commandLine`), `variable`, `line`, `options`, `minimum`, `maximum`; `recorder.source` names the file. This is what `config show --explain` prints. |
+| `loadConfig(root, {cacheRoot})`, `fromSources(…, packageRoot:, cacheRoot:, configDirectory:)` | Follow `extends`: relative paths, `package:` bases and remote bases from the cache. `entry.file` names the base of each value and `recorder.layers` lists the `ConfigLayer`s (`label`, `kind`: `ConfigLayerKind.project`, `file`, `package` or `remote`). |
+| `InspectraConfig.fromLayers(stack, packageName:)` | From a `ConfigLayerStack` of layers, enforcing their `ConfigPolicy` (`locked`, `minimum`, ordered by `ConfigStrictness`). |
+| `ConfigOverrides.resolve(path)` | The override of an option as a `ConfigOverride` with `value`, `origin` and `variable`; `knownPaths` lists every option that can be overridden. |
 | `configFileName`, `pubspecSectionKey` | `'%config_file%'`, `'%pubspec_key%'` |
 
 The configuration classes - `FormatConfig`, `LintConfig`, `TrivyConfig`, `SecretScanConfig`, `LicenseScanConfig`,
 `VulnerabilityScanConfig`, `FilesystemScanConfig`, `ApiConfig`, `CoverageConfig`, and for the supply-chain commands
-`NetworkConfig`, `InspectConfig`, `TrustThresholds`, `TyposquatConfig` and `IgnoreRule` - are immutable and have
+`NetworkConfig`, `InspectConfig`, `TrustThresholds`, `TyposquatConfig`, `IgnoreRule`, `BaselineConfig`,
+`DependencyPolicyConfig` and `DeniedPackage` - are immutable and have
 `const` constructors, so tooling can also build a configuration without YAML.
 
 ## Running the format and lint checks
@@ -96,12 +101,12 @@ for (final issue in lint.failing) {
 | API | Description |
 |:--|:--|
 | `runFormatCheck(config, root, {fix})` | What `dart run inspectra format` does, including the JSON report. |
-| `runLintCheck(config, root, {fix})` | What `dart run inspectra lint` does, including the JSON report. |
+| `runLintCheck(config, root, {fix})` | What `dart run inspectra lint` does, including the JSON report, but without applying the [baseline](Baseline.md). |
 | `checkFormat(config:, packageRoot:, files:, {fix})` | `dart format` on an explicit list of files. |
 | `runLint(config:, packageRoot:, {fix})` | `dart analyze`, optionally after `dart fix --apply`. |
 | `parseAnalyzerOutput(output, root)` | The diagnostics of `dart analyze --format=machine`. |
 | `FormatResult` | `checked`, `unformatted`, `fixed`, `failed`, `render()`, `toJson()`. |
-| `LintResult` | `issues`, `failing`, `failOn`, `failed`, `render()`, `toJson()`. |
+| `LintResult` | `issues`, `failing`, `failOn`, `failed`, `baseline`, `render()`, `toJson()`. |
 | `LintIssue` | `severity`, `type`, `code`, `path`, `line`, `column`, `message`. |
 | `LintLevel` | `error`, `warning`, `info`, `none`. |
 | `DartToolException` | `dart format`, `dart analyze` or `dart fix` could not run or failed. |
@@ -117,9 +122,9 @@ for (final StyleViolation violation in result.violations) {
 
 | API | Description |
 |:--|:--|
-| `runStyleCheck(config, root)` | What `dart run inspectra style` does, including the JSON report. |
+| `runStyleCheck(config, root)` | What `dart run inspectra style` does, including the JSON report, but without applying the [baseline](Baseline.md). |
 | `checkStyle(config:, packageRoot:, files:, {read})` | The style check of an explicit list of files; `read` replaces reading from disk. |
-| `StyleResult` | `checked`, `rules`, `violations`, `failed`, `affectedFiles`, `render()`, `toJson()`. |
+| `StyleResult` | `checked`, `rules`, `violations`, `failed`, `affectedFiles`, `baseline`, `render()`, `toJson()`. |
 | `StyleViolation` | `ruleId`, `path`, `line`, `column`, `message`. |
 | `StyleConfig`, `StylePreset` | The `style:` section; `runs(id)` tells whether a rule runs. |
 
@@ -166,7 +171,8 @@ final ScanResult licenses = await scanLicenses(
 | `runTrivyScans(config, root, {only, executable})` | Every enabled scan, or the ones in `only`; writes the reports. With `network.offline`, Trivy runs offline. |
 | `scanSecrets`, `scanLicenses`, `scanVulnerabilities`, `scanFilesystem` | One scan each, on explicit inputs. |
 | `Trivy({executable, environment, workingDirectory, offline})` | The Trivy runner; `scanFilesystem` returns a parsed `TrivyReport`. `offline: true` adds `--skip-db-update --offline-scan` to every `trivy fs` call. |
-| `ScanResult` | `scan`, `findings`, `failed`, `skipped`, `render()`, `toJson()`. |
+| `ScanResult` | `scan`, `findings`, `failed`, `skipped`, `baseline`, `render()`, `toJson()`. |
+| `BaselineSummary` | What a baseline did to a check result: `covered`, `stale`, `failOnStale`, `failed`. |
 | `ScanFinding` | One finding of a scan: `severity`, `target`, `id`, `title`, `detail`. |
 | `TrivyScan` | `secret`, `license`, `vulnerability`, `filesystem`; `isEnabled(config)`. |
 | `PackageGraph.load(root)` | The dependency graph; `reachable(includeDev:)`, `directoryOf(name)`, `lock`. |
@@ -207,12 +213,12 @@ Generating a changelog reads the Git history; run it through the command line, i
 ## The finding model {id="findings"}
 
 The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook` and `trivy` without
-configured scans - report the normalised `Finding`, which the JSON, SARIF and Markdown reports serialise.
+configured scans - report the normalised `Finding`, which the JSON, SARIF, Markdown and CI reports serialise.
 
 | API | Description |
 |:--|:--|
 | `Finding` | `ruleId`, `source`, `severity`, `title`, `description`, `location`, `packageName`, `packageVersion`, `fixedVersion`, `aliases`, `url`, `snippet`, `attributes`; `identifiers`, `fingerprint` (a stable SHA-256), `toJson()`. |
-| `FindingSource` | The scanner: `osv`, `trivy`, `regex`, `entropy`, `unicode`, `archive`, `pubspec`, `trust`, `typosquat`, `confusion`; `id`. |
+| `FindingSource` | The scanner: `osv`, `trivy`, `regex`, `entropy`, `unicode`, `archive`, `pubspec`, `trust`, `typosquat`, `confusion`, `style`, `config`, `quality`; `id`, `tryParse`. |
 | `SourceLocation(path, {line})` | The file and line a finding refers to. |
 | `Severity` | `critical`, `high`, `medium`, `low`, `unknown`; `label`, `trivyName`, `isAtLeast(threshold)`, `parse`, `tryParse`, `fromCvssScore`. Shared by `Finding` and `ScanFinding`. |
 | `IgnoreRule({id:, reason:, package, expires})` | An `ignore:` entry; `matches(finding)`, `isExpired(now)`. |
@@ -247,6 +253,30 @@ final String? diff = diffApi(expected: oldDump, actual: dump);
 | `renderApi(libraries, {nonPublicAnnotations})` | The dump of analyzer `LibraryElement`s you resolved yourself. |
 | `diffApi(expected:, actual:)` | The unified diff of two dumps, or `null`. |
 | `apiDumpHeader` | The two comment lines every dump starts with. |
+
+## Checking semantic versioning {id="semver"}
+
+```dart
+final SemverResult result = await checkSemver(
+  config,
+  packageRoot,
+  GitHistory(processRunner: const SystemProcessRunner(), workingDirectory: packageRoot),
+);
+print(result.render());
+
+final List<ApiChange> changes = classifyApiChanges(
+  ApiSurface.parse(oldDump),
+  ApiSurface.parse(newDump),
+);
+```
+
+| API | Description |
+|:--|:--|
+| `checkSemver(config, root, history, {from})` | Compares the dump at the last release tag, or at `from`, with the rendered API and checks the version, as `api semver` does. |
+| `evaluateSemver(before:, after:, baseline:, baselineVersion:, version:, commits:)` | The same comparison for two dumps you already have, without Git. |
+| `SemverResult` | `changes`, `breaking`, `additive`, `bump`, `required`, `violated`, `undeclaredBreaking`, `skipped`, `findings`, `render()`, `toJson()`. |
+| `classifyApiChanges(before, after)` | Every `ApiChange` between two `ApiSurface`s, with its `ApiChangeKind` and reason. |
+| `ApiSurface.parse(dump)` | The libraries, declarations, members and enum values of a dump. |
 
 ## Running the coverage gate
 

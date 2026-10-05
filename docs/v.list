@@ -4,7 +4,7 @@
     <!-- Product identity -->
     <var name="product" value="Inspectra"/>
     <var name="package" value="inspectra"/>
-    <var name="version" value="1.0.0"/>
+    <var name="version" value="2.0.0"/>
 
     <!-- Compatibility. The single source of truth for every version stated in the
          documentation. min_dart is the SDK lower bound of pubspec.yaml, which CI tests

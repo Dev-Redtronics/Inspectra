@@ -26,15 +26,17 @@ import 'package:inspectra/src/report/severity_breakdown.dart';
 ///
 /// Its JSON body keeps the `dart_audit` fields `scanned`,
 /// `vulnerablePackages`, `totalVulnerabilities` and `results`, and adds
-/// `lockfile`, `skipped` and `suppressed`.
+/// `lockfile`, `skipped`, `suppressed` and `baselined`.
 final class AuditReport implements CommandReport {
   /// Creates a report for [scan], whose policy filtered findings are
-  /// [findings]; [suppressedCount] findings were ignored by rules and
-  /// [verbose] lists clean packages too.
+  /// [findings]; [suppressedCount] findings were ignored by rules,
+  /// [baselinedCount] were covered by the baseline and [verbose] lists clean
+  /// packages too.
   const AuditReport({
     required this.scan,
     required this.findings,
     required this.suppressedCount,
+    this.baselinedCount = 0,
     this.verbose = false,
   });
 
@@ -47,6 +49,9 @@ final class AuditReport implements CommandReport {
 
   /// How many findings were suppressed by ignore rules.
   final int suppressedCount;
+
+  /// How many findings were covered by the baseline.
+  final int baselinedCount;
 
   /// Whether clean packages are listed in the text report.
   final bool verbose;
@@ -84,6 +89,7 @@ final class AuditReport implements CommandReport {
     'vulnerablePackages': vulnerablePackages.length,
     'totalVulnerabilities': findings.length,
     'suppressed': suppressedCount,
+    'baselined': baselinedCount,
     'results': <Object?>[
       for (final package in scan.scanned)
         <String, Object?>{
@@ -211,9 +217,7 @@ final class AuditReport implements CommandReport {
 
   /// Writes the closing summary.
   void _writeSummary(StringBuffer out, AnsiStyler style, int vulnerable) {
-    final String suppressed = suppressedCount == 0
-        ? ''
-        : style.dim(' ($suppressedCount suppressed by ignore rules)');
+    final String suppressed = _notes(style);
     if (findings.isEmpty) {
       out.writeln(
         '${style.green(style.bold('No vulnerabilities found.'))} '
@@ -237,5 +241,16 @@ final class AuditReport implements CommandReport {
         '${style.dim(' to update dependencies, or pin a safe version in '
         'pubspec.yaml.')}',
       );
+  }
+
+  /// The note on the findings that ignore rules and the baseline left out.
+  ///
+  /// Returns the dimmed note with a leading space, or an empty string.
+  String _notes(AnsiStyler style) {
+    final notes = <String>[
+      if (suppressedCount > 0) '$suppressedCount suppressed by ignore rules',
+      if (baselinedCount > 0) '$baselinedCount covered by the baseline',
+    ];
+    return notes.isEmpty ? '' : style.dim(' (${notes.join(', ')})');
   }
 }

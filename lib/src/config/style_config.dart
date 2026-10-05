@@ -48,7 +48,7 @@ final class StyleConfig {
       'custom_rules',
       fallback: const <String>[],
     );
-    final String? licenseHeader = yaml.optionalString('license_header');
+    final String? licenseHeader = yaml.optionalPath('license_header');
     final YamlReader rulesYaml = yaml.section('rules');
     final rules = <String, bool>{};
     final prefix = '${rulesYaml.keyPath}.';
@@ -59,7 +59,7 @@ final class StyleConfig {
         if (key.startsWith(prefix)) key.substring(prefix.length),
     };
     for (final id in ids) {
-      final bool? value = _optionalBoolean(rulesYaml, id);
+      final bool? value = rulesYaml.optionalBoolean(id);
       if (value == null) {
         continue;
       }
@@ -91,15 +91,6 @@ final class StyleConfig {
     );
     yaml.ensureFullyRead();
     return config;
-  }
-
-  /// Reads the switch of the rule [id], which is absent from most files.
-  ///
-  /// Returns the switch, or `null` when the rule is not mentioned.
-  static bool? _optionalBoolean(YamlReader rules, String id) {
-    final bool on = rules.boolean(id, fallback: true);
-    final bool off = rules.boolean(id, fallback: false);
-    return on == off ? on : null;
   }
 
   /// Checks the rule [id] given under `rules`.

@@ -116,7 +116,9 @@ diff is breaking depends on the direction:
 | A declaration or member added | No - unless consumers implement the class |
 
 Use the diff to decide the next version: anything breaking is a major version under semantic versioning, or a minor
-version before 1.0.0.
+version before 1.0.0. `dart run %package% api semver` makes that decision for you: it compares the code with the dump
+committed at the last release tag, classifies every change, and fails when the version in `pubspec.yaml` is too low.
+See [Semantic versioning](API-Semver.md).
 
 ## Builder or command line
 
@@ -134,6 +136,7 @@ Both render with the same code, so they never disagree. See [Workflow](API-Workf
         <a href="API-Workflow.md">Workflow</a>
         <a href="API-Dump-Format.md">Dump format</a>
         <a href="API-Diff.md">Reading the diff</a>
+        <a href="API-Semver.md">Semantic versioning</a>
         <a href="API-Configuration.md">Configuration</a>
     </category>
     <category ref="external">

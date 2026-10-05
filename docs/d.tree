@@ -13,6 +13,10 @@
     <toc-element toc-title="Configuration">
         <toc-element topic="Configuration-Overview.md"/>
         <toc-element topic="Configuration-Reference.md"/>
+        <toc-element topic="Configuration-Inheritance.md"/>
+        <toc-element topic="Baseline.md"/>
+        <toc-element topic="Configuration-Tools.md"/>
+        <toc-element topic="Dependency-Policy.md"/>
         <toc-element topic="Build-Sources.md"/>
     </toc-element>
 
@@ -42,6 +46,7 @@
         <toc-element topic="API-Workflow.md"/>
         <toc-element topic="API-Dump-Format.md"/>
         <toc-element topic="API-Diff.md"/>
+        <toc-element topic="API-Semver.md"/>
         <toc-element topic="API-Configuration.md"/>
     </toc-element>
 
@@ -69,6 +74,7 @@
 
     <toc-element toc-title="Operations">
         <toc-element topic="CI-Integration.md"/>
+        <toc-element topic="Reports.md"/>
         <toc-element topic="Troubleshooting.md"/>
         <toc-element topic="Migrating-From-Kreate.md"/>
         <toc-element topic="Inspectra-On-Itself.md"/>

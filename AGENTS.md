@@ -44,12 +44,43 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
   The base class owns the life cycle: shared options, configuration, rendering, exit code.
   `CommandSession` is the composition root that wires every service.
 - Each security feature is a package below `lib/src/`: `audit`, `inspect`, `trust`,
-  `typosquat`, `add`, `hook`, `trivy`, `scan`. A feature returns a `CommandReport` with its own
+  `typosquat`, `add`, `hook`, `trivy`, `scan`, `deps`. A feature returns a `CommandReport` with its own
   text and JSON layout.
+- `baseline` records accepted findings in `inspectra-baseline.json` (`baseline create|prune`) and
+  matches current findings against it: `FindingFilter` for the supply-chain commands,
+  `baseline_gates.dart` for the lint, style and Trivy scan results of the commands, `check` and the
+  builders. Keys leave out line numbers and package versions; counts make each further occurrence
+  new.
+- `config` parses the configuration through `YamlReader`, which can hand every value with its default,
+  origin and line to a `ConfigRecorder`. `config_tools` builds on it: `config show --explain`, the
+  JSON Schema of `config schema` (generated from a default parse, committed as `inspectra.schema.json`
+  and guarded by a test) and the rules of `config lint`. A configuration is a `ConfigLayerStack`:
+  `resolveConfigLayers` follows `extends` (paths, `package:` bases, SHA-256 pinned URLs from
+  `ConfigBaseCache`, filled by `fetchConfigBases`), `YamlReader.layered` reads the layers key by key,
+  and `checkConfigPolicies` enforces the `policy` of each layer on everything above it. A new option needs no extra schema work; read
+  it through `YamlReader` and regenerate the schema.
+- `deps` holds the dependency policy (`dependency_policy:`): `DependencyPolicy` checks a
+  `PolicySource` (pubspec, lockfile, imports from `ImportCollector`) and reports `pubspec` findings,
+  `DependencyFixer` applies the fixable rules with `yaml_edit`, and `DepsService` runs both with the
+  built-in pubspec rules for `deps`, `check` and, through `ScanService`, `scan`. Pubspec lines come
+  from `PubspecLocator`, which knows the section a key belongs to.
+- `report` holds the output formats: `ReportRenderer` renders any `CommandReport` as text, JSON, SARIF,
+  Markdown, JUnit, GitLab Code Quality, SonarQube, Checkstyle or the HTML dashboard (`HtmlReportWriter`,
+  inline assets in the style of shadcn/ui, allowed by CSP hashes). Section-based formats see a report as `ReportSection`s:
+  an `AggregateReport` has many, any other report one. `dashboard` runs every evaluation for
+  `inspectra report` (`ReportRunner`, one isolated `ReportStep` each), converts the package check
+  results into sections and `quality` findings (`section_adapters.dart`) and merges JSON reports.
+  `metrics` counts the lines of Dart files (`countDartLines`, a scanner, not a parser) for the
+  codebase section.
 - The package checks `check`, `format`, `lint`, `api`, `coverage` and `changelog check` extend
   `PackageCheckCommand`; their logic lives in `quality`, `api`, `coverage` and `changelog`, and
   `builders` runs the same checks and the Trivy scans from build_runner. `style` is an
   `InspectraCommand`, so that its findings can be rendered as SARIF.
+- `api` renders the public API dump with the analyzer (`api dump|check`, the builder) and checks
+  semantic versioning (`api semver`): `ApiSurface` parses a dump back into libraries, declarations
+  and members, `classifyApiChanges` decides breaking or additive for each difference, and
+  `checkSemver` compares the dump at the last release tag (`GitHistory.show`) with the rendered API
+  and the version of `pubspec.yaml` (`VersionBump`, shared with `changelog`).
 - `style` runs structural rules on the syntax tree: the built-in rules in `style/rules`, selected by
   presets and switches, and custom rules of a package, which a generated program runs with `dart run`
   (`StyleHost`). Inspectra holds itself to the `strict` preset.
@@ -85,9 +116,9 @@ comments.
 - `strict-casts`, `strict-inference` and `strict-raw-types` are on. No `dynamic` calls, no `!`
   unless the value is provably present, no broad `catch` without `on`.
 - Name intermediate results and computed conditions instead of nesting calls.
-- Runtime dependencies are limited to `args`, `yaml`, `crypto`, `path`, `pub_semver` and
-  `archive` for the security command line, and `analyzer`, `build`, `coverage` and `glob` for the
-  quality gates and the builders. HTTP uses `dart:io`. Adding a dependency needs a maintainer's
+- Runtime dependencies are limited to `args`, `yaml`, `crypto`, `path`, `pub_semver`,
+  `archive`, `yaml_edit` and `xml` for the security command line, and `analyzer`, `build`, `coverage` and
+  `glob` for the quality gates and the builders. HTTP uses `dart:io`. Adding a dependency needs a maintainer's
   approval.
 
 ## Security rules

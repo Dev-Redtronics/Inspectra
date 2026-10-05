@@ -72,6 +72,14 @@ final class PubspecParser {
       name: _stringOrNull(document['name']),
       version: _stringOrNull(document['version']),
       repository: _stringOrNull(document['repository']),
+      publishTo: _stringOrNull(document['publish_to']),
+      description: _stringOrNull(document['description']),
+      homepage: _stringOrNull(document['homepage']),
+      issueTracker: _stringOrNull(document['issue_tracker']),
+      documentation: _stringOrNull(document['documentation']),
+      topics: _strings(document['topics']),
+      workspace: _strings(document['workspace']),
+      resolution: _stringOrNull(document['resolution']),
       dependencies: _section(document, 'dependencies', path),
       devDependencies: _section(document, 'dev_dependencies', path),
       dependencyOverrides: _section(document, 'dependency_overrides', path),
@@ -173,6 +181,18 @@ final class PubspecParser {
       return _stringOrNull(hosted['url']);
     }
     return _stringOrNull(hosted);
+  }
+
+  /// Returns the non-blank texts of the list [value], or an empty list when
+  /// it is no list.
+  List<String> _strings(Object? value) {
+    if (value is! List<Object?>) {
+      return const <String>[];
+    }
+    return List<String>.unmodifiable(<String>[
+      for (final Object? item in value)
+        if (_stringOrNull(item) case final String text) text,
+    ]);
   }
 
   /// Returns [value] as a trimmed non-blank string, or `null`.

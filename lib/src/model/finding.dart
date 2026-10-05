@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 import 'package:inspectra/src/model/finding_source.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/model/severity.dart';
 import 'package:inspectra/src/model/source_location.dart';
 
@@ -51,6 +52,63 @@ final class Finding {
     this.snippet,
     this.attributes = const <String, Object?>{},
   });
+
+  /// Reads a finding from its JSON [json], as [toJson] writes it, found at
+  /// [location] of an input file.
+  ///
+  /// Returns the finding.
+  ///
+  /// Throws an [InvalidInputException] when a required field is missing or
+  /// the source or severity is unknown.
+  factory Finding.fromJson(Object? json, String location) {
+    if (json is! Map<String, Object?>) {
+      throw InvalidInputException('$location must be an object.');
+    }
+    final Object? ruleId = json['ruleId'];
+    final Object? title = json['title'];
+    final FindingSource? source = FindingSource.tryParse('${json['source']}');
+    final Iterable<Severity> severities = Severity.values.where(
+      (severity) => severity.name == json['severity'],
+    );
+    final bool valid =
+        ruleId is String &&
+        title is String &&
+        source != null &&
+        severities.isNotEmpty;
+    if (!valid) {
+      throw InvalidInputException(
+        '$location needs a ruleId, a title, a known source and a known '
+        'severity.',
+      );
+    }
+    final Object? file = json['file'];
+    final Object? line = json['line'];
+    final Object? aliases = json['aliases'];
+    final Object? attributes = json['attributes'];
+    return Finding(
+      ruleId: ruleId,
+      source: source,
+      severity: severities.first,
+      title: title,
+      description: _text(json['description']) ?? '',
+      location: file is String
+          ? SourceLocation(file, line: line is int ? line : null)
+          : null,
+      packageName: _text(json['package']),
+      packageVersion: _text(json['version']),
+      fixedVersion: _text(json['fixedVersion']),
+      aliases: <String>[
+        if (aliases is List<Object?>)
+          for (final Object? alias in aliases)
+            if (alias is String) alias,
+      ],
+      url: _text(json['url']),
+      snippet: _text(json['snippet']),
+      attributes: attributes is Map<String, Object?>
+          ? attributes
+          : const <String, Object?>{},
+    );
+  }
 
   /// The stable identifier of the rule or advisory.
   final String ruleId;
@@ -144,4 +202,7 @@ final class Finding {
       'fingerprint': fingerprint,
     };
   }
+
+  /// Returns [value] when it is a text, otherwise `null`.
+  static String? _text(Object? value) => value is String ? value : null;
 }

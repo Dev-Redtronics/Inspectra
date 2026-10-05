@@ -44,13 +44,17 @@ final class CoverageCommand extends PackageCheckCommand {
   /// Throws a `UsageException` when `--min` is not a percentage.
   @override
   Future<bool> runChecks() {
-    final String? min = argResults?.option('min');
+    final String? min = argResults?.option('min')?.trim();
     final double? threshold = min == null ? null : double.tryParse(min);
     final bool invalid =
         min != null && (threshold == null || threshold < 0 || threshold > 100);
     if (invalid) {
       usageException('--min must be a number between 0 and 100.');
     }
-    return runCoverageGate(loadPackageConfig(), minLineCoverage: threshold);
+    return runCoverageGate(
+      loadPackageConfig(
+        cli: <String, String>{'coverage.min_line_coverage': ?min},
+      ),
+    );
   }
 }

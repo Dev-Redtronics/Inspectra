@@ -1,10 +1,27 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davils-com/Inspectra/main/inspectra.schema.json
 # Inspectra configuration with every option and its default.
 #
 # Put these keys into inspectra.yaml next to pubspec.yaml, or under an
 # `inspectra:` section of pubspec.yaml. Precedence (highest first):
 # --set key=value and dedicated flags, INSPECTRA_<PATH> environment variables
-# (e.g. INSPECTRA_TRIVY_VERSION, INSPECTRA_NETWORK_PROXY), this file, defaults.
-# Unknown keys are rejected.
+# (e.g. INSPECTRA_TRIVY_VERSION, INSPECTRA_NETWORK_PROXY), this file, the
+# bases it extends, defaults. Unknown keys are rejected.
+
+# Shared configurations this file builds on, from the lowest to the highest
+# precedence: paths relative to this file, package:<name>/<path> through
+# .dart_tool/package_config.json, or https URLs pinned by their SHA-256.
+# extends:
+#   - package:acme_policy/inspectra.yaml
+#   - url: https://policy.acme.corp/inspectra.yaml
+#     sha256: <64 hexadecimal digits>
+
+# Options that files extending this one, INSPECTRA_* variables and the command
+# line must not change (locked), or may only make stricter (minimum).
+# policy:
+#   locked: [trivy.secret.enabled]
+#   minimum:
+#     coverage.min_line_coverage: 70
+#     fail_on: high
 
 # ---------------------------------------------------------------------------
 # Supply-chain commands: scan, audit, inspect, trust, typosquat, add, hook
@@ -24,6 +41,35 @@ ignore:
     package: http                    # optional: only for this package
     reason: Not reachable, we never parse untrusted multipart bodies.
     expires: 2027-01-31              # optional: revisit after this day
+
+# The findings accepted for now, recorded by `inspectra baseline create` and
+# left out by scan, audit, typosquat, trivy, lint, style, check and the
+# builders; `inspectra baseline prune` removes the fixed ones.
+baseline:
+  enabled: true                      # apply the file when it exists
+  file: inspectra-baseline.json
+  # max_severity: high               # unset: cover every severity
+  fail_on_stale: false               # true: fail until fixed findings are pruned
+
+# Rules for the dependencies of every pubspec.yaml, checked by scan, deps and
+# check once enabled; `inspectra deps --fix` applies the fixable ones.
+dependency_policy:
+  enabled: false
+  denied: []                         # entries: name, reason, replacement
+  allowed: []                        # not empty: the only hosted packages allowed
+  allowed_hosts: []                  # e.g. [https://pub.corp, https://pub.dev]
+  allowed_git_hosts: []              # e.g. [git.corp]
+  require_upper_bound: false         # >=1.2.0 needs an upper bound
+  # min_sdk: 3.6.0                   # lowest allowed lower bound of environment.sdk
+  # min_flutter: 3.27.0              # the same for environment.flutter
+  dev_only: []                       # e.g. [mockito, build_runner, lints, test]
+  require_publish_to: false          # every package needs publish_to ...
+  published_packages: []             # ... except the ones meant for pub.dev
+  required_metadata: []              # description, repository, homepage, issue_tracker, documentation, topics
+  lockfile_in_sync: false            # pubspec.lock matches the direct dependencies
+  lockfile_checksums: false          # every hosted package has a sha256
+  check_imports: false               # unused dependencies, dev dependencies used by lib/
+  unused_allow: [cupertino_icons]
 
 network:
   offline: false                     # true: never open a connection
@@ -151,6 +197,9 @@ api:
   # output: api/<package>.api        # the committed dump
   ignored_libraries: []
   non_public_annotations: [internal, visibleForTesting]
+  # Whether check also compares the API with the dump committed at the last
+  # release tag and requires a matching version in pubspec.yaml.
+  semver: false
 
 coverage:
   enabled: false

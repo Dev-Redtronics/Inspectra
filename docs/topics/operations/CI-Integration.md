@@ -7,7 +7,7 @@
 
 <link-summary>Complete GitHub Actions and GitLab CI pipelines that run every Inspectra check.</link-summary>
 
-<card-summary>Pipelines with Trivy provisioning, database caching, scheduled scans and report artifacts.</card-summary>
+<card-summary>Pipelines with Trivy provisioning, database caching, scheduled scans, dashboards and report artifacts.</card-summary>
 
 <tldr>
 <p><b>Two commands</b>: <code>dart run build_runner build --only-check</code> and <code>dart run %package% check</code></p>
@@ -21,7 +21,7 @@ checks pass? One command each:
 
 ```bash
 dart run build_runner build --only-check   # API dump current; checks enabled on build pass
-dart run inspectra check                   # format, lint, style, API, changelog, every enabled scan, coverage gate
+dart run inspectra check                   # format, lint, style, API, API semver, changelog, every enabled scan, coverage gate
 ```
 
 `--only-check` covers every builder - also those of `json_serializable`, `freezed` and the like - so it doubles as
@@ -158,6 +158,23 @@ With `changelog.enabled: true`, `inspectra check` also fails when `CHANGELOG.md`
 the Git history and the release tags and need `fetch-depth: 0`. A release job takes its description from the
 changelog with `dart run inspectra changelog notes "${GITHUB_REF_NAME#v}" --output RELEASE_NOTES.md`. See
 [Releasing](Changelog-Releasing.md#ci) for complete jobs.
+
+With `api.semver: true`, `inspectra check` compares the API with the dump at the last release tag, which also needs
+the tags: check out with `fetch-depth: 0` (GitHub Actions) or `GIT_DEPTH: 0` (GitLab). In a shallow clone without
+tags the check is skipped and warns. See [Semantic versioning](API-Semver.md).
+
+## Shared configuration {id="inheritance"}
+
+Repositories that [extend](Configuration-Inheritance.md) a central configuration get its remote bases on the first
+run. On runners without network access, run `dart run %package% config fetch` in a step that has it and cache
+`INSPECTRA_CACHE_DIR`; a policy of the base also binds the `--set` and `INSPECTRA_*` values of the pipeline.
+
+## Dashboards and CI reports {id="reports"}
+
+`dart run %package% report -f html -o inspectra-report.html` runs every evaluation and writes one self-contained HTML
+dashboard to keep as a job artifact; `--also gitlab=gl-code-quality.json --also junit=inspectra-junit.xml` feeds the
+merge request widget and the test report of GitLab from the same run. Jenkins, Azure DevOps and SonarQube read the
+`junit`, `checkstyle` and `sonarqube` formats. See [Reports and dashboards](Reports.md) for complete jobs.
 
 ## Splitting the work
 

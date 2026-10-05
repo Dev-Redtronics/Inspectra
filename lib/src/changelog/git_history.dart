@@ -121,6 +121,49 @@ final class GitHistory {
     return latest;
   }
 
+  /// Reads the file at [path], relative to the working directory, as it
+  /// was at [revision].
+  ///
+  /// Returns its content, or `null` when the file did not exist at that
+  /// revision.
+  ///
+  /// Throws an [InvalidUsageException] outside of a Git repository or for
+  /// a revision Git cannot resolve, and an [UnavailableException] when Git
+  /// is not installed or fails otherwise.
+  Future<String?> show(String revision, String path) async {
+    final String relative = path.replaceAll(r'\', '/');
+    try {
+      return await _git(<String>['show', '${_revision(revision)}:./$relative']);
+    } on UnavailableException catch (error) {
+      final bool absent =
+          error.message.contains('does not exist') ||
+          error.message.contains('exists on disk, but not in');
+      if (absent) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  /// Whether `HEAD` points to a commit; it does not in a repository
+  /// without any commit yet.
+  ///
+  /// Returns `true` when there is at least one commit.
+  ///
+  /// Throws an [InvalidUsageException] outside of a Git repository and an
+  /// [UnavailableException] when Git is not installed or fails otherwise.
+  Future<bool> hasCommits() async {
+    try {
+      await _git(const <String>['rev-parse', '--verify', 'HEAD']);
+      return true;
+    } on UnavailableException catch (error) {
+      if (error.message.contains('Needed a single revision')) {
+        return false;
+      }
+      rethrow;
+    }
+  }
+
   /// Whether the repository is a shallow clone, whose history and tags may
   /// be incomplete.
   ///
@@ -186,6 +229,7 @@ final class GitHistory {
       'malformed object name',
       'does not have any commits',
       'no such commit',
+      'invalid object name',
     ];
     final String firstLine = error.split('\n').first;
     if (unresolved.any(lower.contains)) {

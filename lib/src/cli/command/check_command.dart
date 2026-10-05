@@ -18,7 +18,7 @@ import 'package:inspectra/src/cli/package_check_command.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 
 /// `inspectra check`: runs every enabled package check — format, lint,
-/// API, the configured Trivy scans and coverage.
+/// API, the configured Trivy scans, the dependency policy and coverage.
 final class CheckCommand extends PackageCheckCommand {
   /// Creates the command.
   CheckCommand(super.context);
@@ -30,8 +30,8 @@ final class CheckCommand extends PackageCheckCommand {
   /// The one line description.
   @override
   String get description =>
-      'Run every enabled package check: format, lint, style, API, changelog, '
-      'Trivy scans and coverage.';
+      'Run every enabled package check: format, lint, style, API, API '
+      'semver, changelog, Trivy scans, dependency policy and coverage.';
 
   /// Runs the enabled checks one after the other.
   ///
@@ -44,8 +44,10 @@ final class CheckCommand extends PackageCheckCommand {
       (config.lint.enabled, () => runLintGate(config)),
       (config.style.enabled, () => runStyleGate(config)),
       (config.api.enabled, () => runApiCheck(config)),
+      (config.api.semver, () => runSemverGate(config)),
       (config.changelog.enabled, () => runChangelogCheck(config)),
       (config.trivy.enabled, () => runScans(config)),
+      (config.dependencyPolicy.enabled, () => runDependencyPolicy(config)),
       (config.coverage.enabled, () => runCoverageGate(config)),
     ];
     final List<(bool, Future<bool> Function())> enabled = steps
@@ -54,7 +56,8 @@ final class CheckCommand extends PackageCheckCommand {
     if (enabled.isEmpty) {
       out.writeln(
         'Nothing is enabled. Enable "format", "lint", "style", "api", '
-        '"changelog", "trivy" or "coverage" in the Inspectra configuration.',
+        '"changelog", "trivy", "dependency_policy" or "coverage" in the '
+        'Inspectra configuration.',
       );
       return true;
     }

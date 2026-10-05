@@ -38,7 +38,8 @@ abstract base class ScanConfig {
     'severity',
     fallback: fallback,
     parse: Severity.tryParse,
-    expected: Severity.expected,
+    options: Severity.values.map((severity) => severity.label).toList(),
+    name: (severity) => severity.label,
   );
 
   /// Whether this scan runs when Trivy is enabled.

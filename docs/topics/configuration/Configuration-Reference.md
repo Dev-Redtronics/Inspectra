@@ -29,6 +29,30 @@ inspectra:
 
   ignore: []                       # entries: id, package, reason, expires
 
+  baseline:
+    enabled: true
+    file: inspectra-baseline.json
+    # max_severity: high             # unset: the baseline covers every severity
+    fail_on_stale: false
+
+  dependency_policy:
+    enabled: false
+    denied: []                       # entries: name, reason, replacement
+    allowed: []
+    allowed_hosts: []
+    allowed_git_hosts: []
+    require_upper_bound: false
+    # min_sdk: 3.6.0
+    # min_flutter: 3.27.0
+    dev_only: []
+    require_publish_to: false
+    published_packages: []
+    required_metadata: []
+    lockfile_in_sync: false
+    lockfile_checksums: false
+    check_imports: false
+    unused_allow: [cupertino_icons]
+
   network:
     offline: false
     timeout: 30s
@@ -90,6 +114,7 @@ inspectra:
     output: api/<package>.api
     ignored_libraries: []
     non_public_annotations: [internal, visibleForTesting]
+    semver: false
 
   trivy:
     enabled: false
@@ -198,6 +223,42 @@ inspectra:
 
 `ignore` can only be written in the file. `--ignore <ID>` suppresses an id for one run, without a reason.
 
+## baseline {id="baseline"}
+
+The file of accepted findings that `baseline create` records and `scan`, `audit`, `typosquat`, `trivy`, `lint`,
+`style`, `check` and the builders do not report. Details: [Baseline](Baseline.md).
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `enabled` | bool | `true` | Apply the baseline file when it exists. `--set baseline.enabled=false` shows every finding. |
+| `file` | string | `inspectra-baseline.json` | The baseline file, relative to the package root. |
+| `max_severity` | severity | unset | Findings more severe than this are never covered by the baseline. |
+| `fail_on_stale` | bool | `false` | Fail a check while recorded findings have been fixed and `baseline prune` has not run. |
+
+## dependency_policy {id="dependency_policy"}
+
+Rules for the dependencies of every package, checked by `deps`, `scan` and `check` once `enabled` is set; `deps --fix`
+applies the fixable ones. Every rule is off until configured. Details: [Dependency policy](Dependency-Policy.md).
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `enabled` | bool | `false` | Apply the policy. |
+| `denied` | list of entries | `[]` | `name` and `reason` (required) and `replacement` of a forbidden package, direct or transitive. |
+| `allowed` | list of strings | `[]` | When not empty, the only hosted packages that may be declared. |
+| `allowed_hosts` | list of strings | `[]` | When not empty, the only package registries, such as `https://pub.dev`. |
+| `allowed_git_hosts` | list of strings | `[]` | When not empty, the only Git hosts. |
+| `require_upper_bound` | bool | `false` | Every hosted constraint needs an upper bound. |
+| `min_sdk` | version | unset | The lowest Dart SDK `environment.sdk` may allow. |
+| `min_flutter` | version | unset | The lowest Flutter SDK `environment.flutter` may allow. |
+| `dev_only` | list of strings | `[]` | Packages that belong in `dev_dependencies`. |
+| `require_publish_to` | bool | `false` | Every package needs `publish_to`, except `published_packages`. |
+| `published_packages` | list of strings | `[]` | Packages meant for pub.dev. |
+| `required_metadata` | list | `[]` | Of `description`, `repository`, `homepage`, `issue_tracker`, `documentation`, `topics`: required in publishable packages. |
+| `lockfile_in_sync` | bool | `false` | `pubspec.lock` must match the direct dependencies. |
+| `lockfile_checksums` | bool | `false` | Every hosted package of `pubspec.lock` needs a `sha256`. |
+| `check_imports` | bool | `false` | Report unused dependencies and development dependencies imported by `lib/` or `bin/`. |
+| `unused_allow` | list of strings | `[cupertino_icons]` | Packages never reported as unused. |
+
 ## network {id="network"}
 
 Settings for every connection %product% opens: OSV.dev, the pub repository and Trivy downloads.
@@ -301,6 +362,7 @@ Public API validation. See [Public API validation](API-Overview.md).
 | `output` | string | `api/<package>.api` | The dump file. `<package>` is the `name` from `pubspec.yaml`. Changing it requires restarting `build_runner`, which reads it when the build starts. |
 | `ignored_libraries` | list of globs | `[]` | Public libraries left out of the dump, for example `[lib/testing.dart]`. Matched against the path relative to the package root. |
 | `non_public_annotations` | list of strings | `[internal, visibleForTesting]` | Annotations that keep a declaration out of the dump. Either the name of a constant (`internal`) or of the annotation class (`Internal`). |
+| `semver` | boolean | `false` | Whether `check` and `report` compare the API with the dump at the last release tag and check the version in `pubspec.yaml`. See [Semantic versioning](API-Semver.md). |
 
 Details: [API configuration](API-Configuration.md).
 
@@ -434,6 +496,22 @@ Changelog generation and validation. See [Changelog](Changelog-Overview.md).
 
 Details: [Changelog configuration](Changelog-Configuration.md).
 
+## extends and policy {id="extends"}
+
+`extends` names the configurations this one builds on, and `policy` locks options or sets minimum values for the files
+that build on it. See [Inheritance and central policies](Configuration-Inheritance.md).
+
+```yaml
+extends:
+  - package:acme_policy/inspectra.yaml
+  - url: https://policy.acme.corp/inspectra.yaml
+    sha256: 9f2c6e0d…
+policy:
+  locked: [trivy.secret.enabled]
+  minimum:
+    coverage.min_line_coverage: 70
+```
+
 ## Lists replace, they do not merge
 
 Every list option replaces its default when you set it. To add a glob to the secret scan, repeat the defaults:
@@ -446,7 +524,8 @@ inspectra:
 ```
 
 The mappings with user defined keys, `changelog.types` and `style.rules`, are the exception: the keys you list
-replace their own defaults, and every other default stays.
+replace their own defaults, and every other default stays. Between a project and the bases it extends, `ignore` and
+`dependency_policy.denied` collect the entries of every file.
 
 <seealso>
     <category ref="config">

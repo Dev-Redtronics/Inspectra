@@ -118,7 +118,11 @@ Every option can be set without editing the file. For each key, the first of the
    `--[no-]trivy-use-installed`. Only the commands with [shared options](CLI-Reference.md#shared-options) accept them.
 2. **The environment**: `INSPECTRA_` followed by the dotted path in upper case, with dots turned into underscores.
 3. **The configuration file**.
-4. **The built-in default**.
+4. **The bases it extends**, see [Inheritance and central policies](Configuration-Inheritance.md).
+5. **The built-in default**.
+
+A [policy](Configuration-Inheritance.md#policy) of a base can lock options or set minimums that the file, the
+environment and the command line must respect.
 
 | Key | Command line | Environment variable |
 |:--|:--|:--|
@@ -135,12 +139,17 @@ inspectra scan --set trivy.mode=required --set network.timeout=60s
 INSPECTRA_TRIVY_ENABLED=true dart run inspectra check
 ```
 
+`inspectra config show --explain` prints the effective value of every option with the layer it comes from - the file
+and line, an environment variable, the command line or the default. See [Configuration tools](Configuration-Tools.md).
+
 - A list is written comma-separated. A boolean accepts `true`, `yes`, `1`, `on` and `false`, `no`, `0`, `off`.
   Durations are written as `500ms`, `30s`, `10m` or `1h`.
 - Overridden values are validated like the file: `--set trivy.mode=sometimes` is an error.
-- A `--set` key that is not an option is an error; an `INSPECTRA_*` variable that matches no option is ignored.
+- A `--set` key that is not an option is an error; an `INSPECTRA_*` variable that matches no option is ignored, and
+  [`config lint`](Configuration-Tools.md#lint) reports it with the option it probably meant.
 - The `ignore` list can only be written in the file, and sections cannot be replaced as a whole.
-- `INSPECTRA_TRIVY` sets `trivy.executable`, and wins over the file, for compatibility.
+- `INSPECTRA_TRIVY` sets `trivy.executable` for compatibility: it wins over the file and over
+  `INSPECTRA_TRIVY_EXECUTABLE`, but not over `--trivy-executable` or `--set trivy.executable=…`.
 - `check`, `format`, `lint`, `api`, `coverage` and `changelog check` take no `--set`; the environment variables apply to
   them as well. `style` takes `--set` like the supply-chain commands.
 
@@ -194,17 +203,20 @@ Each error names the key by its full path, starting at `%pubspec_key%` for the `
 level for `%config_file%`. List elements are addressed by index:
 
 ```text
-Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Known options here: cache_directory, connectivity_timeout, db_repository, download, download_base_url, enabled, executable, extra_args, filesystem, install_directory, latest_release_url, license, mode, report_directory, secret, skip_db_update, timeout, use_installed, version, vulnerability.
+Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Did you mean "secret"? Known options here: cache_directory, connectivity_timeout, db_repository, download, download_base_url, enabled, executable, extra_args, filesystem, install_directory, latest_release_url, license, mode, report_directory, secret, skip_db_update, timeout, use_installed, version, vulnerability.
 Invalid Inspectra configuration at "inspectra.trivy.enabled": expected true or false, got "yes please".
 Invalid Inspectra configuration at "inspectra.trivy.vulnerability.severity[1]": expected one of CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN, got "SEVERE".
 Invalid Inspectra configuration at "inspectra.coverage.min_line_coverage": expected a number between 0.0 and 100.0, got 120.
 Invalid Inspectra configuration at "inspectra.fail_on": expected one of critical, high, medium, low, unknown, got "severe".
 Invalid Inspectra configuration at "inspectra.network.timeout": expected a duration such as 30s, 10m or 1h, got "5 minutes".
 Invalid Inspectra configuration at "inspectra.yaml": line 2, column 1: While parsing a flow sequence, expected ',' or ']'.
-Invalid Inspectra configuration at "trivy.secrets": unknown option given on the command line.
+Invalid Inspectra configuration at "trivy.secrets.enabled": unknown option given on the command line. Did you mean "trivy.secret.enabled"?
 ```
 
-An `ignore` entry without `id` or `reason` is rejected as well: every suppression must be justified.
+An unknown key comes with the closest valid option as a suggestion, when one is close. An `ignore` entry without `id`
+or `reason` is rejected as well: every suppression must be justified. `inspectra config validate` additionally checks
+that every file the configuration refers to exists, and editors validate as you type with the
+[JSON Schema](Configuration-Tools.md#schema).
 
 <note>
 The strictness is deliberate. A misspelled <code>secrets:</code> instead of <code>secret:</code> would otherwise leave

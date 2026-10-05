@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/config_origin.dart';
+import 'package:inspectra/src/config/config_override.dart';
+import 'package:inspectra/src/config/config_suggestion.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/io/environment.dart';
 
@@ -50,6 +53,13 @@ final class ConfigOverrides {
   /// The command line keys that a configuration option has read.
   final _consumed = <String>{};
 
+  /// The dotted paths of every option that was looked up.
+  final _known = <String>{};
+
+  /// The dotted paths of every option that was looked up, in lookup order:
+  /// after parsing, every option that can be overridden.
+  List<String> get knownPaths => List<String>.unmodifiable(_known);
+
   /// Returns the environment variable name of the dotted [path], for example
   /// `INSPECTRA_TRIVY_DOWNLOAD_BASE_URL` for `trivy.download_base_url`.
   static String environmentName(String path) =>
@@ -60,17 +70,34 @@ final class ConfigOverrides {
   /// Returns the raw text and a description of its origin, or `null` when
   /// the option is not overridden.
   (String, String)? lookup(String path) {
+    final ConfigOverride? override = resolve(path);
+    if (override == null) {
+      return null;
+    }
+    return (override.value, override.describe());
+  }
+
+  /// Looks up the override of the option at the dotted [path].
+  ///
+  /// Returns the override with its origin, or `null` when the option is
+  /// not overridden.
+  ConfigOverride? resolve(String path) {
+    _known.add(path);
     final String? fromCli = cli[path];
     if (fromCli != null) {
       _consumed.add(path);
-      return (fromCli, 'the command line');
+      return ConfigOverride(value: fromCli, origin: ConfigOrigin.commandLine);
     }
     final String variable = environmentName(path);
     final String? fromEnvironment = environment[variable];
     if (fromEnvironment == null) {
       return null;
     }
-    return (fromEnvironment, 'the environment variable $variable');
+    return ConfigOverride(
+      value: fromEnvironment,
+      origin: ConfigOrigin.environment,
+      variable: variable,
+    );
   }
 
   /// Rejects command line overrides of options that do not exist.
@@ -81,7 +108,8 @@ final class ConfigOverrides {
       if (!_consumed.contains(key)) {
         throw InspectraConfigException(
           key,
-          'unknown option given on the command line.',
+          'unknown option given on the command line.'
+          '${didYouMean(key, _known)}',
         );
       }
     }

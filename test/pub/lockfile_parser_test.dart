@@ -95,4 +95,26 @@ packages:
       throwsA(isA<InvalidInputException>()),
     );
   });
+
+  test('reads checksums and Git repositories', () {
+    final Lockfile lockfile = const LockfileParser().parse('''
+packages:
+  http:
+    dependency: "direct main"
+    description: {name: http, sha256: "a1b2", url: "https://pub.dev"}
+    source: hosted
+    version: "1.2.0"
+  forked:
+    dependency: "direct main"
+    description: {url: "git@git.corp:team/forked.git", ref: main}
+    source: git
+    version: "0.1.0"
+''', path: 'pubspec.lock');
+    final LockfileEntry forked = lockfile.packages.first;
+    expect(forked.gitUrl, 'git@git.corp:team/forked.git');
+    expect(forked.sha256, isNull);
+    final LockfileEntry http = lockfile.packages.last;
+    expect(http.sha256, 'a1b2');
+    expect(http.gitUrl, isNull);
+  });
 }

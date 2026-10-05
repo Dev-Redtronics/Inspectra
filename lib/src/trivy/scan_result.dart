@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/baseline/baseline_summary.dart';
 import 'package:inspectra/src/trivy/finding.dart';
 
 /// The outcome of one scan.
 class ScanResult {
-  /// Creates the outcome of the scan named [scan].
+  /// Creates the outcome of the scan named [scan]; [baseline] tells what the
+  /// baseline covered.
   ScanResult({
     required this.scan,
     required List<ScanFinding> findings,
     required this.failOnFindings,
     this.skipped,
+    this.baseline,
   }) : findings = List<ScanFinding>.unmodifiable(
          <ScanFinding>[...findings]..sort((a, b) {
            final int bySeverity = a.severity.index.compareTo(b.severity.index);
@@ -42,7 +45,8 @@ class ScanResult {
   ScanResult.skipped({required this.scan, required String reason})
     : findings = const [],
       failOnFindings = false,
-      skipped = reason;
+      skipped = reason,
+      baseline = null;
 
   /// The name of the scan, such as `secret`.
   final String scan;
@@ -56,16 +60,22 @@ class ScanResult {
   /// Why the scan did not run, or `null` when it did.
   final String? skipped;
 
-  /// Whether the scan failed.
-  bool get failed => failOnFindings && findings.isNotEmpty;
+  /// What the baseline covered, or `null` when no baseline was applied.
+  final BaselineSummary? baseline;
+
+  /// Whether the scan failed: a finding that the baseline does not cover, or
+  /// a stale baseline with `baseline.fail_on_stale`.
+  bool get failed =>
+      failOnFindings && findings.isNotEmpty || (baseline?.failed ?? false);
 
   /// A readable summary for the console or the build log.
   String render() {
     if (skipped != null) {
       return 'Trivy $scan scan skipped: $skipped';
     }
+    final List<String> covered = baseline?.render() ?? const <String>[];
     if (findings.isEmpty) {
-      return 'Trivy $scan scan: no findings.';
+      return <String>['Trivy $scan scan: no findings.', ...covered].join('\n');
     }
 
     final suffix = failed ? '' : ' (not failing)';
@@ -81,6 +91,7 @@ class ScanResult {
       }
       buffer.writeln();
     }
+    covered.forEach(buffer.writeln);
     return buffer.toString().trimRight();
   }
 
@@ -90,5 +101,6 @@ class ScanResult {
     'failed': failed,
     if (skipped != null) 'skipped': skipped,
     'findings': [for (final finding in findings) finding.toJson()],
+    'baseline': ?baseline?.toJson(),
   };
 }
