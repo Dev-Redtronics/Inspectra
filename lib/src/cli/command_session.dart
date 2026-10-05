@@ -21,6 +21,8 @@ import 'package:inspectra/src/audit/audit_service.dart';
 import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/deps/dependency_fixer.dart';
+import 'package:inspectra/src/deps/dependency_policy.dart';
 import 'package:inspectra/src/host/cache_directory.dart';
 import 'package:inspectra/src/inspect/package_inspector.dart';
 import 'package:inspectra/src/io/console.dart';
@@ -162,6 +164,29 @@ final class CommandSession {
   /// Throws an `InvalidInputException` when the baseline file is malformed.
   BaselineMatcher baselineMatcher() =>
       BaselineMatcher.load(config.baseline, workingDirectory);
+
+  /// Creates the dependency policy of the configuration.
+  ///
+  /// Returns the policy, or `null` while `dependency_policy.enabled` is not
+  /// set.
+  DependencyPolicy? dependencyPolicy() {
+    final DependencyPolicyConfig policy = config.dependencyPolicy;
+    if (!policy.enabled) {
+      return null;
+    }
+    return DependencyPolicy(
+      config: policy,
+      defaultRegistry: config.network.pubHostedUrl,
+    );
+  }
+
+  /// Creates the fixer of the dependency policy.
+  ///
+  /// Returns the fixer, or `null` while the policy is disabled.
+  DependencyFixer? dependencyFixer() {
+    final DependencyPolicyConfig policy = config.dependencyPolicy;
+    return policy.enabled ? DependencyFixer(policy) : null;
+  }
 
   /// Creates the pub repository client.
   ///

@@ -30,9 +30,16 @@ import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/coverage/coverage_gate.dart';
+import 'package:inspectra/src/deps/dependency_policy.dart';
+import 'package:inspectra/src/deps/deps_report.dart';
+import 'package:inspectra/src/deps/deps_result.dart';
+import 'package:inspectra/src/deps/deps_service.dart';
 import 'package:inspectra/src/io/ansi_styler.dart';
 import 'package:inspectra/src/io/console.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
+import 'package:inspectra/src/policy/finding_filter.dart';
 import 'package:inspectra/src/quality/format_check.dart';
 import 'package:inspectra/src/quality/lint.dart';
 import 'package:inspectra/src/quality/quality_command.dart';
@@ -141,6 +148,40 @@ abstract class PackageCheckCommand extends Command<int> {
     );
     out.writeln(result.render());
     return !result.failed;
+  }
+
+  /// Checks the pubspec of the package against the pubspec rules and the
+  /// dependency policy, with the ignore rules and the baseline applied, and
+  /// prints the outcome.
+  ///
+  /// Returns whether no finding reached `fail_on`.
+  ///
+  /// Throws an `InvalidInputException` for a malformed pubspec or lockfile.
+  Future<bool> runDependencyPolicy(InspectraConfig config) async {
+    final DepsResult result = DepsService(
+      workingDirectory: packageRoot,
+      policy: DependencyPolicy(
+        config: config.dependencyPolicy,
+        defaultRegistry: config.network.pubHostedUrl,
+      ),
+    ).run(packageRoot, recursive: false);
+    final FilterOutcome outcome = FindingFilter(
+      minSeverity: config.minSeverity,
+      rules: config.ignore,
+      cliIgnores: const <String>[],
+      now: context.clock.now(),
+      baseline: baselineMatcher(config),
+    ).apply(result.findings);
+    final report = DepsReport(
+      result: result,
+      findings: outcome.kept,
+      suppressedCount: outcome.suppressed.length,
+      baselinedCount: outcome.baselined.length,
+    );
+    final text = StringBuffer();
+    report.writeText(text, const AnsiStyler(enabled: false));
+    out.write('Dependency policy: $text');
+    return !report.isFailing(config.failOn ?? Severity.unknown);
   }
 
   /// Validates the changelog and prints the outcome.

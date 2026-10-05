@@ -24,6 +24,7 @@ import 'package:inspectra/src/cli/command/changelog_command.dart';
 import 'package:inspectra/src/cli/command/check_command.dart';
 import 'package:inspectra/src/cli/command/config_command.dart';
 import 'package:inspectra/src/cli/command/coverage_command.dart';
+import 'package:inspectra/src/cli/command/deps_command.dart';
 import 'package:inspectra/src/cli/command/format_command.dart';
 import 'package:inspectra/src/cli/command/hook_command.dart';
 import 'package:inspectra/src/cli/command/inspect_command.dart';
@@ -41,8 +42,9 @@ import 'package:inspectra/src/version.dart';
 ///
 /// Running `inspectra` without a command, or with options only, runs
 /// `scan`. The supply-chain commands are `scan`, `audit`, `inspect`,
-/// `trust`, `typosquat`, `add`, `hook` and `trivy`; the package checks are
-/// `check`, `format`, `lint`, `style`, `api` and `coverage`; `changelog`
+/// `trust`, `typosquat`, `deps`, `add`, `hook` and `trivy`; the package
+/// checks are `check`, `format`, `lint`, `style`, `api` and `coverage`;
+/// `changelog`
 /// generates, checks and prints the changelog; `baseline` records the
 /// accepted findings so that only new ones fail; `config` shows, validates
 /// and lints the configuration. The global `--directory`
@@ -74,6 +76,7 @@ final class InspectraCommandRunner extends CommandRunner<int> {
     addCommand(InspectCommand(context));
     addCommand(TrustCommand(context));
     addCommand(TyposquatCommand(context));
+    addCommand(DepsCommand(context));
     addCommand(AddCommand(context));
     addCommand(HookCommand(context));
     addCommand(TrivyCommand(context));

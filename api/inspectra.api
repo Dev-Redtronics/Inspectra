@@ -219,6 +219,37 @@ class DartToolException implements Exception {
   String toString();
 }
 
+final class DeniedPackage {
+  final String name;
+  final String reason;
+  final String? replacement;
+  const DeniedPackage({required String name, required String reason, String? replacement});
+  static List<DeniedPackage> listFromYaml(YamlReader yaml);
+}
+
+final class DependencyPolicyConfig {
+  static const List<String> metadataFields = <String>['description', 'repository', 'homepage', 'issue_tracker', 'documentation', 'topics'];
+  static const List<String> defaultUnusedAllow = <String>['cupertino_icons'];
+  final List<String> allowed;
+  final List<String> allowedGitHosts;
+  final List<String> allowedHosts;
+  final bool checkImports;
+  final List<DeniedPackage> denied;
+  final List<String> devOnly;
+  final bool enabled;
+  final bool lockfileChecksums;
+  final bool lockfileInSync;
+  final Version? minFlutter;
+  final Version? minSdk;
+  final List<String> publishedPackages;
+  final bool requirePublishTo;
+  final bool requireUpperBound;
+  final List<String> requiredMetadata;
+  final List<String> unusedAllow;
+  const DependencyPolicyConfig({bool enabled = false, List<DeniedPackage> denied = const <DeniedPackage>[], List<String> allowed = const <String>[], List<String> allowedHosts = const <String>[], List<String> allowedGitHosts = const <String>[], bool requireUpperBound = false, Version? minSdk, Version? minFlutter, List<String> devOnly = const <String>[], bool requirePublishTo = false, List<String> publishedPackages = const <String>[], List<String> requiredMetadata = const <String>[], bool lockfileInSync = false, bool lockfileChecksums = false, bool checkImports = false, List<String> unusedAllow = defaultUnusedAllow});
+  factory DependencyPolicyConfig.fromYaml(YamlReader yaml);
+}
+
 final class Environment {
   final Map<String, String> variables;
   const Environment(Map<String, String> variables);
@@ -351,6 +382,7 @@ final class InspectraConfig {
   final BaselineConfig baseline;
   final ChangelogConfig changelog;
   final CoverageConfig coverage;
+  final DependencyPolicyConfig dependencyPolicy;
   final Severity? failOn;
   final FormatConfig format;
   final List<IgnoreRule> ignore;
@@ -363,7 +395,7 @@ final class InspectraConfig {
   final TrivyConfig trivy;
   final TrustThresholds trust;
   final TyposquatConfig typosquat;
-  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig(), BaselineConfig baseline = const BaselineConfig()});
+  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig(), BaselineConfig baseline = const BaselineConfig(), DependencyPolicyConfig dependencyPolicy = const DependencyPolicyConfig()});
   factory InspectraConfig.defaults(String packageName);
   factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides, ConfigRecorder? recorder});
   factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides, ConfigRecorder? recorder});

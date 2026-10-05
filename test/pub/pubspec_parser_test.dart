@@ -68,4 +68,33 @@ dependencies:
       throwsA(isA<InvalidInputException>()),
     );
   });
+
+  test('reads publishing metadata and the workspace fields', () {
+    final Pubspec pubspec = const PubspecParser().parse('''
+name: core
+publish_to: none
+description: The core.
+homepage: https://acme.example
+issue_tracker: https://acme.example/issues
+documentation: https://acme.example/docs
+topics: [network, " ", http]
+resolution: workspace
+''', path: 'pubspec.yaml');
+    expect(pubspec.publishTo, 'none');
+    expect(pubspec.isPublishable, isFalse);
+    expect(pubspec.description, 'The core.');
+    expect(pubspec.homepage, 'https://acme.example');
+    expect(pubspec.issueTracker, 'https://acme.example/issues');
+    expect(pubspec.documentation, 'https://acme.example/docs');
+    expect(pubspec.topics, <String>['network', 'http']);
+    expect(pubspec.isWorkspaceMember, isTrue);
+    final Pubspec root = const PubspecParser().parse(
+      'name: root\nworkspace: [pkgs/a, pkgs/b]\ntopics: none\n',
+      path: 'pubspec.yaml',
+    );
+    expect(root.workspace, <String>['pkgs/a', 'pkgs/b']);
+    expect(root.topics, isEmpty);
+    expect(root.isPublishable, isTrue);
+    expect(root.isWorkspaceMember, isFalse);
+  });
 }

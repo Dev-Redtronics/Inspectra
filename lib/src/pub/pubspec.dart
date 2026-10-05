@@ -24,6 +24,14 @@ final class Pubspec {
     this.name,
     this.version,
     this.repository,
+    this.publishTo,
+    this.description,
+    this.homepage,
+    this.issueTracker,
+    this.documentation,
+    this.topics = const <String>[],
+    this.workspace = const <String>[],
+    this.resolution,
     this.dependencies = const <String, DependencySpec>{},
     this.devDependencies = const <String, DependencySpec>{},
     this.dependencyOverrides = const <String, DependencySpec>{},
@@ -42,6 +50,39 @@ final class Pubspec {
 
   /// The `repository` URL, if declared.
   final String? repository;
+
+  /// The `publish_to` value, if declared: `none` or a registry URL.
+  final String? publishTo;
+
+  /// The `description`, if declared.
+  final String? description;
+
+  /// The `homepage` URL, if declared.
+  final String? homepage;
+
+  /// The `issue_tracker` URL, if declared.
+  final String? issueTracker;
+
+  /// The `documentation` URL, if declared.
+  final String? documentation;
+
+  /// The `topics`, empty when none are declared.
+  final List<String> topics;
+
+  /// The member directories of a pub workspace root, empty for any other
+  /// package.
+  final List<String> workspace;
+
+  /// The `resolution`, `workspace` for a member of a pub workspace.
+  final String? resolution;
+
+  /// Whether the package is resolved by the pub workspace it belongs to,
+  /// whose root holds the `pubspec.lock`.
+  bool get isWorkspaceMember => resolution == 'workspace';
+
+  /// Whether the package can be published, which it can unless
+  /// `publish_to` is `none`.
+  bool get isPublishable => publishTo != 'none';
 
   /// The `dependencies` section.
   final Map<String, DependencySpec> dependencies;

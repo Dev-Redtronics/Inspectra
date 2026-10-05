@@ -102,13 +102,19 @@ final class LockfileParser {
     final Object? url = description is Map<String, Object?>
         ? description['url']
         : null;
+    final Object? sha256 = description is Map<String, Object?>
+        ? description['sha256']
+        : null;
     final String? hostedUrl = url is String ? url : null;
+    final source = '${value['source'] ?? 'unknown'}';
     return LockfileEntry(
       name: name,
       version: '${value['version'] ?? ''}',
-      source: '${value['source'] ?? 'unknown'}',
+      source: source,
       dependency: '${value['dependency'] ?? ''}',
       hostedUrl: hostedUrl,
+      gitUrl: source == 'git' ? hostedUrl : null,
+      sha256: sha256 is String && sha256.isNotEmpty ? sha256 : null,
     );
   }
 }

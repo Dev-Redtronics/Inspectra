@@ -1343,6 +1343,157 @@
           "default": false
         }
       }
+    },
+    "dependency_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "denied": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "reason"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The forbidden package."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why the package is forbidden."
+              },
+              "replacement": {
+                "type": "string",
+                "description": "The package to use instead."
+              }
+            }
+          },
+          "default": []
+        },
+        "allowed": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        },
+        "allowed_hosts": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        },
+        "allowed_git_hosts": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        },
+        "require_upper_bound": {
+          "type": "boolean",
+          "default": false
+        },
+        "min_sdk": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "min_flutter": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "dev_only": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        },
+        "require_publish_to": {
+          "type": "boolean",
+          "default": false
+        },
+        "published_packages": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        },
+        "required_metadata": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "enum": [
+              "description",
+              "repository",
+              "homepage",
+              "issue_tracker",
+              "documentation",
+              "topics",
+              "DESCRIPTION",
+              "REPOSITORY",
+              "HOMEPAGE",
+              "ISSUE_TRACKER",
+              "DOCUMENTATION",
+              "TOPICS"
+            ]
+          },
+          "default": []
+        },
+        "lockfile_in_sync": {
+          "type": "boolean",
+          "default": false
+        },
+        "lockfile_checksums": {
+          "type": "boolean",
+          "default": false
+        },
+        "check_imports": {
+          "type": "boolean",
+          "default": false
+        },
+        "unused_allow": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            "cupertino_icons"
+          ]
+        }
+      }
     }
   }
 }

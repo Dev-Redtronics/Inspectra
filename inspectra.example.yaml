@@ -35,6 +35,26 @@ baseline:
   # max_severity: high               # unset: cover every severity
   fail_on_stale: false               # true: fail until fixed findings are pruned
 
+# Rules for the dependencies of every pubspec.yaml, checked by scan, deps and
+# check once enabled; `inspectra deps --fix` applies the fixable ones.
+dependency_policy:
+  enabled: false
+  denied: []                         # entries: name, reason, replacement
+  allowed: []                        # not empty: the only hosted packages allowed
+  allowed_hosts: []                  # e.g. [https://pub.corp, https://pub.dev]
+  allowed_git_hosts: []              # e.g. [git.corp]
+  require_upper_bound: false         # >=1.2.0 needs an upper bound
+  # min_sdk: 3.6.0                   # lowest allowed lower bound of environment.sdk
+  # min_flutter: 3.27.0              # the same for environment.flutter
+  dev_only: []                       # e.g. [mockito, build_runner, lints, test]
+  require_publish_to: false          # every package needs publish_to ...
+  published_packages: []             # ... except the ones meant for pub.dev
+  required_metadata: []              # description, repository, homepage, issue_tracker, documentation, topics
+  lockfile_in_sync: false            # pubspec.lock matches the direct dependencies
+  lockfile_checksums: false          # every hosted package has a sha256
+  check_imports: false               # unused dependencies, dev dependencies used by lib/
+  unused_allow: [cupertino_icons]
+
 network:
   offline: false                     # true: never open a connection
   timeout: 30s

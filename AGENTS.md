@@ -44,7 +44,7 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
   The base class owns the life cycle: shared options, configuration, rendering, exit code.
   `CommandSession` is the composition root that wires every service.
 - Each security feature is a package below `lib/src/`: `audit`, `inspect`, `trust`,
-  `typosquat`, `add`, `hook`, `trivy`, `scan`. A feature returns a `CommandReport` with its own
+  `typosquat`, `add`, `hook`, `trivy`, `scan`, `deps`. A feature returns a `CommandReport` with its own
   text and JSON layout.
 - `baseline` records accepted findings in `inspectra-baseline.json` (`baseline create|prune`) and
   matches current findings against it: `FindingFilter` for the supply-chain commands,
@@ -56,6 +56,11 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
   JSON Schema of `config schema` (generated from a default parse, committed as `inspectra.schema.json`
   and guarded by a test) and the rules of `config lint`. A new option needs no extra schema work; read
   it through `YamlReader` and regenerate the schema.
+- `deps` holds the dependency policy (`dependency_policy:`): `DependencyPolicy` checks a
+  `PolicySource` (pubspec, lockfile, imports from `ImportCollector`) and reports `pubspec` findings,
+  `DependencyFixer` applies the fixable rules with `yaml_edit`, and `DepsService` runs both with the
+  built-in pubspec rules for `deps`, `check` and, through `ScanService`, `scan`. Pubspec lines come
+  from `PubspecLocator`, which knows the section a key belongs to.
 - The package checks `check`, `format`, `lint`, `api`, `coverage` and `changelog check` extend
   `PackageCheckCommand`; their logic lives in `quality`, `api`, `coverage` and `changelog`, and
   `builders` runs the same checks and the Trivy scans from build_runner. `style` is an
@@ -95,9 +100,9 @@ comments.
 - `strict-casts`, `strict-inference` and `strict-raw-types` are on. No `dynamic` calls, no `!`
   unless the value is provably present, no broad `catch` without `on`.
 - Name intermediate results and computed conditions instead of nesting calls.
-- Runtime dependencies are limited to `args`, `yaml`, `crypto`, `path`, `pub_semver` and
-  `archive` for the security command line, and `analyzer`, `build`, `coverage` and `glob` for the
-  quality gates and the builders. HTTP uses `dart:io`. Adding a dependency needs a maintainer's
+- Runtime dependencies are limited to `args`, `yaml`, `crypto`, `path`, `pub_semver`,
+  `archive` and `yaml_edit` for the security command line, and `analyzer`, `build`, `coverage` and
+  `glob` for the quality gates and the builders. HTTP uses `dart:io`. Adding a dependency needs a maintainer's
   approval.
 
 ## Security rules

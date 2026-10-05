@@ -175,6 +175,7 @@ abstract class BaselineUpdateCommand extends InspectraCommand {
       confusionDetector: session.confusionDetector(),
       trivyService: session.trivyService(),
       workingDirectory: session.workingDirectory,
+      dependencyPolicy: session.dependencyPolicy(),
     );
     final supply_chain.ScanResult result = await service.scan(
       session.workingDirectory,

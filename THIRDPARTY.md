@@ -26,6 +26,8 @@ This document lists the third-party software Inspectra uses or integrates with.
   [BSD 3-Clause License](https://github.com/dart-lang/tools/blob/main/pkgs/coverage/LICENSE).
 - [glob](https://pub.dev/packages/glob) - include and exclude patterns, licensed under the
   [BSD 3-Clause License](https://github.com/dart-lang/tools/blob/main/pkgs/glob/LICENSE).
+- [yaml_edit](https://pub.dev/packages/yaml_edit) - fixing pubspec.yaml files while keeping their comments,
+  licensed under the [BSD 3-Clause License](https://github.com/dart-lang/tools/blob/main/pkgs/yaml_edit/LICENSE).
 - [Trivy](https://github.com/aquasecurity/trivy) - vulnerability, secret, misconfiguration and
   license scanner, licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
   Inspectra downloads and runs the unmodified official release.

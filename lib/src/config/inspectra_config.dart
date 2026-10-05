@@ -20,6 +20,7 @@ import 'package:inspectra/src/config/changelog_config.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/config_recorder.dart';
 import 'package:inspectra/src/config/coverage_config.dart';
+import 'package:inspectra/src/config/dependency_policy_config.dart';
 import 'package:inspectra/src/config/format_config.dart';
 import 'package:inspectra/src/config/ignore_rule.dart';
 import 'package:inspectra/src/config/inspect_config.dart';
@@ -46,6 +47,8 @@ export 'package:inspectra/src/config/config_override.dart';
 export 'package:inspectra/src/config/config_recorder.dart';
 export 'package:inspectra/src/config/coverage_config.dart';
 export 'package:inspectra/src/config/coverage_runner.dart';
+export 'package:inspectra/src/config/denied_package.dart';
+export 'package:inspectra/src/config/dependency_policy_config.dart';
 export 'package:inspectra/src/config/filesystem_scan_config.dart';
 export 'package:inspectra/src/config/format_config.dart';
 export 'package:inspectra/src/config/ignore_rule.dart';
@@ -105,6 +108,7 @@ final class InspectraConfig {
     this.trust = const TrustThresholds(),
     this.typosquat = const TyposquatConfig(),
     this.baseline = const BaselineConfig(),
+    this.dependencyPolicy = const DependencyPolicyConfig(),
   });
 
   /// The configuration with every default, for the package [packageName].
@@ -158,6 +162,9 @@ final class InspectraConfig {
       trust: TrustThresholds.fromYaml(root.section('trust')),
       typosquat: TyposquatConfig.fromYaml(root.section('typosquat')),
       baseline: BaselineConfig.fromYaml(root.section('baseline')),
+      dependencyPolicy: DependencyPolicyConfig.fromYaml(
+        root.section('dependency_policy'),
+      ),
     );
     root.ensureFullyRead();
     layers.ensureAllConsumed();
@@ -283,4 +290,7 @@ final class InspectraConfig {
 
   /// The baseline of accepted findings.
   final BaselineConfig baseline;
+
+  /// The rules for the dependencies of the package.
+  final DependencyPolicyConfig dependencyPolicy;
 }

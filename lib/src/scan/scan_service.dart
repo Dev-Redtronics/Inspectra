@@ -18,6 +18,8 @@ import 'dart:io';
 
 import 'package:inspectra/src/audit/audit_scan.dart';
 import 'package:inspectra/src/audit/audit_service.dart';
+import 'package:inspectra/src/deps/dependency_policy.dart';
+import 'package:inspectra/src/deps/policy_source.dart';
 import 'package:inspectra/src/inspect/pubspec_scanner.dart';
 import 'package:inspectra/src/model/finding.dart';
 import 'package:inspectra/src/model/finding_source.dart';
@@ -54,6 +56,7 @@ final class ScanService {
     required this.confusionDetector,
     required this.trivyService,
     required this.workingDirectory,
+    this.dependencyPolicy,
   });
 
   /// Audits lockfiles against OSV.dev.
@@ -67,6 +70,9 @@ final class ScanService {
 
   /// Runs Trivy.
   final TrivyService trivyService;
+
+  /// The dependency policy, or `null` while it is disabled.
+  final DependencyPolicy? dependencyPolicy;
 
   /// The directory display paths are relative to.
   final String workingDirectory;
@@ -129,7 +135,8 @@ final class ScanService {
     );
   }
 
-  /// Runs the pubspec, typosquat and confusion checks for [pubspecPath].
+  /// Runs the pubspec, typosquat and confusion checks and the dependency
+  /// policy for [pubspecPath].
   ///
   /// Returns the findings.
   Future<List<Finding>> _checkPubspec(
@@ -150,6 +157,14 @@ final class ScanService {
       ...typosquatDetector.analyze(
         pubspec.declaredNames,
         locate: (name) => locatePubspecKey(lines, name, display),
+      ),
+      ...?dependencyPolicy?.check(
+        PolicySource.forPubspec(
+          pubspecPath: pubspecPath,
+          content: content,
+          pubspec: pubspec,
+          workingDirectory: workingDirectory,
+        ),
       ),
     ];
     final ConfusionDetector? confusion = confusionDetector;

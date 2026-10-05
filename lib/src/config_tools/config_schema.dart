@@ -61,6 +61,33 @@ const _ignoreEntry = <String, Object?>{
   },
 };
 
+/// The schema of one entry of `dependency_policy.denied`.
+const _deniedEntry = <String, Object?>{
+  'type': 'object',
+  'required': <String>['name', 'reason'],
+  'additionalProperties': false,
+  'properties': <String, Object?>{
+    'name': <String, Object?>{
+      'type': 'string',
+      'description': 'The forbidden package.',
+    },
+    'reason': <String, Object?>{
+      'type': 'string',
+      'description': 'Why the package is forbidden.',
+    },
+    'replacement': <String, Object?>{
+      'type': 'string',
+      'description': 'The package to use instead.',
+    },
+  },
+};
+
+/// The schema of the entries of each structured option.
+const _structuredEntries = <String, Map<String, Object?>>{
+  'ignore': _ignoreEntry,
+  'dependency_policy.denied': _deniedEntry,
+};
+
 /// Builds the JSON Schema (draft-07) of `inspectra.yaml` from the options
 /// the configuration actually reads, so that it cannot drift from the
 /// code.
@@ -158,13 +185,15 @@ Map<String, Object?> _schemaOf(ConfigEntry entry) {
     },
     ConfigKind.enumList => <String, Object?>{
       'type': 'array',
-      'minItems': 1,
+      'minItems': entry.minimum ?? 1,
       'items': <String, Object?>{'enum': _bothCases(options)},
     },
     ConfigKind.choice => <String, Object?>{'enum': _bothCases(options)},
     ConfigKind.structured => <String, Object?>{
       'type': 'array',
-      'items': _ignoreEntry,
+      'items':
+          _structuredEntries[entry.key] ??
+          const <String, Object?>{'type': 'object'},
     },
   };
   return <String, Object?>{...type, 'default': ?defaultValue};

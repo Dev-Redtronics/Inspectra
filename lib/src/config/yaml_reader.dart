@@ -183,6 +183,7 @@ final class YamlReader {
     Object? value,
     bool replaceValue = false,
     String? fallbackVariable,
+    num? minimum,
   }) {
     final ConfigRecorder? target = recorder;
     final ConfigEntry? entry = target?[_childKey(key)];
@@ -207,7 +208,7 @@ final class YamlReader {
         variable: unset ? fallbackVariable : entry.variable,
         line: entry.line,
         options: options ?? entry.options,
-        minimum: entry.minimum,
+        minimum: minimum ?? entry.minimum,
         maximum: entry.maximum,
       ),
     );
@@ -597,7 +598,7 @@ final class YamlReader {
   /// Returns the non-empty list at [key] with each element mapped through
   /// [parse], which returns `null` for values it does not accept, or
   /// [fallback] when absent; [options] are the accepted names, which
-  /// [name] gives each value.
+  /// [name] gives each value. Only with [allowEmpty] may the list be empty.
   ///
   /// Throws an [InspectraConfigException] for an empty list or values that
   /// [parse] rejects.
@@ -607,7 +608,9 @@ final class YamlReader {
     required T? Function(String value) parse,
     required List<String> options,
     required String Function(T value) name,
+    bool allowEmpty = false,
   }) {
+    final minItems = allowEmpty ? 0 : 1;
     final bool present =
         _map[key] != null || overrides.resolve(_childKey(key)) != null;
     final List<String> raw = strings(key, fallback: const <String>[]);
@@ -620,11 +623,12 @@ final class YamlReader {
         options: options,
         value: defaults,
         replaceValue: true,
+        minimum: minItems,
       );
       return List<T>.unmodifiable(fallback);
     }
     final String expected = options.join(', ');
-    if (raw.isEmpty) {
+    if (raw.isEmpty && !allowEmpty) {
       throw InspectraConfigException(
         _child(key),
         'expected at least one of $expected.',
@@ -648,6 +652,7 @@ final class YamlReader {
       options: options,
       value: result.map(name).toList(),
       replaceValue: true,
+      minimum: minItems,
     );
     return List<T>.unmodifiable(result);
   }

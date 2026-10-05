@@ -61,7 +61,8 @@ final class ConfigEntry {
   /// The allowed names of a [ConfigKind.choice] or [ConfigKind.enumList].
   final List<String>? options;
 
-  /// The smallest allowed number, if any.
+  /// The smallest allowed number, or the fewest items of a
+  /// [ConfigKind.enumList], if any.
   final num? minimum;
 
   /// The largest allowed number, if any.

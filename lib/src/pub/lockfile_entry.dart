@@ -20,13 +20,17 @@ final class LockfileEntry {
   ///
   /// [source] is the pub source (`hosted`, `git`, `path` or `sdk`),
   /// [dependency] the lockfile's dependency kind such as `direct main` or
-  /// `transitive`, and [hostedUrl] the registry of hosted packages.
+  /// `transitive`, [hostedUrl] the registry of hosted packages, [gitUrl]
+  /// the repository of Git packages and [sha256] the archive checksum pub
+  /// recorded.
   const LockfileEntry({
     required this.name,
     required this.version,
     required this.source,
     required this.dependency,
     this.hostedUrl,
+    this.gitUrl,
+    this.sha256,
   });
 
   /// The package name.
@@ -44,6 +48,13 @@ final class LockfileEntry {
 
   /// The registry URL of a hosted package, or `null` for other sources.
   final String? hostedUrl;
+
+  /// The repository URL of a Git package, or `null` for other sources.
+  final String? gitUrl;
+
+  /// The SHA-256 checksum of a hosted package's archive, or `null` when the
+  /// lockfile records none.
+  final String? sha256;
 
   /// Whether the package is a direct dependency of the project.
   bool get isDirect => dependency.startsWith('direct');

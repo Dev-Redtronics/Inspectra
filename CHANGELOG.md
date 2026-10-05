@@ -22,6 +22,22 @@ All notable changes to this project are documented in this file. The format foll
 - JSON: `baselined` in the reports of `scan` and `audit`, and `baseline` with `covered` and `stale` in
   the results of `lint`, `style` and the Trivy scans, present only when a baseline was applied.
 
+### Dependency policy
+
+- The `dependency_policy:` section turns organisation rules for dependencies into checks, each opt-in:
+  `DENIED_PACKAGE` (also transitive), `PACKAGE_NOT_ALLOWED`, `DISALLOWED_HOST` (registries and Git
+  hosts, also transitive), `MISSING_UPPER_BOUND`, `SDK_BELOW_POLICY`, `DEV_ONLY_DEPENDENCY`,
+  `MISSING_PUBLISH_TO`, `MISSING_METADATA`, `LOCKFILE_OUT_OF_SYNC`, `MISSING_CHECKSUM`,
+  `UNUSED_DEPENDENCY` and `DEV_DEPENDENCY_IN_LIB`, all of the source `pubspec`.
+- `inspectra deps [directory] [-r] [--fix]` runs the pubspec rules and the policy without network
+  access, for every package of a workspace with `-r`; `--fix` bounds constraints with a caret, moves
+  development packages to `dev_dependencies` and adds `publish_to: none`, keeping comments and
+  formatting.
+- `scan` applies the policy to its pubspecs, and `check` runs it as the step "Dependency policy"
+  while `dependency_policy.enabled` is set.
+- New runtime dependency: `yaml_edit`, for the fixes.
+- Library: `DependencyPolicyConfig`, `DeniedPackage` and `InspectraConfig.dependencyPolicy`.
+
 ### Configuration tools
 
 - `inspectra config show` prints the effective configuration as YAML; `--explain` comments every
