@@ -20,7 +20,6 @@ import 'package:inspectra/src/changelog/changelog_entry.dart';
 import 'package:inspectra/src/changelog/changelog_links.dart';
 import 'package:inspectra/src/changelog/changelog_markdown.dart';
 import 'package:inspectra/src/changelog/changelog_release.dart';
-import 'package:inspectra/src/changelog/version_bump.dart';
 import 'package:test/test.dart';
 
 import '../support/fake_git.dart';

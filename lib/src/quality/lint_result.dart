@@ -14,27 +14,32 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/baseline/baseline_summary.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/quality/lint.dart';
 
 /// The outcome of the static analysis check.
 class LintResult {
-  /// Creates the outcome.
-  LintResult({required List<LintIssue> issues, required this.failOn})
-    : issues = List.unmodifiable(
-        <LintIssue>[...issues]..sort((a, b) {
-          final int bySeverity = a.severity.index.compareTo(b.severity.index);
-          if (bySeverity != 0) {
-            return bySeverity;
-          }
-          final int byPath = a.path.compareTo(b.path);
-          if (byPath != 0) {
-            return byPath;
-          }
-          final int byLine = a.line.compareTo(b.line);
-          return byLine != 0 ? byLine : a.column.compareTo(b.column);
-        }),
-      );
+  /// Creates the outcome of the diagnostics [issues], which fail from
+  /// [failOn]; [baseline] tells what the baseline covered.
+  LintResult({
+    required List<LintIssue> issues,
+    required this.failOn,
+    this.baseline,
+  }) : issues = List.unmodifiable(
+         <LintIssue>[...issues]..sort((a, b) {
+           final int bySeverity = a.severity.index.compareTo(b.severity.index);
+           if (bySeverity != 0) {
+             return bySeverity;
+           }
+           final int byPath = a.path.compareTo(b.path);
+           if (byPath != 0) {
+             return byPath;
+           }
+           final int byLine = a.line.compareTo(b.line);
+           return byLine != 0 ? byLine : a.column.compareTo(b.column);
+         }),
+       );
 
   /// Every diagnostic, errors first, then by file and position.
   final List<LintIssue> issues;
@@ -42,17 +47,24 @@ class LintResult {
   /// The lowest severity that fails the check.
   final LintLevel failOn;
 
+  /// What the baseline covered, or `null` when no baseline was applied.
+  final BaselineSummary? baseline;
+
   /// The diagnostics that fail the check.
   Iterable<LintIssue> get failing =>
       issues.where((issue) => issue.severity.index <= failOn.index);
 
-  /// Whether the check failed.
-  bool get failed => failOn != LintLevel.none && failing.isNotEmpty;
+  /// Whether the check failed: a failing diagnostic that the baseline does
+  /// not cover, or a stale baseline with `baseline.fail_on_stale`.
+  bool get failed =>
+      failOn != LintLevel.none && failing.isNotEmpty ||
+      (baseline?.failed ?? false);
 
   /// A readable summary for the console or the build log.
   String render() {
+    final List<String> covered = baseline?.render() ?? const <String>[];
     if (issues.isEmpty) {
-      return 'Lint: no issues found.';
+      return <String>['Lint: no issues found.', ...covered].join('\n');
     }
     String count(LintLevel level) =>
         '${issues.where((issue) => issue.severity == level).length} '
@@ -66,6 +78,7 @@ class LintResult {
     return [
       'Lint: ${issues.length} issue(s) - $counts$suffix.',
       for (final issue in issues) _render(issue),
+      ...covered,
     ].join('\n');
   }
 
@@ -83,5 +96,6 @@ class LintResult {
     'failed': failed,
     'fail_on': failOn.name,
     'issues': [for (final issue in issues) issue.toJson()],
+    'baseline': ?baseline?.toJson(),
   };
 }

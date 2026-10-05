@@ -80,7 +80,9 @@ final class TrustCommand extends InspectraCommand {
         '${session.config.network.pubHostedUrl}.',
       );
     }
-    final FilterOutcome outcome = session.filter().apply(info.findings);
+    final FilterOutcome outcome = session
+        .filter(baseline: false)
+        .apply(info.findings);
     return TrustReport(
       info: info,
       findings: outcome.kept,

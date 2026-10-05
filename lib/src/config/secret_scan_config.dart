@@ -44,7 +44,7 @@ final class SecretScanConfig extends BuildScanConfig {
       runOnBuild: yaml.boolean('run_on_build', fallback: true),
       failOnFindings: yaml.boolean('fail_on_findings', fallback: true),
       severity: ScanConfig.readSeverities(yaml, defaultSeverity),
-      config: yaml.optionalString('config'),
+      config: yaml.optionalPath('config'),
       include: yaml.strings('include', fallback: defaultInclude),
       exclude: yaml.strings('exclude', fallback: defaultExclude),
     );

@@ -19,6 +19,24 @@ Builder vulnerabilityScanBuilder(BuilderOptions options);
 
 library package:inspectra/inspectra.dart
 
+final class ApiChange {
+  final String? after;
+  final String? before;
+  final String declaration;
+  final ApiChangeKind kind;
+  final String library;
+  final String? member;
+  final String reason;
+  const ApiChange({required ApiChangeKind kind, required String library, required String declaration, required String reason, String? member, String? before, String? after});
+  String get subject;
+  Map<String, Object?> toJson();
+}
+
+enum ApiChangeKind {
+  breaking, additive;
+  final String id;
+}
+
 class ApiCheckResult {
   final String? diff;
   final String dumpPath;
@@ -33,8 +51,50 @@ final class ApiConfig {
   final List<String> ignoredLibraries;
   final List<String> nonPublicAnnotations;
   final String output;
-  const ApiConfig({required bool enabled, required String output, required List<String> ignoredLibraries, required List<String> nonPublicAnnotations});
+  final bool semver;
+  const ApiConfig({required bool enabled, required String output, required List<String> ignoredLibraries, required List<String> nonPublicAnnotations, bool semver = false});
   factory ApiConfig.fromYaml(YamlReader yaml, String packageName);
+}
+
+final class ApiDeclaration {
+  final bool isType;
+  final String line;
+  final Map<String, String> members;
+  final String name;
+  final List<String> values;
+  const ApiDeclaration({required String name, required String line, bool isType = false, Map<String, String> members = const <String, String>{}, List<String> values = const <String>[]});
+}
+
+final class ApiSurface {
+  final Map<String, Map<String, ApiDeclaration>> libraries;
+  const ApiSurface(Map<String, Map<String, ApiDeclaration>> libraries);
+  factory ApiSurface.parse(String dump);
+  static bool isDeprecated(String line);
+  static String keyOf(String line);
+  static int openingOf(String text, int closing);
+  static int topLevelIndexOf(String text, String pattern);
+  static String typeName(String header);
+  static String withoutDeprecation(String line);
+}
+
+final class BaselineConfig {
+  static const String defaultFile = 'inspectra-baseline.json';
+  final bool enabled;
+  final bool failOnStale;
+  final String file;
+  final Severity? maxSeverity;
+  const BaselineConfig({bool enabled = true, String file = defaultFile, Severity? maxSeverity, bool failOnStale = false});
+  factory BaselineConfig.fromYaml(YamlReader yaml);
+}
+
+final class BaselineSummary {
+  final int covered;
+  final bool failOnStale;
+  final int stale;
+  const BaselineSummary({required int covered, required int stale, required bool failOnStale});
+  bool get failed;
+  List<String> render();
+  Map<String, Object?> toJson();
 }
 
 abstract base class BuildScanConfig extends ScanConfig {
@@ -104,14 +164,121 @@ final class CommandContext {
   factory CommandContext.system();
 }
 
+sealed class ConfigBaseReference {
+  const ConfigBaseReference();
+  abstract String get label;
+  static List<ConfigBaseReference> listOf(Object? node, String path, {String? file});
+}
+
+final class ConfigEntry {
+  final Object? defaultValue;
+  final String? file;
+  final String key;
+  final ConfigKind kind;
+  final int? line;
+  final num? maximum;
+  final num? minimum;
+  final List<String>? options;
+  final ConfigOrigin origin;
+  final Object? value;
+  final String? variable;
+  const ConfigEntry({required String key, required ConfigKind kind, required Object? value, required Object? defaultValue, required ConfigOrigin origin, String? variable, int? line, String? file, List<String>? options, num? minimum, num? maximum});
+  static String formatDuration(Duration duration);
+  static Object? jsonOf(Object? value);
+  Map<String, Object?> toJson();
+}
+
+enum ConfigKind {
+  boolean, string, integer, number, duration, strings, enumList, choice, structured;
+}
+
+final class ConfigLayer {
+  final String? directory;
+  final ConfigLayerKind kind;
+  final String label;
+  final String? location;
+  final Object? node;
+  final String yamlPath;
+  const ConfigLayer({required String label, required ConfigLayerKind kind, required Object? node, String yamlPath = '', String? directory, String? location});
+  bool get isBase;
+  Map<String, Object?> toJson();
+}
+
+enum ConfigLayerKind {
+  project, file, package, remote;
+  final String id;
+}
+
+final class ConfigLayerStack {
+  final List<ConfigLayer> layers;
+  final List<RemoteBaseReference> missing;
+  final List<int> starts;
+  const ConfigLayerStack({required List<ConfigLayer> layers, required List<int> starts, List<RemoteBaseReference> missing = const <RemoteBaseReference>[]});
+  List<ConfigLayer> get bases;
+  ConfigLayer get project;
+  List<ConfigLayer> stackOf(int index);
+}
+
+enum ConfigOrigin {
+  defaults, file, environment, commandLine;
+  final String id;
+}
+
+final class ConfigOverride {
+  final ConfigOrigin origin;
+  final String value;
+  final String? variable;
+  const ConfigOverride({required String value, required ConfigOrigin origin, String? variable});
+  String describe();
+}
+
 final class ConfigOverrides {
   final Map<String, String> cli;
   final Environment environment;
   ConfigOverrides({Map<String, String> cli = const <String, String>{}, Environment environment = const Environment(<String, String>{})});
   factory ConfigOverrides.none();
+  List<String> get knownPaths;
   (String, String)? lookup(String path);
   void ensureAllConsumed();
   static String environmentName(String path);
+  ConfigOverride? resolve(String path);
+}
+
+final class ConfigPolicy {
+  final List<String> locked;
+  final Map<String, Object?> minimum;
+  const ConfigPolicy({List<String> locked = const <String>[], Map<String, Object?> minimum = const <String, Object?>{}});
+  factory ConfigPolicy.of(ConfigLayer layer);
+  bool get isEmpty;
+  static String pathIn(ConfigLayer layer, String key);
+}
+
+final class ConfigRecorder {
+  List<ConfigLayer> layers;
+  String? source;
+  ConfigRecorder();
+  List<ConfigEntry> get entries;
+  ConfigEntry? operator [](String key);
+  void record(ConfigEntry entry);
+}
+
+enum ConfigStrictness {
+  higherNumber, enabledFlag, severityThreshold, lintLevel, trivyMode;
+  static ConfigStrictness? of(String key);
+  double? rankOf(Object? value);
+}
+
+final class ConventionalCommit {
+  final bool breaking;
+  final List<String> breakingNotes;
+  final String description;
+  final String hash;
+  final List<String> revertedHashes;
+  final String? scope;
+  final String? type;
+  const ConventionalCommit({required String hash, required String? type, required String description, String? scope, bool breaking = false, List<String> breakingNotes = const <String>[], List<String> revertedHashes = const <String>[]});
+  bool get isConventional;
+  String get shortHash;
 }
 
 final class CoverageConfig {
@@ -153,6 +320,37 @@ class DartToolException implements Exception {
   final String message;
   const DartToolException(String message);
   String toString();
+}
+
+final class DeniedPackage {
+  final String name;
+  final String reason;
+  final String? replacement;
+  const DeniedPackage({required String name, required String reason, String? replacement});
+  static List<DeniedPackage> listFromYaml(YamlReader yaml);
+}
+
+final class DependencyPolicyConfig {
+  static const List<String> metadataFields = <String>['description', 'repository', 'homepage', 'issue_tracker', 'documentation', 'topics'];
+  static const List<String> defaultUnusedAllow = <String>['cupertino_icons'];
+  final List<String> allowed;
+  final List<String> allowedGitHosts;
+  final List<String> allowedHosts;
+  final bool checkImports;
+  final List<DeniedPackage> denied;
+  final List<String> devOnly;
+  final bool enabled;
+  final bool lockfileChecksums;
+  final bool lockfileInSync;
+  final Version? minFlutter;
+  final Version? minSdk;
+  final List<String> publishedPackages;
+  final bool requirePublishTo;
+  final bool requireUpperBound;
+  final List<String> requiredMetadata;
+  final List<String> unusedAllow;
+  const DependencyPolicyConfig({bool enabled = false, List<DeniedPackage> denied = const <DeniedPackage>[], List<String> allowed = const <String>[], List<String> allowedHosts = const <String>[], List<String> allowedGitHosts = const <String>[], bool requireUpperBound = false, Version? minSdk, Version? minFlutter, List<String> devOnly = const <String>[], bool requirePublishTo = false, List<String> publishedPackages = const <String>[], List<String> requiredMetadata = const <String>[], bool lockfileInSync = false, bool lockfileChecksums = false, bool checkImports = false, List<String> unusedAllow = defaultUnusedAllow});
+  factory DependencyPolicyConfig.fromYaml(YamlReader yaml);
 }
 
 final class Environment {
@@ -205,14 +403,16 @@ final class Finding {
   final String title;
   final String? url;
   const Finding({required String ruleId, required FindingSource source, required Severity severity, required String title, String description = '', SourceLocation? location, String? packageName, String? packageVersion, String? fixedVersion, List<String> aliases = const <String>[], String? url, String? snippet, Map<String, Object?> attributes = const <String, Object?>{}});
+  factory Finding.fromJson(Object? json, String location);
   String get fingerprint;
   Set<String> get identifiers;
   Map<String, Object?> toJson();
 }
 
 enum FindingSource {
-  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion, style;
+  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion, style, config, quality;
   final String id;
+  static FindingSource? tryParse(String id);
 }
 
 final class FormatConfig {
@@ -237,6 +437,25 @@ class FormatResult {
   bool get failed;
   String render();
   Map<String, Object?> toJson();
+}
+
+final class GitCommit {
+  final String hash;
+  final String message;
+  const GitCommit({required String hash, required String message});
+  String get shortHash;
+  String get subject;
+}
+
+final class GitHistory {
+  final ProcessRunner processRunner;
+  final String workingDirectory;
+  const GitHistory({required ProcessRunner processRunner, required String workingDirectory});
+  Future<List<GitCommit>> commits({required String to, String? from});
+  Future<bool> hasCommits();
+  Future<bool> isShallow();
+  Future<ReleaseTag?> latestTag({required String to, required String prefix});
+  Future<String?> show(String revision, String path);
 }
 
 final class HostPlatform {
@@ -284,8 +503,10 @@ final class InspectraCommandRunner extends CommandRunner<int> {
 
 final class InspectraConfig {
   final ApiConfig api;
+  final BaselineConfig baseline;
   final ChangelogConfig changelog;
   final CoverageConfig coverage;
+  final DependencyPolicyConfig dependencyPolicy;
   final Severity? failOn;
   final FormatConfig format;
   final List<IgnoreRule> ignore;
@@ -298,16 +519,18 @@ final class InspectraConfig {
   final TrivyConfig trivy;
   final TrustThresholds trust;
   final TyposquatConfig typosquat;
-  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig()});
+  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig(), BaselineConfig baseline = const BaselineConfig(), DependencyPolicyConfig dependencyPolicy = const DependencyPolicyConfig()});
   factory InspectraConfig.defaults(String packageName);
-  factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides});
-  factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides});
+  factory InspectraConfig.fromLayers(ConfigLayerStack stack, {required String packageName, ConfigOverrides? overrides, ConfigRecorder? recorder});
+  factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides, ConfigRecorder? recorder, String? packageRoot, String? cacheRoot, String? configDirectory});
+  factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides, ConfigRecorder? recorder});
 }
 
 final class InspectraConfigException implements Exception {
+  final String? file;
   final String message;
   final String path;
-  const InspectraConfigException(String path, String message);
+  const InspectraConfigException(String path, String message, {String? file});
   String toString();
 }
 
@@ -360,9 +583,10 @@ enum LintLevel {
 }
 
 class LintResult {
+  final BaselineSummary? baseline;
   final LintLevel failOn;
   final List<LintIssue> issues;
-  LintResult({required List<LintIssue> issues, required LintLevel failOn});
+  LintResult({required List<LintIssue> issues, required LintLevel failOn, BaselineSummary? baseline});
   bool get failed;
   Iterable<LintIssue> get failing;
   String render();
@@ -379,6 +603,7 @@ class LockedPackage {
 }
 
 final class NetworkConfig {
+  static const String pubHostedUrlVariable = 'PUB_HOSTED_URL';
   static const String defaultOsvUrl = 'https://api.osv.dev';
   static const String defaultPubHostedUrl = 'https://pub.dev';
   final String? caCertificates;
@@ -392,6 +617,14 @@ final class NetworkConfig {
   final Duration timeout;
   const NetworkConfig({bool offline = false, Duration timeout = const Duration(seconds: 30), int maxAttempts = 3, Duration retryBaseDelay = const Duration(seconds: 1), int concurrency = 8, String? proxy, String? caCertificates, String osvUrl = defaultOsvUrl, String pubHostedUrl = defaultPubHostedUrl});
   factory NetworkConfig.fromYaml(YamlReader yaml);
+  NetworkConfig withResolvedPaths(String Function(String) resolve);
+}
+
+final class PackageBaseReference extends ConfigBaseReference {
+  final String package;
+  final String path;
+  const PackageBaseReference(String package, String path);
+  String get label;
 }
 
 class PackageGraph {
@@ -400,6 +633,12 @@ class PackageGraph {
   String? directoryOf(String name);
   static Future<PackageGraph> load(String packageRoot, {String? lockContent});
   Set<String> reachable({required bool includeDev});
+}
+
+final class PathBaseReference extends ConfigBaseReference {
+  final String path;
+  const PathBaseReference(String path);
+  String get label;
 }
 
 final class ProcessOutcome {
@@ -421,6 +660,20 @@ class PubspecLock {
   String retain(Iterable<String> names);
 }
 
+final class ReleaseTag {
+  final String name;
+  final Version version;
+  const ReleaseTag(String name, Version version);
+  static ReleaseTag? tryParse(String name, String prefix);
+}
+
+final class RemoteBaseReference extends ConfigBaseReference {
+  final String sha256;
+  final Uri url;
+  const RemoteBaseReference(Uri url, String sha256);
+  String get label;
+}
+
 abstract base class ScanConfig {
   final bool enabled;
   final bool failOnFindings;
@@ -440,11 +693,12 @@ class ScanFinding {
 }
 
 class ScanResult {
+  final BaselineSummary? baseline;
   final bool failOnFindings;
   final List<ScanFinding> findings;
   final String scan;
   final String? skipped;
-  ScanResult({required String scan, required List<ScanFinding> findings, required bool failOnFindings, String? skipped});
+  ScanResult({required String scan, required List<ScanFinding> findings, required bool failOnFindings, String? skipped, BaselineSummary? baseline});
   ScanResult.skipped({required String scan, required String reason});
   bool get failed;
   String render();
@@ -461,6 +715,27 @@ final class SecretScanConfig extends BuildScanConfig {
   final List<String> include;
   const SecretScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity, required String? config, required List<String> include, required List<String> exclude});
   factory SecretScanConfig.fromYaml(YamlReader yaml);
+}
+
+final class SemverResult {
+  final String? baseline;
+  final Version? baselineVersion;
+  final List<ApiChange> changes;
+  final String dumpPath;
+  final String? skipped;
+  final bool undeclaredBreaking;
+  final Version? version;
+  const SemverResult({required String? baseline, required Version? baselineVersion, required Version? version, required List<ApiChange> changes, bool undeclaredBreaking = false, String dumpPath = ''});
+  const SemverResult.skipped(String skipped, {String dumpPath = ''});
+  List<ApiChange> get additive;
+  List<ApiChange> get breaking;
+  VersionBump? get bump;
+  bool get failed;
+  List<Finding> get findings;
+  Version? get required;
+  bool get violated;
+  String render();
+  Map<String, Object?> toJson();
 }
 
 enum Severity {
@@ -505,11 +780,12 @@ enum StylePreset {
 }
 
 final class StyleResult {
+  final BaselineSummary? baseline;
   final int checked;
   final bool failOnFindings;
   final List<String> rules;
   final List<StyleViolation> violations;
-  StyleResult({required int checked, required List<String> rules, required List<StyleViolation> violations, required bool failOnFindings});
+  StyleResult({required int checked, required List<String> rules, required List<StyleViolation> violations, required bool failOnFindings, BaselineSummary? baseline});
   int get affectedFiles;
   bool get failed;
   String render();
@@ -627,6 +903,12 @@ final class UnavailableException extends InspectraException {
   const UnavailableException(String message);
 }
 
+enum VersionBump {
+  patch, minor, major;
+  final String id;
+  Version apply(Version current);
+}
+
 final class VulnerabilityScanConfig extends BuildScanConfig {
   static const List<Severity> defaultSeverity = <Severity>[Severity.critical, Severity.high, Severity.medium, Severity.low];
   static const VulnerabilityScanConfig defaults = VulnerabilityScanConfig(enabled: true, runOnBuild: false, failOnFindings: true, severity: defaultSeverity, includeDevDependencies: true, ignoreUnfixed: false, ignoredVulnerabilities: <String>[]);
@@ -645,7 +927,11 @@ ChangelogCheckResult checkChangelog(InspectraConfig config, String packageRoot);
 
 Future<FormatResult> checkFormat({required FormatConfig config, required String packageRoot, required List<String> files, bool fix = false});
 
+Future<SemverResult> checkSemver(InspectraConfig config, String packageRoot, GitHistory history, {String? from});
+
 Future<StyleResult> checkStyle({required StyleConfig config, required String packageRoot, required List<String> files, Future<String?> Function(String)? read});
+
+List<ApiChange> classifyApiChanges(ApiSurface before, ApiSurface after);
 
 Map<String, List<int>> collectFiles(String root, List<String> include, List<String> exclude);
 
@@ -653,15 +939,21 @@ const String configEnvironmentVariable = 'INSPECTRA_CONFIG';
 
 const String configFileName = 'inspectra.yaml';
 
+String defaultCacheRoot(Environment environment);
+
 const String defaultSecretConfig = 'trivy-secret.yaml';
 
 String? diffApi({required String expected, required String actual});
 
 Future<String> dumpApi(InspectraConfig config, String packageRoot);
 
+SemverResult evaluateSemver({required String before, required String after, required String baseline, required Version? baselineVersion, required Version version, List<ConventionalCommit>? commits, String dumpPath = ''});
+
 const String inspectraVersion = '1.0.0';
 
-InspectraConfig loadConfig(String packageRoot, {ConfigOverrides? overrides, String? configFile, bool requirePubspec = true});
+InspectraConfig loadConfig(String packageRoot, {ConfigOverrides? overrides, String? configFile, bool requirePubspec = true, ConfigRecorder? recorder, String? cacheRoot});
+
+ConfigLayer loadProjectLayer(String packageRoot, {Environment? environment, String? configFile});
 
 const List<String> offlineArguments = <String>['--skip-db-update', '--offline-scan'];
 

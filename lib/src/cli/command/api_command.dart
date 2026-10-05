@@ -17,6 +17,7 @@
 import 'package:args/command_runner.dart';
 import 'package:inspectra/src/cli/command/api_check_command.dart';
 import 'package:inspectra/src/cli/command/api_dump_command.dart';
+import 'package:inspectra/src/cli/command/api_semver_command.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 
 /// `inspectra api`: records or checks the public API dump.
@@ -25,6 +26,7 @@ final class ApiCommand extends Command<int> {
   ApiCommand(this.context) {
     addSubcommand(ApiDumpCommand(context));
     addSubcommand(ApiCheckCommand(context));
+    addSubcommand(ApiSemverCommand(context));
   }
 
   /// The outside world.
@@ -36,7 +38,8 @@ final class ApiCommand extends Command<int> {
 
   /// The one line description.
   @override
-  String get description => 'Record or check the public API dump.';
+  String get description =>
+      'Record or check the public API dump, and check semantic versioning.';
 
   /// Prints the usage to standard output of the [context].
   @override

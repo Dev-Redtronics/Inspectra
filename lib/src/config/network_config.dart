@@ -44,26 +44,38 @@ final class NetworkConfig {
   /// values.
   factory NetworkConfig.fromYaml(YamlReader yaml) {
     const defaults = NetworkConfig();
-    final String pubHosted =
-        yaml.overrides.environment['PUB_HOSTED_URL'] ?? defaults.pubHostedUrl;
+    final String? pubHostedVariable =
+        yaml.overrides.environment[pubHostedUrlVariable];
     final config = NetworkConfig(
       offline: yaml.boolean('offline', fallback: defaults.offline),
       timeout: yaml.duration('timeout', fallback: defaults.timeout),
-      maxAttempts:
-          yaml.optionalInt('max_attempts', min: 1, max: 100) ??
-          defaults.maxAttempts,
+      maxAttempts: yaml.integer(
+        'max_attempts',
+        min: 1,
+        max: 100,
+        fallback: defaults.maxAttempts,
+      ),
       retryBaseDelay: yaml.duration(
         'retry_base_delay',
         fallback: defaults.retryBaseDelay,
       ),
-      concurrency:
-          yaml.optionalInt('concurrency', min: 1, max: 256) ??
-          defaults.concurrency,
+      concurrency: yaml.integer(
+        'concurrency',
+        min: 1,
+        max: 256,
+        fallback: defaults.concurrency,
+      ),
       proxy: yaml.optionalString('proxy'),
-      caCertificates: yaml.optionalString('ca_certificates'),
+      caCertificates: yaml.optionalPath('ca_certificates'),
       osvUrl: _trimSlash(yaml.string('osv_url', fallback: defaults.osvUrl)),
       pubHostedUrl: _trimSlash(
-        yaml.string('pub_hosted_url', fallback: pubHosted),
+        yaml.string(
+          'pub_hosted_url',
+          fallback: pubHostedVariable ?? defaults.pubHostedUrl,
+          fallbackVariable: pubHostedVariable == null
+              ? null
+              : pubHostedUrlVariable,
+        ),
       ),
     );
     yaml.ensureFullyRead();
@@ -80,6 +92,10 @@ final class NetworkConfig {
 
   /// The public pub.dev package repository.
   static const defaultPubHostedUrl = 'https://pub.dev';
+
+  /// The environment variable of the Dart SDK that names the pub
+  /// repository, the default of `network.pub_hosted_url`.
+  static const pubHostedUrlVariable = 'PUB_HOSTED_URL';
 
   /// When `true`, no network connection is opened at all.
   ///
@@ -114,4 +130,24 @@ final class NetworkConfig {
 
   /// The pub repository base URL, taken from `PUB_HOSTED_URL` by default.
   final String pubHostedUrl;
+
+  /// Returns these settings with the CA bundle resolved by [resolve], such
+  /// as against the project directory.
+  NetworkConfig withResolvedPaths(String Function(String path) resolve) {
+    final String? certificates = caCertificates;
+    if (certificates == null) {
+      return this;
+    }
+    return NetworkConfig(
+      offline: offline,
+      timeout: timeout,
+      maxAttempts: maxAttempts,
+      retryBaseDelay: retryBaseDelay,
+      concurrency: concurrency,
+      proxy: proxy,
+      caCertificates: resolve(certificates),
+      osvUrl: osvUrl,
+      pubHostedUrl: pubHostedUrl,
+    );
+  }
 }

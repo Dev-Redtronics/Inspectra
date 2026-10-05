@@ -18,8 +18,11 @@ import 'dart:io';
 
 import 'package:inspectra/src/add/safe_package_adder.dart';
 import 'package:inspectra/src/audit/audit_service.dart';
+import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/deps/dependency_fixer.dart';
+import 'package:inspectra/src/deps/dependency_policy.dart';
 import 'package:inspectra/src/host/cache_directory.dart';
 import 'package:inspectra/src/inspect/package_inspector.dart';
 import 'package:inspectra/src/io/console.dart';
@@ -87,24 +90,8 @@ final class CommandSession {
   );
 
   /// The network settings with the CA bundle resolved against the project.
-  NetworkConfig get _resolvedNetwork {
-    final NetworkConfig network = config.network;
-    final String? certificates = network.caCertificates;
-    if (certificates == null) {
-      return network;
-    }
-    return NetworkConfig(
-      offline: network.offline,
-      timeout: network.timeout,
-      maxAttempts: network.maxAttempts,
-      retryBaseDelay: network.retryBaseDelay,
-      concurrency: network.concurrency,
-      proxy: network.proxy,
-      caCertificates: resolve(certificates),
-      osvUrl: network.osvUrl,
-      pubHostedUrl: network.pubHostedUrl,
-    );
-  }
+  NetworkConfig get _resolvedNetwork =>
+      config.network.withResolvedPaths(resolve);
 
   /// Releases network resources.
   void close() => _transport?.close();
@@ -131,23 +118,56 @@ final class CommandSession {
   }
 
   /// The per-user cache directory, falling back to the temp directory.
-  String get cacheRoot {
-    final String? resolved = CacheDirectory(
-      environment: context.environment,
-      host: context.host,
-    ).resolve();
-    return resolved ?? p.join(Directory.systemTemp.path, 'inspectra');
-  }
+  String get cacheRoot => CacheDirectory(
+    environment: context.environment,
+    host: context.host,
+  ).resolveOrTemp();
 
-  /// Creates the reporting policy filter.
+  /// Creates the reporting policy filter; with [baseline] it also leaves
+  /// out the findings recorded in the package's baseline file.
   ///
   /// Returns the filter evaluated at the current time.
-  FindingFilter filter() => FindingFilter(
+  ///
+  /// Throws an `InvalidInputException` when the baseline file is malformed.
+  FindingFilter filter({bool baseline = true}) => FindingFilter(
     minSeverity: config.minSeverity,
     rules: config.ignore,
     cliIgnores: cliIgnores,
     now: context.clock.now(),
+    baseline: baseline ? baselineMatcher() : null,
   );
+
+  /// Loads the baseline of the package in the working directory.
+  ///
+  /// Returns the matcher, which covers nothing when the baseline is
+  /// disabled or its file does not exist.
+  ///
+  /// Throws an `InvalidInputException` when the baseline file is malformed.
+  BaselineMatcher baselineMatcher() =>
+      BaselineMatcher.load(config.baseline, workingDirectory);
+
+  /// Creates the dependency policy of the configuration.
+  ///
+  /// Returns the policy, or `null` while `dependency_policy.enabled` is not
+  /// set.
+  DependencyPolicy? dependencyPolicy() {
+    final DependencyPolicyConfig policy = config.dependencyPolicy;
+    if (!policy.enabled) {
+      return null;
+    }
+    return DependencyPolicy(
+      config: policy,
+      defaultRegistry: config.network.pubHostedUrl,
+    );
+  }
+
+  /// Creates the fixer of the dependency policy.
+  ///
+  /// Returns the fixer, or `null` while the policy is disabled.
+  DependencyFixer? dependencyFixer() {
+    final DependencyPolicyConfig policy = config.dependencyPolicy;
+    return policy.enabled ? DependencyFixer(policy) : null;
+  }
 
   /// Creates the pub repository client.
   ///

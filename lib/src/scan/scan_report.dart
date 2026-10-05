@@ -25,11 +25,13 @@ import 'package:inspectra/src/scan/scan_result.dart';
 /// The report of the `scan` command, the default command.
 final class ScanReport implements CommandReport {
   /// Creates a report for [result] with the policy filtered [findings];
-  /// [suppressedCount] findings were removed by ignore rules.
+  /// [suppressedCount] findings were removed by ignore rules and
+  /// [baselinedCount] were covered by the baseline.
   const ScanReport({
     required this.result,
     required this.findings,
     required this.suppressedCount,
+    this.baselinedCount = 0,
   });
 
   /// The raw scan outcome.
@@ -41,6 +43,9 @@ final class ScanReport implements CommandReport {
 
   /// The number of suppressed findings.
   final int suppressedCount;
+
+  /// The number of findings covered by the baseline.
+  final int baselinedCount;
 
   /// The name of the command.
   @override
@@ -74,6 +79,7 @@ final class ScanReport implements CommandReport {
       'confusionChecked': result.confusionChecked,
       'trivy': result.trivy.toJson(),
       'suppressed': suppressedCount,
+      'baselined': baselinedCount,
       'summary': <String, Object?>{
         for (final severity in Severity.values)
           severity.name: findings
@@ -174,9 +180,7 @@ final class ScanReport implements CommandReport {
 
   /// Writes the closing summary.
   void _writeSummary(StringBuffer out, AnsiStyler style) {
-    final String suppressed = suppressedCount == 0
-        ? ''
-        : style.dim(' ($suppressedCount suppressed by ignore rules)');
+    final String suppressed = _notes(style);
     if (findings.isEmpty) {
       out.writeln('${style.green(style.bold('✔ No findings.'))}$suppressed');
       return;
@@ -185,5 +189,16 @@ final class ScanReport implements CommandReport {
       '${style.red(style.bold('${findings.length} finding(s):'))} '
       '${severityBreakdown(findings)}$suppressed',
     );
+  }
+
+  /// The note on the findings that ignore rules and the baseline left out.
+  ///
+  /// Returns the dimmed note with a leading space, or an empty string.
+  String _notes(AnsiStyler style) {
+    final notes = <String>[
+      if (suppressedCount > 0) '$suppressedCount suppressed by ignore rules',
+      if (baselinedCount > 0) '$baselinedCount covered by the baseline',
+    ];
+    return notes.isEmpty ? '' : style.dim(' (${notes.join(', ')})');
   }
 }

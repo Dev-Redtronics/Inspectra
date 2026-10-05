@@ -39,24 +39,42 @@ final class TrustThresholds {
     const defaults = TrustThresholds();
     const int large = 1 << 30;
     final config = TrustThresholds(
-      freshPackageDays:
-          yaml.optionalInt('fresh_package_days', min: 0, max: large) ??
-          defaults.freshPackageDays,
-      youngPackageDays:
-          yaml.optionalInt('young_package_days', min: 0, max: large) ??
-          defaults.youngPackageDays,
-      freshReleaseHours:
-          yaml.optionalInt('fresh_release_hours', min: 0, max: large) ??
-          defaults.freshReleaseHours,
-      minLikes:
-          yaml.optionalInt('min_likes', min: 0, max: large) ??
-          defaults.minLikes,
-      minDownloads:
-          yaml.optionalInt('min_downloads', min: 0, max: large) ??
-          defaults.minDownloads,
-      minPointsRatio:
-          yaml.optionalNumber('min_points_ratio', min: 0, max: 1) ??
-          defaults.minPointsRatio,
+      freshPackageDays: yaml.integer(
+        'fresh_package_days',
+        min: 0,
+        max: large,
+        fallback: defaults.freshPackageDays,
+      ),
+      youngPackageDays: yaml.integer(
+        'young_package_days',
+        min: 0,
+        max: large,
+        fallback: defaults.youngPackageDays,
+      ),
+      freshReleaseHours: yaml.integer(
+        'fresh_release_hours',
+        min: 0,
+        max: large,
+        fallback: defaults.freshReleaseHours,
+      ),
+      minLikes: yaml.integer(
+        'min_likes',
+        min: 0,
+        max: large,
+        fallback: defaults.minLikes,
+      ),
+      minDownloads: yaml.integer(
+        'min_downloads',
+        min: 0,
+        max: large,
+        fallback: defaults.minDownloads,
+      ),
+      minPointsRatio: yaml.number(
+        'min_points_ratio',
+        min: 0,
+        max: 1,
+        fallback: defaults.minPointsRatio,
+      ),
     );
     yaml.ensureFullyRead();
     return config;

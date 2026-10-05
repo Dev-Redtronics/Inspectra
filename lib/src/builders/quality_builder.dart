@@ -19,6 +19,8 @@ import 'dart:io';
 
 import 'package:build/build.dart';
 import 'package:glob/glob.dart';
+import 'package:inspectra/src/baseline/baseline_gates.dart';
+import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/builders/build_step_config.dart';
 import 'package:inspectra/src/builders/log_build_outcome.dart';
 import 'package:inspectra/src/builders/quality_outcome.dart';
@@ -211,9 +213,9 @@ final class _LintBuilder extends QualityBuilder {
     if (await buildStep.canRead(analysisOptions)) {
       await buildStep.readAsBytes(analysisOptions);
     }
-    final LintResult result = await runLint(
-      config: config.lint,
-      packageRoot: packageRoot,
+    final LintResult result = baselineLint(
+      await runLint(config: config.lint, packageRoot: packageRoot),
+      BaselineMatcher.load(config.baseline, packageRoot),
     );
     return QualityOutcome(
       report: result.toJson(),
@@ -236,6 +238,15 @@ final class _StyleBuilder extends QualityBuilder {
   @override
   bool _runsOnBuild(InspectraConfig config) =>
       config.style.enabled && config.style.runOnBuild;
+
+  /// Reads the file at the absolute [path] outside the package, such as a
+  /// license header shipped by a base of the configuration.
+  ///
+  /// Returns the text, or `null` when the file does not exist.
+  static Future<String?> _readOutside(String path) async {
+    final file = File(path);
+    return file.existsSync() ? file.readAsString() : null;
+  }
 
   /// Reads [id] through [buildStep]; a file of the package that is not a
   /// build source, such as a header template outside the default source
@@ -275,11 +286,17 @@ final class _StyleBuilder extends QualityBuilder {
     );
     await _track(buildStep, style.customRules, const []);
     final String package = buildStep.inputId.package;
-    final StyleResult result = await checkStyle(
+    final StyleResult checked = await checkStyle(
       config: style,
       packageRoot: packageRoot,
       files: files,
-      read: (path) => _readSource(buildStep, AssetId(package, path)),
+      read: (path) => p.isAbsolute(path)
+          ? _readOutside(path)
+          : _readSource(buildStep, AssetId(package, path)),
+    );
+    final StyleResult result = baselineStyle(
+      checked,
+      BaselineMatcher.load(config.baseline, packageRoot),
     );
     return QualityOutcome(
       report: result.toJson(),

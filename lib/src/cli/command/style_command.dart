@@ -15,6 +15,7 @@
  */
 
 import 'package:args/args.dart';
+import 'package:inspectra/src/baseline/baseline_gates.dart';
 import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/cli/inspectra_command.dart';
 import 'package:inspectra/src/quality/quality_command.dart';
@@ -49,6 +50,6 @@ final class StyleCommand extends InspectraCommand {
       session.config,
       session.workingDirectory,
     );
-    return StyleReport(result);
+    return StyleReport(baselineStyle(result, session.baselineMatcher()));
   }
 }

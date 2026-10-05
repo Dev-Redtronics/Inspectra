@@ -26,7 +26,22 @@ enum OutputFormat {
   sarif('sarif'),
 
   /// GitHub flavoured Markdown, for pull request comments and job summaries.
-  markdown('markdown');
+  markdown('markdown'),
+
+  /// JUnit XML, for the test reports of Jenkins, Azure DevOps and GitLab.
+  junit('junit'),
+
+  /// The Code Quality JSON of GitLab merge requests.
+  gitlab('gitlab'),
+
+  /// The generic issue import of SonarQube and SonarCloud.
+  sonarqube('sonarqube'),
+
+  /// Checkstyle XML, for Jenkins Warnings NG, Bitbucket and IDEs.
+  checkstyle('checkstyle'),
+
+  /// A self-contained HTML dashboard for people.
+  html('html');
 
   /// Creates a format with its command line spelling [id].
   const OutputFormat(this.id);

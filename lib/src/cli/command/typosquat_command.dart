@@ -88,6 +88,11 @@ final class TyposquatCommand extends InspectraCommand {
       );
     }
     final FilterOutcome outcome = session.filter().apply(findings);
+    if (outcome.baselined.isNotEmpty) {
+      session.console.info(
+        '${outcome.baselined.length} finding(s) covered by the baseline.',
+      );
+    }
     return TyposquatReport(
       pubspecPath: display,
       packages: names,

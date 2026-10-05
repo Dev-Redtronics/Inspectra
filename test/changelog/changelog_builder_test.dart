@@ -18,10 +18,7 @@ import 'package:inspectra/inspectra.dart';
 import 'package:inspectra/src/changelog/changelog_builder.dart';
 import 'package:inspectra/src/changelog/changelog_changes.dart';
 import 'package:inspectra/src/changelog/changelog_entry.dart';
-import 'package:inspectra/src/changelog/conventional_commit.dart';
 import 'package:inspectra/src/changelog/conventional_commit_parser.dart';
-import 'package:inspectra/src/changelog/git_commit.dart';
-import 'package:inspectra/src/changelog/version_bump.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:test/test.dart';
 

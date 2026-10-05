@@ -51,11 +51,24 @@ enum FindingSource {
   confusion('confusion'),
 
   /// The style check and its custom rules.
-  style('style');
+  style('style'),
+
+  /// The checks of the Inspectra configuration itself, `config lint`.
+  config('config'),
+
+  /// The package quality gates in a report: format, lint, the public API,
+  /// the changelog and the coverage threshold.
+  quality('quality');
 
   /// Creates a source with its stable machine readable [id].
   const FindingSource(this.id);
 
   /// The stable identifier used in JSON and SARIF documents.
   final String id;
+
+  /// Looks up the source named [id].
+  ///
+  /// Returns the source, or `null` when [id] names none.
+  static FindingSource? tryParse(String id) =>
+      values.where((source) => source.id == id).firstOrNull;
 }

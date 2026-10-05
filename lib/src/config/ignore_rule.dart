@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/config_suggestion.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/config/yaml_reader.dart';
 import 'package:inspectra/src/model/finding.dart';
@@ -63,7 +64,8 @@ final class IgnoreRule {
     if (unknown.isNotEmpty) {
       throw InspectraConfigException(
         '$path.${unknown.first}',
-        'unknown option. Known options here: id, package, reason, expires.',
+        'unknown option.${didYouMean('${unknown.first}', allowed)} Known '
+            'options here: id, package, reason, expires.',
       );
     }
     final String? id = _text(entry['id']);
@@ -101,21 +103,32 @@ final class IgnoreRule {
   /// Throws an [InspectraConfigException] for malformed entries, entries
   /// without `id` or `reason`, unknown keys and invalid expiry dates.
   static List<IgnoreRule> listFromYaml(YamlReader yaml) {
-    final Object? raw = yaml.structured('ignore');
-    if (raw == null) {
-      return const <IgnoreRule>[];
+    final rules = <IgnoreRule>[];
+    for (final (Object? raw, String path, String? file)
+        in yaml.structuredLayers('ignore', fallback: const <Object?>[])) {
+      if (raw == null) {
+        continue;
+      }
+      if (raw is! List) {
+        throw InspectraConfigException(
+          path,
+          'expected a list of entries with id and reason.',
+          file: file,
+        );
+      }
+      for (var index = 0; index < raw.length; index++) {
+        try {
+          rules.add(IgnoreRule._fromEntry(raw[index], '$path[$index]'));
+        } on InspectraConfigException catch (error) {
+          throw InspectraConfigException(
+            error.path,
+            error.message,
+            file: file ?? error.file,
+          );
+        }
+      }
     }
-    final path = yaml.path.isEmpty ? 'ignore' : '${yaml.path}.ignore';
-    if (raw is! List) {
-      throw InspectraConfigException(
-        path,
-        'expected a list of entries with id and reason.',
-      );
-    }
-    return <IgnoreRule>[
-      for (var index = 0; index < raw.length; index++)
-        IgnoreRule._fromEntry(raw[index], '$path[$index]'),
-    ];
+    return List<IgnoreRule>.unmodifiable(rules);
   }
 
   /// Returns [value] as trimmed text, or `null` when absent or blank.

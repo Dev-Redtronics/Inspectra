@@ -121,6 +121,33 @@ network:
     expect(config.trivy.executable, '/opt/trivy');
   });
 
+  test('INSPECTRA_TRIVY overrides trivy.executable of the file', () {
+    writeConfig('trivy:\n  executable: /usr/bin/trivy\n');
+    final InspectraConfig config = load(
+      environment: <String, String>{'INSPECTRA_TRIVY': '/opt/trivy'},
+    );
+    expect(config.trivy.executable, '/opt/trivy');
+    expect(load().trivy.executable, '/usr/bin/trivy');
+  });
+
+  test('the command line names the executable over INSPECTRA_TRIVY', () {
+    final InspectraConfig config = load(
+      environment: <String, String>{
+        'INSPECTRA_TRIVY': '/opt/trivy',
+        'INSPECTRA_TRIVY_EXECUTABLE': '/srv/trivy',
+      },
+      cli: <String, String>{'trivy.executable': '/usr/local/bin/trivy'},
+    );
+    expect(config.trivy.executable, '/usr/local/bin/trivy');
+    final InspectraConfig environment = load(
+      environment: <String, String>{
+        'INSPECTRA_TRIVY': '/opt/trivy',
+        'INSPECTRA_TRIVY_EXECUTABLE': '/srv/trivy',
+      },
+    );
+    expect(environment.trivy.executable, '/opt/trivy');
+  });
+
   test('command line overrides win over the environment', () {
     final InspectraConfig config = load(
       environment: <String, String>{'INSPECTRA_TRIVY_MODE': 'required'},

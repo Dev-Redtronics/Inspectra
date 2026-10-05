@@ -164,6 +164,19 @@ Create it and commit the result:
     </step>
 </procedure>
 
+## Releasing
+
+The dump committed at a release tag is the reference for the next release. Before tagging, let
+`dart run %package% api semver` check that the version in `pubspec.yaml` matches the API changes since the last tag:
+
+```text
+API semver: 1 change(s) since v1.4.0 (1.4.0).
+  + additive  Circle.scale: The member was added.
+minor change: version 1.5.0 or higher is required; pubspec.yaml declares 1.5.0.
+```
+
+With `api.semver: true`, `check` runs it on every build. See [Semantic versioning](API-Semver.md).
+
 ## Line endings
 
 The comparison ignores the difference between `\n` and `\r\n`, so a dump checked out with `core.autocrlf=true` on

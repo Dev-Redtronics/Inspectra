@@ -17,13 +17,15 @@
 import 'package:inspectra/src/config/ignore_rule.dart';
 import 'package:inspectra/src/model/finding.dart';
 
-/// The result of applying ignore rules and severity filters to findings.
+/// The result of applying ignore rules, severity filters and the baseline
+/// to findings.
 final class FilterOutcome {
   /// Creates an outcome.
   const FilterOutcome({
     required this.kept,
     required this.suppressed,
     required this.expiredRules,
+    this.baselined = const <Finding>[],
   });
 
   /// The findings that remain reported.
@@ -31,6 +33,9 @@ final class FilterOutcome {
 
   /// The findings removed by an ignore rule.
   final List<Finding> suppressed;
+
+  /// The findings covered by the baseline.
+  final List<Finding> baselined;
 
   /// Configured ignore rules whose expiry date has passed.
   final List<IgnoreRule> expiredRules;

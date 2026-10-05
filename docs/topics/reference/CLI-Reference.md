@@ -7,7 +7,7 @@
 
 <link-summary>Every command and option of the inspectra command line, with output and exit codes.</link-summary>
 
-<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage and changelog; options and exit codes.</card-summary>
+<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog, baseline, config, deps and report; options and exit codes.</card-summary>
 
 ```text
 Supply-chain security scanner for Dart and Flutter projects.
@@ -21,15 +21,19 @@ Global options:
 
 Available commands:
   add         Audit a package and add its exact version to pubspec.yaml.
-  api         Record or check the public API dump.
+  api         Record or check the public API dump, and check semantic versioning.
   audit       Scan pubspec.lock against the OSV.dev vulnerability database.
+  baseline    Record the accepted findings, so that only new ones fail, or prune the fixed ones.
   changelog   Generate the changelog from Conventional Commits, check it and print release notes.
-  check       Run every enabled package check: format, lint, style, API, changelog, Trivy scans and coverage.
+  check       Run every enabled package check: format, lint, style, API, API semver, changelog, Trivy scans, dependency policy and coverage.
+  config      Show where each configuration value comes from, validate and lint the configuration, print its JSON Schema.
   coverage    Run the tests with coverage, write lcov.info and check the threshold.
+  deps        Check the dependencies of pubspec.yaml against the pubspec rules and the dependency policy, offline; --fix applies the fixable rules.
   format      Check that the Dart files are formatted, or format them with --fix.
   hook        Install or remove the Git pre-commit hook.
   inspect     Statically analyse a pub.dev package before adding it.
   lint        Analyze the package with the rules of analysis_options.yaml.
+  report      Run every evaluation - codebase, supply chain, dependencies, configuration, format, lint, style, API, changelog, Trivy and coverage - and report them at once, for example as an HTML dashboard.
   scan        Run every project check: OSV.dev audit, supply chain checks and Trivy (default).
   style       Check the Dart files against the built-in and custom style rules.
   trivy       Run Trivy: the configured scans, or a filesystem scan of the package.
@@ -67,14 +71,14 @@ inspectra --version
 
 ## Shared options {id="shared-options"}
 
-The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook` - and `trivy` share these
-options:
+The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `deps`, `add`, `hook` - `trivy`, `style`,
+`changelog generate`, `changelog notes`, `baseline create|prune`, `config show|validate|lint` and `report` share these options:
 
 | Option | Description |
 |:--|:--|
 | `--config <path>` | The configuration file. Default: `%config_file%` if present, else the `%pubspec_key%:` section of `pubspec.yaml`. See [Where the configuration lives](Configuration-Overview.md). |
 | `--set <key=value>` | Override a configuration key by its dotted path, for example `--set trivy.version=latest`. Repeatable. An unknown key is a configuration error. |
-| `-f`, `--format` | `text` (default), `json`, `sarif` or `markdown`. |
+| `-f`, `--format` | `text` (default), `json`, `sarif`, `markdown`, `junit`, `gitlab`, `sonarqube`, `checkstyle` or `html`. See [Reports and dashboards](Reports.md#formats). |
 | `-o`, `--output <path>` | Write the report to a file instead of standard output. |
 | `--[no-]color` | Force or disable ANSI colours. Default: detected from the terminal. |
 | `-q`, `--quiet` | Only print warnings and errors. |
@@ -85,7 +89,7 @@ options:
 | `-i`, `--ignore <ID>` | Ignore a rule, advisory id or alias. Repeatable. For a documented, expiring suppression use the [`ignore`](Configuration-Reference.md#ignore) list. |
 | `--exit-zero` | Exit with `0` even when findings reach the threshold. Never hides usage, input or availability errors. |
 
-`scan` and `trivy` also take the Trivy provisioning options:
+`scan`, `trivy`, `baseline create|prune`, `config show|validate|lint` and `report` also take the Trivy provisioning options:
 
 | Option | Configuration key | Description |
 |:--|:--|:--|
@@ -296,13 +300,16 @@ Runs every enabled package check in this order and fails if any of them fails:
 2. The [lint check](#lint), when `lint.enabled`.
 3. The [style check](#style), when `style.enabled`.
 4. The [API check](#api-check), when `api.enabled`.
-5. The [changelog check](#changelog-check), when `changelog.enabled`.
-6. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
-7. The [coverage gate](#coverage), when `coverage.enabled`.
+5. The [semantic versioning check](#api-semver), when `api.semver`.
+6. The [changelog check](#changelog-check), when `changelog.enabled`.
+7. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
+8. The [dependency policy](#deps) with the pubspec rules, when `dependency_policy.enabled`; ignore rules and the
+   baseline apply, and it fails from `fail_on`.
+9. The [coverage gate](#coverage), when `coverage.enabled`.
 
 All checks run even when an earlier one fails, so one run reports everything; an error such as a missing Trivy stops
 the run with its exit code. With nothing enabled it prints
-`Nothing is enabled. Enable "format", "lint", "style", "api", "changelog", "trivy" or "coverage" in the Inspectra configuration.`
+`Nothing is enabled. Enable "format", "lint", "style", "api", "changelog", "trivy", "dependency_policy" or "coverage" in the Inspectra configuration.`
 and exits with `0`.
 
 `check`, `format`, `lint`, `api`, `coverage` and `changelog check` need a `pubspec.yaml` in the package root. They take no shared options;
@@ -368,6 +375,9 @@ violation is a finding of the source `style` in JSON, SARIF and Markdown. See [S
 | A missing header template or custom rule file, custom rules that do not compile or have invalid ids, an unknown rule in `style.rules` | `65` |
 | `dart` cannot be started for the custom rules | `69` |
 
+When the package has a [baseline](Baseline.md), the violations it covers are not reported; the text report counts them
+and the JSON result has `"baseline": {"covered": …, "stale": …}`.
+
 ## api dump {id="api-dump"}
 
 ```bash
@@ -390,6 +400,33 @@ Renders the public API and compares it with the dump at `api.output`.
 | Equal | `The public API matches api/<package>.api.` | `0` |
 | Different | `The public API changed.`, the diff, and how to record it | `1` |
 | No dump | `No public API dump has been recorded yet at …` | `1` |
+
+## api semver {id="api-semver"}
+
+```bash
+dart run inspectra api semver
+dart run inspectra api semver --from v1.2.0 -f json
+```
+
+Compares the public API of the code with the dump committed at the last release tag, classifies every change as
+breaking or additive, and checks that the `version` in `pubspec.yaml` makes the step the changes require. Works
+whether or not `api.semver` is set. See [Semantic versioning](API-Semver.md).
+
+| Option | Description |
+|:--|:--|
+| `--from <revision>` | Compare with the dump at this tag, branch or commit. Default: the release tag with the prefix `changelog.tag_prefix` and the highest version reachable from `HEAD`. |
+
+The shared options apply; `-f json` lists every change, the required version and the findings.
+
+| Result | Output | Exit code |
+|:--|:--|:--|
+| The version is high enough | `API semver: 2 change(s) since v1.0.0 (1.0.0).`, the changes, and the required version | `0` |
+| The version is too low, or a breaking change is not announced by a commit | The same, plus `SEMVER_VIOLATION` or `SEMVER_UNDECLARED_BREAKING` | `1` |
+| No release tag, no dump at the release, or no `version` in `pubspec.yaml` | `API semver: skipped, …` with the reason | `0` |
+| Not inside a Git repository, or a `--from` revision Git cannot resolve | The cause | `64` |
+| Git is missing or fails | The cause | `69` |
+
+In a shallow clone it warns that tags may be missing.
 
 ## coverage {id="coverage"}
 
@@ -480,6 +517,167 @@ in `pubspec.yaml` and matches `## 1.2.0`, `## [1.2.0]` and `## v1.2.0` alike. Wi
 | No version given and none in `pubspec.yaml` | `64` |
 | The changelog is missing, or has no or an empty section for the version | `65` |
 
+## baseline create {id="baseline-create"}
+
+```bash
+dart run inspectra baseline create
+dart run inspectra baseline create --only style,lint
+```
+
+Runs the scopes and records their findings in `baseline.file` (default `inspectra-baseline.json`), replacing the entries
+of those scopes and keeping the others. Without `--only`, the scopes are `scan` and, when enabled, `lint`, `style` and
+`trivy`. Ignore rules and `--min-severity` apply first. The file is only written when it changes. With `-f json` the
+report holds `action`, `file`, `changed`, `total` and `scopes` with the recorded findings `before` and `after` per
+scope. See [Baseline](Baseline.md).
+
+| Option | Description |
+|:--|:--|
+| `--only <scope>` | `scan`, `lint`, `style` or `trivy`. Repeatable or comma-separated. |
+| `-r`, `--recursive` | Also scan nested packages for the `scan` scope. |
+
+| Result | Exit code |
+|:--|:--|
+| The baseline was written, or is unchanged | `0` |
+| A malformed baseline file, lockfile or configuration | `65` |
+| A scope cannot run completely: OSV.dev unreachable or offline, `dart analyze` failing, Trivy unavailable; nothing is written | `69` |
+
+## baseline prune {id="baseline-prune"}
+
+```bash
+dart run inspectra baseline prune
+```
+
+Runs the scopes like [`baseline create`](#baseline-create) and removes what was fixed: every count drops to the number
+of findings that still occur, and entries without any are removed. Nothing is ever added. Options, report and exit
+codes are those of `baseline create`.
+
+## deps {id="deps"}
+
+```bash
+dart run inspectra deps
+dart run inspectra deps -r --fix
+```
+
+Checks every `pubspec.yaml` against the built-in pubspec rules and, with `dependency_policy.enabled`, the
+[dependency policy](Dependency-Policy.md), without network access. `directory` defaults to the current one. The shared
+options apply; findings are of the source `pubspec`. With `-f json` the report holds `pubspecs`, `fixed`, `suppressed`,
+`baselined` and `findings`.
+
+| Option | Description |
+|:--|:--|
+| `-r`, `--recursive` | Also check the packages below the directory, such as the members of a pub workspace. |
+| `--fix` | Bound constraints with a caret, move `dev_only` packages to `dev_dependencies` and add `publish_to: none`, keeping comments and formatting; then report what remains. |
+
+| Result | Exit code |
+|:--|:--|
+| No finding at or above `--fail-on` (default: any) | `0` |
+| Findings | `1` |
+| No `pubspec.yaml`, a malformed pubspec or lockfile, an invalid configuration | `65` |
+| A fixed `pubspec.yaml` cannot be written | `69` |
+
+## config show {id="config-show"}
+
+```bash
+dart run inspectra config show --explain
+dart run inspectra config show --only-changed -f json
+```
+
+Prints the effective configuration as YAML; options without a value are commented out. The shared options apply, so
+`--config`, `--set` and the Trivy flags change what is shown exactly as they change what other commands use. See
+[Configuration tools](Configuration-Tools.md#show).
+
+| Option | Description |
+|:--|:--|
+| `--explain` | Comment every value with its origin: `default`, the file and line, an environment variable or `command line`. |
+| `--only-changed` | Show only values that do not come from the defaults. |
+
+With `-f json` the report holds `source` and `values`, one object per option with `key`, `value`, `default`,
+`origin` and, where known, `variable` and `line`. Exit code `0`, or `65` for an invalid configuration.
+
+## config validate {id="config-validate"}
+
+```bash
+dart run inspectra config validate
+```
+
+Loads the configuration and checks that every file it refers to exists and that the baseline file is well-formed.
+See [Configuration tools](Configuration-Tools.md#validate).
+
+| Result | Exit code |
+|:--|:--|
+| Valid; with `-f json`: `source`, `valid` and `files` | `0` |
+| An invalid key or value, or missing referenced files - all listed at once | `65` |
+
+## config lint {id="config-lint"}
+
+```bash
+dart run inspectra config lint
+dart run inspectra config lint -f sarif -o config.sarif --fail-on medium
+```
+
+Reports risky settings as findings of the source `config`: insecure URLs, a disabled or unpinned Trivy, misspelled
+`INSPECTRA_*` variables, ignore rules without or past their expiry, gates that never fail, hidden findings, a coverage
+gate without threshold and a baseline without `max_severity`. See the rules in
+[Configuration tools](Configuration-Tools.md#lint).
+
+| Result | Exit code |
+|:--|:--|
+| No finding at or above `--fail-on` (default: any) | `0` |
+| Findings | `1` |
+| An invalid configuration | `65` |
+
+## config schema {id="config-schema"}
+
+```bash
+dart run inspectra config schema -o inspectra.schema.json
+```
+
+Prints the JSON Schema (draft-07) of `inspectra.yaml`, generated from the options the configuration reads. It reads no
+project configuration and takes only `-o`, `--output <path>`. Exit code `0`, or `69` when the file cannot be written.
+See [Editor support](Configuration-Tools.md#schema).
+
+## report {id="report"}
+
+```bash
+dart run inspectra report -f html -o inspectra-report.html --also junit=build/junit.xml
+dart run inspectra report --skip scan,coverage
+dart run inspectra report --merge app.json --merge api.json -f html -o inspectra-report.html
+```
+
+Runs every evaluation - the size of the code base, supply chain, dependencies, configuration, format, lint, style,
+public API, changelog, the configured Trivy scans and coverage - and reports each as a section with its status, summary, key figures and findings.
+Package checks that are not enabled are reported as skipped. An evaluation that cannot run is reported with its cause
+while the others still run. Takes the [shared options](#shared-options) and the Trivy provisioning options. See
+[Reports and dashboards](Reports.md).
+
+| Option | Description |
+|:--|:--|
+| `--skip <section>` | Leave out sections: `codebase`, `scan`, `deps`, `config`, `format`, `lint`, `style`, `api`, `changelog`, `trivy`, `coverage`. Repeatable or comma-separated. |
+| `--also <format>=<path>` | Also write the report in another format, such as `junit=build/junit.xml`. Repeatable. |
+| `--merge <report.json>` | Merge JSON reports of earlier runs instead of running the evaluations. Repeatable. |
+
+`-f json` writes `project`, `status` and `sections`, one object per section with `id`, `title`, `status` (`passed`,
+`failed`, `skipped` or `error`), `summary`, `metrics`, `findings` and, where known, `reason` and `details`.
+
+| Result | Exit code |
+|:--|:--|
+| Every section passed or was skipped | `0` |
+| A section failed, without `--exit-zero` | `1` |
+| `--also` without a known format and a path | `64` |
+| A report to merge cannot be read or is no Inspectra JSON report | `65` |
+| A section could not run completely, also with `--exit-zero`; the report is written first | `69` |
+
+## config fetch {id="config-fetch"}
+
+```bash
+dart run inspectra config fetch
+```
+
+Downloads and verifies the remote bases the configuration [extends](Configuration-Inheritance.md) into the cache and
+lists every base. Takes the shared and Trivy provisioning options; `-f json` writes `bases` with `label`, `kind` and
+`downloaded`. Exit code `0`; `65` for a malformed configuration or a download that does not match its SHA-256; `69`
+when a base cannot be downloaded, for example with `--offline`.
+
 ## Exit codes {id="exit-codes"}
 
 <include from="lib.topic" element-id="exit-codes"/>
@@ -501,8 +699,16 @@ Every exit code other than `0` and `1` comes with a message on standard error na
 | `error: No pubspec.yaml found; run Inspectra from a package root.: …` | `65` |
 | `error: The changelog CHANGELOG.md has no section for version 1.2.0.` | `65` |
 | `error: The license header template tool/header.txt (style.license_header) does not exist.` | `65` |
+| `error: The baseline …/inspectra-baseline.json needs an "entries" list.` | `65` |
+| `error: The configuration has 2 problem(s): …` | `65` |
 | `error: The custom style rules of style.custom_rules could not be run (dart run exited with 254). …` | `65` |
+| `error: Invalid --also "pdf=a.pdf": expected <format>=<path> with one of json, sarif, …` | `64` |
+| `error: report.json is no Inspectra JSON report; create it with "--format json".` | `65` |
+| `error: Invalid Inspectra configuration at "coverage.min_line_coverage": 50.0 (the command line) is below the minimum 70 set by package:acme_policy/inspectra.yaml.` | `65` |
+| `error: Invalid Inspectra configuration at "extends": the base https://… is not in the cache; run "dart run inspectra config fetch" while online.` | `65` |
+| `error: The base https://… has the SHA-256 …, but extends pins …; it was not used.` | `65` |
 | `error: Git is not installed or not on the PATH.` | `69` |
+| `error: The report is incomplete: Trivy secret could not run completely.` | `69` |
 | `error: Trivy is not installed and downloading is disabled (trivy.download: false). Trivy is required (trivy.mode: required).` | `69` |
 | `error: The configured Trivy executable "…" (trivy.executable) cannot be run.` | `69` |
 | `error: Network access is disabled (offline mode), so api.osv.dev cannot be contacted.` | `69` |

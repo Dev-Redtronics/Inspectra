@@ -19,10 +19,13 @@ import 'dart:io';
 
 import 'package:build/build.dart';
 import 'package:glob/glob.dart';
+import 'package:inspectra/src/baseline/baseline_gates.dart';
+import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/builders/build_step_config.dart';
 import 'package:inspectra/src/builders/log_build_outcome.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/trivy/finding.dart';
 import 'package:inspectra/src/trivy/package_graph.dart';
 import 'package:inspectra/src/trivy/scans.dart';
@@ -97,7 +100,7 @@ sealed class TrivyBuilder implements Builder {
       }
 
       final String packageRoot = Directory.current.path;
-      final ScanResult result = await _run(
+      final ScanResult scanned = await _run(
         buildStep,
         config,
         Trivy(
@@ -107,6 +110,9 @@ sealed class TrivyBuilder implements Builder {
         ),
         packageRoot,
       );
+      final ScanResult result = baselineScans(<ScanResult>[
+        scanned,
+      ], BaselineMatcher.load(config.baseline, packageRoot)).single;
       await buildStep.writeAsString(
         AssetId(buildStep.inputId.package, _report),
         const JsonEncoder.withIndent('  ').convert(result.toJson()),
@@ -122,6 +128,8 @@ sealed class TrivyBuilder implements Builder {
       log.severe('$error');
     } on FileSystemException catch (error) {
       log.severe('$error');
+    } on InspectraException catch (error) {
+      log.severe(error.message);
     }
   }
 
@@ -172,7 +180,7 @@ final class _SecretScanBuilder extends TrivyBuilder {
       packageRoot,
       secret.config,
     );
-    if (secretConfig != null) {
+    if (secretConfig != null && p.isWithin(packageRoot, secretConfig)) {
       final id = AssetId(
         buildStep.inputId.package,
         posixRelative(secretConfig, from: packageRoot),

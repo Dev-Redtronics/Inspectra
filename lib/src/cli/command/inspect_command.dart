@@ -66,7 +66,9 @@ final class InspectCommand extends InspectraCommand {
       version,
       onStatus: (message) => session.console.info('  $message'),
     );
-    final FilterOutcome outcome = session.filter().apply(result.findings);
+    final FilterOutcome outcome = session
+        .filter(baseline: false)
+        .apply(result.findings);
     return InspectionReport(
       result: result,
       findings: outcome.kept,

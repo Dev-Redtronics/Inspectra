@@ -75,6 +75,7 @@ final class AuditCommand extends InspectraCommand {
       scan: scan,
       findings: outcome.kept,
       suppressedCount: outcome.suppressed.length,
+      baselinedCount: outcome.baselined.length,
       verbose: results['verbose'] == true,
     );
   }

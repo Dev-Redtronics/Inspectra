@@ -43,21 +43,26 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra inspect <pkg> <version>` | Downloads, verifies and statically analyses a package's published source |
 | `inspectra trust <pkg> [version]` | Trust assessment from pub.dev: age, release freshness, publisher, popularity |
 | `inspectra typosquat` | Typosquatting and dependency confusion analysis of `pubspec.yaml` |
+| `inspectra deps [--fix] [-r]` | Pubspec rules and the dependency policy, offline; `--fix` bounds constraints, moves dev packages and adds `publish_to: none` |
 | `inspectra add <pkg> [version]` | Audits a package and adds **exactly** the audited version (`--dev`, `--dry-run`, `--force`) |
 | `inspectra hook [install\|remove]` | Git pre-commit hook for staged `pubspec.yaml` / `pubspec.lock` changes |
 | `inspectra trivy [secret\|license\|vulnerability\|filesystem…]` | The configured Trivy scans, or a `trivy fs` scan; `--install`, `--where` |
-| `inspectra check` | Every enabled package check: format, lint, style, API, changelog, Trivy scans, coverage |
+| `inspectra check` | Every enabled package check: format, lint, style, API, API semver, changelog, Trivy scans, coverage |
 | `inspectra format [--fix]` / `lint [--fix]` | `dart format` / `dart analyze` gates |
 | `inspectra style` | Built-in and custom style rules: license header, one type per file, documentation, no `else`, … (SARIF-capable) |
 | `inspectra api dump\|check` | Record or verify the public API dump |
+| `inspectra api semver [--from v1.2.0]` | Compare the API with the dump at the last release tag, classify each change as breaking or additive, and fail when the `pubspec.yaml` version is too low |
 | `inspectra coverage [--min 80]` | Run the tests with coverage and check the threshold |
 | `inspectra changelog generate [--write]` | The changelog section of the next release from Conventional Commits, with a suggested version (`--from`, `--to`, `--release`, `--date`) |
 | `inspectra changelog check` | Fail when `CHANGELOG.md` is malformed or misses the version of `pubspec.yaml` |
 | `inspectra changelog notes [version]` | Print the section of a release, for example as GitHub release notes |
+| `inspectra config show\|validate\|lint\|schema\|fetch` | Effective configuration with the origin of each value (`--explain`), validation of referenced files, risky settings, JSON Schema, remote bases for offline use |
+| `inspectra baseline create\|prune` | Record today's findings so that only new ones fail (`--only scan,lint,style,trivy`), or remove the fixed ones |
+| `inspectra report` | Every evaluation at once - lines of code with and without comments, supply chain, dependencies, configuration, format, lint, style, API, semantic versioning, changelog, Trivy, coverage - for example as one self-contained HTML dashboard (`--skip`, `--also junit=…`, `--merge`) |
 
 `-C <path>` before the command works on another package. The supply-chain commands share
-`--format text|json|sarif|markdown`, `--output`, `--fail-on`, `--min-severity`, `--ignore`,
-`--exit-zero`, `--offline`, `--config`, `--set key=value`, `--[no-]color`, `-q` and `-v`.
+`--format text|json|sarif|markdown|junit|gitlab|sonarqube|checkstyle|html`, `--output`, `--fail-on`,
+`--min-severity`, `--ignore`, `--exit-zero`, `--offline`, `--config`, `--set key=value`, `--[no-]color`, `-q` and `-v`.
 
 ## Installation
 
@@ -141,9 +146,25 @@ precedence first:
 3. the configuration file;
 4. built-in defaults.
 
-Unknown keys and wrong types are errors that name the offending key, for example
-`Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option`.
+Unknown keys and wrong types are errors that name the offending key and the closest valid one, for example
+`Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Did you mean "secret"?`.
 [`inspectra.example.yaml`](inspectra.example.yaml) lists every option with its default.
+
+### Configuration tools
+
+```bash
+dart run inspectra config show --explain    # every effective value and where it comes from
+dart run inspectra config validate          # the configuration and every file it refers to
+dart run inspectra config lint              # risky settings, misspelled INSPECTRA_* variables
+dart run inspectra config schema            # JSON Schema for completion in the editor
+```
+
+`config show --explain` comments each value with its origin - `inspectra.yaml:12`, `environment variable
+INSPECTRA_TRIVY_MODE`, `command line` or `default` - and `--only-changed` shows only what a package configures.
+`config lint` reports insecure service URLs, a disabled or unpinned Trivy, ignore rules without or past their expiry,
+gates that never fail and `INSPECTRA_*` variables that name no option, as findings with `-f sarif` and `--fail-on`.
+For completion and validation as you type, start `inspectra.yaml` with
+`# yaml-language-server: $schema=https://raw.githubusercontent.com/davils-com/Inspectra/main/inspectra.schema.json`.
 
 > **Note** — `pubspec.yaml` is always a `build_runner` source, so editing the section reruns the
 > builders. `inspectra.yaml` and `trivy-secret.yaml` are not sources by default: list them under
@@ -162,6 +183,42 @@ ignore:
 `--ignore <id>` (repeatable) works as in `dart_audit`. Trivy scans additionally have their own
 `ignored_vulnerabilities`, `ignored_licenses` and `ignored_packages`.
 
+### Dependency policy
+
+```yaml
+inspectra:
+  dependency_policy:
+    enabled: true
+    denied: [{name: http_parser_legacy, reason: Unmaintained., replacement: http}]
+    allowed_hosts: [https://pub.acme.corp, https://pub.dev]
+    require_upper_bound: true
+    min_sdk: 3.6.0
+    dev_only: [mockito, build_runner, lints, test]
+    require_publish_to: true
+```
+
+Organisation rules for dependencies, checked by `inspectra deps` (offline, `-r` for workspaces), `scan` and `check`:
+denied packages (also transitive), allowed packages, registries and Git hosts, upper bounds, SDK minimums,
+development packages in `dependencies`, a missing `publish_to` that would let `dart pub publish` upload an internal
+package to pub.dev, required metadata, a `pubspec.lock` out of sync or without checksums, and unused or misplaced
+dependencies found from the imports. `inspectra deps --fix` applies the fixable rules while keeping comments and
+formatting. Every rule is opt-in.
+
+### Baseline for existing code
+
+```bash
+dart run inspectra baseline create      # record today's findings in inspectra-baseline.json
+dart run inspectra baseline prune       # remove the fixed ones; never adds anything
+```
+
+Introducing a gate into a code base that is years old no longer means fixing hundreds of findings first: commit the
+baseline, and `scan`, `audit`, `typosquat`, `trivy`, `lint`, `style`, `check` and the builders report only findings
+that are not recorded. Entries are matched by scope, source, rule, package and file, without line numbers or package
+versions, and count their occurrences, so moving code does not make a finding new but a further occurrence does.
+`--only scan,lint,style,trivy` selects scopes; a run that cannot complete (offline, Trivy unavailable) writes nothing.
+`baseline.max_severity` keeps severe findings out of the baseline, `baseline.fail_on_stale` fails a check until fixed
+findings are pruned, and `--set baseline.enabled=false` shows everything.
+
 ### Enterprise networks
 
 Proxies come from `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` or `network.proxy`; additional certificate
@@ -173,7 +230,8 @@ skipped in `trivy.mode: auto` and exits with `69` in `required`.
 
 ## Output and exit codes
 
-The supply-chain commands render `--format text|json|sarif|markdown`; progress goes to stderr, so
+The supply-chain commands render `--format text|json|sarif|markdown`, the CI formats
+`junit|gitlab|sonarqube|checkstyle` and a self-contained `html` dashboard; progress goes to stderr, so
 `inspectra audit -f json > report.json` always produces valid JSON. JSON documents carry
 `schemaVersion`, `tool` and `generatedAt` and keep the `dart_audit` field names.
 
@@ -336,7 +394,9 @@ steps:
 `scan` and `check` provision Trivy automatically. Trivy builders with `run_on_build` need it on the
 `PATH`: run `dart run inspectra trivy --install --format json --output "$RUNNER_TEMP/trivy.json"` and
 append the directory of its `trivy.executable` to `$GITHUB_PATH` before `build_runner`. Use
-`-f markdown >> "$GITHUB_STEP_SUMMARY"` for a job summary.
+`-f markdown >> "$GITHUB_STEP_SUMMARY"` for a job summary, and
+`dart run inspectra report -f html -o inspectra-report.html` for one dashboard of every evaluation to keep as an
+artifact. GitLab, Azure DevOps, Jenkins and SonarQube read `-f gitlab`, `junit`, `checkstyle` and `sonarqube`.
 
 ## Contributing
 

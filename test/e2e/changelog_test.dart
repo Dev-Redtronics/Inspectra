@@ -18,7 +18,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:inspectra/inspectra.dart';
-import 'package:inspectra/src/changelog/git_commit.dart';
 import 'package:test/test.dart';
 
 import '../support/fake_git.dart';

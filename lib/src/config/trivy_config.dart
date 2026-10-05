@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/config_kind.dart';
+import 'package:inspectra/src/config/config_origin.dart';
 import 'package:inspectra/src/config/filesystem_scan_config.dart';
 import 'package:inspectra/src/config/license_scan_config.dart';
 import 'package:inspectra/src/config/secret_scan_config.dart';
@@ -72,9 +74,7 @@ final class TrivyConfig {
       version: yaml.string('version', fallback: pinnedVersion),
       useInstalled: yaml.boolean('use_installed', fallback: true),
       download: yaml.boolean('download', fallback: true),
-      executable:
-          yaml.overrides.environment[legacyExecutableVariable] ??
-          yaml.optionalString('executable'),
+      executable: _executable(yaml),
       installDirectory: yaml.optionalString('install_directory'),
       downloadBaseUrl: _trimSlash(
         yaml.string('download_base_url', fallback: defaultDownloadBaseUrl),
@@ -107,6 +107,34 @@ final class TrivyConfig {
     return config;
   }
 
+  /// Reads `executable` from [yaml]: the command line wins, then
+  /// [legacyExecutableVariable], then `INSPECTRA_TRIVY_EXECUTABLE`, then the
+  /// file. The key is always read, so that it is a known option.
+  ///
+  /// Returns the executable, or `null` when none is configured.
+  static String? _executable(YamlReader yaml) {
+    final String? configured = yaml.optionalString('executable');
+    final path = yaml.keyPath.isEmpty
+        ? 'executable'
+        : '${yaml.keyPath}.executable';
+    final String? fromCommandLine = yaml.overrides.cli[path]?.trim();
+    if (fromCommandLine != null && fromCommandLine.isNotEmpty) {
+      return configured;
+    }
+    final String? legacy = yaml.overrides.environment[legacyExecutableVariable];
+    if (legacy == null) {
+      return configured;
+    }
+    yaml.recordValue(
+      'executable',
+      ConfigKind.string,
+      legacy,
+      origin: ConfigOrigin.environment,
+      variable: legacyExecutableVariable,
+    );
+    return legacy;
+  }
+
   /// The Trivy release Inspectra downloads unless configured otherwise.
   ///
   /// Pinning a version keeps scans reproducible; updating this constant is
@@ -117,7 +145,8 @@ final class TrivyConfig {
   static const latestVersion = 'latest';
 
   /// The environment variable that names the Trivy executable, kept for
-  /// compatibility; it overrides `trivy.executable`.
+  /// compatibility; it overrides `trivy.executable` of the file and of
+  /// `INSPECTRA_TRIVY_EXECUTABLE`, but not of the command line.
   static const legacyExecutableVariable = 'INSPECTRA_TRIVY';
 
   /// Where official Trivy release assets are downloaded from.

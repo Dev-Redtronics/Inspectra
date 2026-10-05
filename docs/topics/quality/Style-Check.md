@@ -163,6 +163,12 @@ final legacy = <int>[if (a) 1 else 2]; // inspectra: ignore-style no_else
 Exceptions for whole directories belong in `exclude`. With `no_comments` on - as in `strict` - an ignore comment is a
 violation itself, so `exclude` is the only way out.
 
+## Existing violations {id="baseline"}
+
+To introduce the check into a code base with many violations, record them once with
+`dart run inspectra baseline create --only style` and commit `inspectra-baseline.json`: `style`, `check` and the
+builder then fail only on new violations, while a moved violation stays covered. See [Baseline](Baseline.md).
+
 ## Running it
 
 <tabs group="run">

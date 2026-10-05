@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/baseline/baseline_candidates.dart';
+import 'package:inspectra/src/baseline/baseline_match.dart';
+import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/config/ignore_rule.dart';
 import 'package:inspectra/src/model/finding.dart';
 import 'package:inspectra/src/model/severity.dart';
@@ -24,7 +27,8 @@ import 'package:inspectra/src/policy/filter_outcome.dart';
 /// A finding is dropped when its severity is below [minSeverity] or when an
 /// active ignore rule matches it. Ignore rules come from the configuration
 /// file (with reason and expiry) and from repeated `--ignore` flags, which
-/// match an id or alias for every package.
+/// match an id or alias for every package. A finding that remains and is
+/// recorded in the [baseline] is not reported either.
 final class FindingFilter {
   /// Creates a filter evaluated at time [now].
   const FindingFilter({
@@ -32,6 +36,7 @@ final class FindingFilter {
     required this.rules,
     required this.cliIgnores,
     required this.now,
+    this.baseline,
   });
 
   /// Findings below this severity are dropped.
@@ -46,9 +51,13 @@ final class FindingFilter {
   /// The time against which rule expiry is evaluated.
   final DateTime now;
 
+  /// The baseline of accepted findings, or `null` to report every finding.
+  final BaselineMatcher? baseline;
+
   /// Filters [findings].
   ///
-  /// Returns the kept and suppressed findings plus expired rules.
+  /// Returns the kept, suppressed and baselined findings plus expired
+  /// rules.
   FilterOutcome apply(List<Finding> findings) {
     final List<IgnoreRule> active = rules
         .where((rule) => !rule.isExpired(now))
@@ -70,10 +79,15 @@ final class FindingFilter {
       }
       kept.add(finding);
     }
+    final BaselineMatch<Finding>? match = baseline?.partition(
+      kept,
+      findingCandidate,
+    );
     return FilterOutcome(
-      kept: kept,
+      kept: match?.kept ?? kept,
       suppressed: suppressed,
       expiredRules: expired,
+      baselined: match?.baselined ?? const <Finding>[],
     );
   }
 }

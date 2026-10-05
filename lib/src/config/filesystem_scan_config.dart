@@ -45,8 +45,12 @@ final class FilesystemScanConfig extends ScanConfig {
       scanners: yaml.enums(
         'scanners',
         fallback: defaultScanners,
-        parse: (value) => supportedScanners.contains(value) ? value : null,
-        expected: supportedScanners.join(', '),
+        parse: (value) {
+          final String scanner = value.toLowerCase();
+          return supportedScanners.contains(scanner) ? scanner : null;
+        },
+        options: supportedScanners,
+        name: (scanner) => scanner,
       ),
       skipDirectories: yaml.strings(
         'skip_dirs',

@@ -17,6 +17,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:inspectra/src/baseline/baseline_gates.dart';
 import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/cli/inspectra_command.dart';
 import 'package:inspectra/src/model/finding.dart';
@@ -115,6 +116,11 @@ final class TrivyCommand extends InspectraCommand {
       onStatus: session.console.info,
     );
     final FilterOutcome filtered = session.filter().apply(outcome.findings);
+    if (filtered.baselined.isNotEmpty) {
+      session.console.info(
+        '${filtered.baselined.length} finding(s) covered by the baseline.',
+      );
+    }
     return TrivyCommandReport(
       target: display,
       outcome: outcome,
@@ -148,7 +154,10 @@ final class TrivyCommand extends InspectraCommand {
             only: named.isEmpty ? null : named,
             executable: executable,
           );
-          return ConfiguredScansReport(results: scanResults, outcome: outcome);
+          return ConfiguredScansReport(
+            results: baselineScans(scanResults, session.baselineMatcher()),
+            outcome: outcome,
+          );
         } on TrivyException catch (error) {
           throw UnavailableException(error.message);
         } on FileSystemException catch (error) {

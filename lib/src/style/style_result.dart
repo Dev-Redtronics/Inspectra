@@ -14,17 +14,20 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/baseline/baseline_summary.dart';
 import 'package:inspectra/src/style/style_violation.dart';
 
 /// The outcome of the style check.
 final class StyleResult {
   /// Creates the outcome of checking [checked] files with the [rules],
-  /// which found [violations]; [failOnFindings] decides whether they fail.
+  /// which found [violations]; [failOnFindings] decides whether they fail
+  /// and [baseline] tells what the baseline covered.
   StyleResult({
     required this.checked,
     required this.rules,
     required List<StyleViolation> violations,
     required this.failOnFindings,
+    this.baseline,
   }) : violations = List<StyleViolation>.unmodifiable(violations);
 
   /// The number of checked files.
@@ -39,8 +42,13 @@ final class StyleResult {
   /// Whether violations fail the check.
   final bool failOnFindings;
 
-  /// Whether the check failed.
-  bool get failed => failOnFindings && violations.isNotEmpty;
+  /// What the baseline covered, or `null` when no baseline was applied.
+  final BaselineSummary? baseline;
+
+  /// Whether the check failed: a violation that the baseline does not
+  /// cover, or a stale baseline with `baseline.fail_on_stale`.
+  bool get failed =>
+      failOnFindings && violations.isNotEmpty || (baseline?.failed ?? false);
 
   /// The number of files with at least one violation.
   int get affectedFiles => violations.map((v) => v.path).toSet().length;
@@ -50,8 +58,12 @@ final class StyleResult {
   /// Returns the summary.
   String render() {
     final count = '${rules.length} rule(s)';
+    final List<String> covered = baseline?.render() ?? const <String>[];
     if (violations.isEmpty) {
-      return 'Style: all $checked file(s) follow the $count.';
+      return <String>[
+        'Style: all $checked file(s) follow the $count.',
+        ...covered,
+      ].join('\n');
     }
     final suffix = failed ? '' : ' (not failing)';
     final summary =
@@ -63,6 +75,7 @@ final class StyleResult {
     return <String>[
       summary,
       for (final violation in violations) '  $violation',
+      ...covered,
       hint,
     ].join('\n');
   }
@@ -78,5 +91,6 @@ final class StyleResult {
     'violations': <Map<String, Object?>>[
       for (final violation in violations) violation.toJson(),
     ],
+    'baseline': ?baseline?.toJson(),
   };
 }

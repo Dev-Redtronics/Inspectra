@@ -40,18 +40,30 @@ final class InspectConfig {
     const defaults = InspectConfig();
     const int maxBytes = 1 << 40;
     final config = InspectConfig(
-      failScore:
-          yaml.optionalInt('fail_score', min: 1, max: 100) ??
-          defaults.failScore,
-      maxArchiveBytes:
-          yaml.optionalInt('max_archive_bytes', min: 1, max: maxBytes) ??
-          defaults.maxArchiveBytes,
-      maxExtractedBytes:
-          yaml.optionalInt('max_extracted_bytes', min: 1, max: maxBytes) ??
-          defaults.maxExtractedBytes,
-      maxEntries:
-          yaml.optionalInt('max_entries', min: 1, max: 10000000) ??
-          defaults.maxEntries,
+      failScore: yaml.integer(
+        'fail_score',
+        min: 1,
+        max: 100,
+        fallback: defaults.failScore,
+      ),
+      maxArchiveBytes: yaml.integer(
+        'max_archive_bytes',
+        min: 1,
+        max: maxBytes,
+        fallback: defaults.maxArchiveBytes,
+      ),
+      maxExtractedBytes: yaml.integer(
+        'max_extracted_bytes',
+        min: 1,
+        max: maxBytes,
+        fallback: defaults.maxExtractedBytes,
+      ),
+      maxEntries: yaml.integer(
+        'max_entries',
+        min: 1,
+        max: 10000000,
+        fallback: defaults.maxEntries,
+      ),
       entropyExcludes: yaml.strings(
         'entropy_excludes',
         fallback: defaults.entropyExcludes,
