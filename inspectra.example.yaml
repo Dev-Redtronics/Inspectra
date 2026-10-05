@@ -4,8 +4,24 @@
 # Put these keys into inspectra.yaml next to pubspec.yaml, or under an
 # `inspectra:` section of pubspec.yaml. Precedence (highest first):
 # --set key=value and dedicated flags, INSPECTRA_<PATH> environment variables
-# (e.g. INSPECTRA_TRIVY_VERSION, INSPECTRA_NETWORK_PROXY), this file, defaults.
-# Unknown keys are rejected.
+# (e.g. INSPECTRA_TRIVY_VERSION, INSPECTRA_NETWORK_PROXY), this file, the
+# bases it extends, defaults. Unknown keys are rejected.
+
+# Shared configurations this file builds on, from the lowest to the highest
+# precedence: paths relative to this file, package:<name>/<path> through
+# .dart_tool/package_config.json, or https URLs pinned by their SHA-256.
+# extends:
+#   - package:acme_policy/inspectra.yaml
+#   - url: https://policy.acme.corp/inspectra.yaml
+#     sha256: <64 hexadecimal digits>
+
+# Options that files extending this one, INSPECTRA_* variables and the command
+# line must not change (locked), or may only make stricter (minimum).
+# policy:
+#   locked: [trivy.secret.enabled]
+#   minimum:
+#     coverage.min_line_coverage: 70
+#     fail_on: high
 
 # ---------------------------------------------------------------------------
 # Supply-chain commands: scan, audit, inspect, trust, typosquat, add, hook

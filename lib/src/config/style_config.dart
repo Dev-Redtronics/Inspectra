@@ -48,7 +48,7 @@ final class StyleConfig {
       'custom_rules',
       fallback: const <String>[],
     );
-    final String? licenseHeader = yaml.optionalString('license_header');
+    final String? licenseHeader = yaml.optionalPath('license_header');
     final YamlReader rulesYaml = yaml.section('rules');
     final rules = <String, bool>{};
     final prefix = '${rulesYaml.keyPath}.';

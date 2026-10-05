@@ -24,6 +24,7 @@ import 'package:inspectra/src/changelog/changelog_check.dart';
 import 'package:inspectra/src/changelog/changelog_check_result.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/config_bases.dart';
 import 'package:inspectra/src/cli/exit_code.dart';
 import 'package:inspectra/src/config/config_loader.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
@@ -91,6 +92,7 @@ abstract class PackageCheckCommand extends Command<int> {
   @override
   Future<int> run() async {
     try {
+      await prepareConfigBases(context, packageRoot);
       final bool passed = await runChecks();
       return passed ? ExitCode.success.code : ExitCode.findings.code;
     } on InspectraConfigException catch (error) {
@@ -115,15 +117,19 @@ abstract class PackageCheckCommand extends Command<int> {
   }
 
   /// Reads the configuration of the package, with `INSPECTRA_*`
-  /// environment variables layered on top.
+  /// environment variables and the command line values [cli] layered on
+  /// top.
   ///
   /// Returns the configuration.
   ///
   /// Throws a [FileSystemException] without `pubspec.yaml` and an
   /// [InspectraConfigException] for invalid configuration.
-  InspectraConfig loadPackageConfig() => loadConfig(
+  InspectraConfig loadPackageConfig({
+    Map<String, String> cli = const <String, String>{},
+  }) => loadConfig(
     packageRoot,
-    overrides: ConfigOverrides(environment: context.environment),
+    overrides: ConfigOverrides(cli: cli, environment: context.environment),
+    cacheRoot: cacheRootOf(context),
   );
 
   /// Loads the baseline of the package as [config] names it.

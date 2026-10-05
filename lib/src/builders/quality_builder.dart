@@ -239,6 +239,15 @@ final class _StyleBuilder extends QualityBuilder {
   bool _runsOnBuild(InspectraConfig config) =>
       config.style.enabled && config.style.runOnBuild;
 
+  /// Reads the file at the absolute [path] outside the package, such as a
+  /// license header shipped by a base of the configuration.
+  ///
+  /// Returns the text, or `null` when the file does not exist.
+  static Future<String?> _readOutside(String path) async {
+    final file = File(path);
+    return file.existsSync() ? file.readAsString() : null;
+  }
+
   /// Reads [id] through [buildStep]; a file of the package that is not a
   /// build source, such as a header template outside the default source
   /// directories, is read from disk with a warning that editing it does not
@@ -281,7 +290,9 @@ final class _StyleBuilder extends QualityBuilder {
       config: style,
       packageRoot: packageRoot,
       files: files,
-      read: (path) => _readSource(buildStep, AssetId(package, path)),
+      read: (path) => p.isAbsolute(path)
+          ? _readOutside(path)
+          : _readSource(buildStep, AssetId(package, path)),
     );
     final StyleResult result = baselineStyle(
       checked,

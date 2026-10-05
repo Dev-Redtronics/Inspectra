@@ -71,7 +71,7 @@ final class ConfigLintCollector {
   /// Returns where [entry] is written in the configuration file, or `null`
   /// when it is not there.
   SourceLocation? _locate(ConfigEntry? entry) {
-    final String? source = recorder.source;
+    final String? source = entry?.file ?? recorder.source;
     if (entry == null || source == null) {
       return null;
     }

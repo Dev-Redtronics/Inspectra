@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-import 'dart:convert';
 import 'dart:io';
 
+import 'package:inspectra/src/pub/package_config.dart';
+import 'package:inspectra/src/pub/package_location.dart';
 import 'package:inspectra/src/trivy/pubspec_lock.dart';
 import 'package:inspectra/src/util/files.dart';
 import 'package:path/path.dart' as p;
@@ -140,30 +141,12 @@ class PackageGraph {
   /// Reads `.dart_tool/package_config.json` from [file] into the directory
   /// of every package, keyed by name; entries without a name or root are
   /// skipped.
-  static Map<String, String> _readPackageConfig(File file) {
-    final Object? json = jsonDecode(file.readAsStringSync());
-    final Object? packages = json is Map ? json['packages'] : null;
-    final result = <String, String>{};
-    if (packages is! List) {
-      return result;
-    }
-    final Uri base = file.uri;
-    for (final Object? package in packages) {
-      if (package is! Map) {
-        continue;
-      }
-      final Object? name = package['name'];
-      final Object? rootUri = package['rootUri'];
-      if (name is! String || rootUri is! String) {
-        continue;
-      }
-      final Uri uri = base.resolve(
-        rootUri.endsWith('/') ? rootUri : '$rootUri/',
-      );
-      result[name] = p.normalize(uri.toFilePath());
-    }
-    return result;
-  }
+  static Map<String, String> _readPackageConfig(File file) => <String, String>{
+    for (final MapEntry<String, PackageLocation> entry in readPackageConfig(
+      file,
+    ).entries)
+      entry.key: entry.value.root,
+  };
 
   /// The names of the packages the pubspec at [pubspecPath] declares as
   /// `dev_dependencies` when [dev] is set, otherwise as `dependencies`.

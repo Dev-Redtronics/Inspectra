@@ -82,11 +82,12 @@ String describeOrigin(ConfigEntry entry, {String? source}) {
   };
 }
 
-/// Describes the place of [entry] in the configuration file [source].
+/// Describes the place of [entry] in its base or the configuration file
+/// [source].
 ///
 /// Returns the file with the line, when known.
 String _fileOrigin(ConfigEntry entry, String? source) {
-  final String file = source ?? 'configuration file';
+  final String file = entry.file ?? source ?? 'configuration file';
   final int? line = entry.line;
   return line == null ? file : '$file:$line';
 }

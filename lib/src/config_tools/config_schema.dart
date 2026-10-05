@@ -82,6 +82,70 @@ const _deniedEntry = <String, Object?>{
   },
 };
 
+/// The schema of one base named by `extends`: a path relative to the file,
+/// a `package:` URI, or an `https` URL pinned by its SHA-256.
+const _baseEntry = <String, Object?>{
+  'oneOf': <Object?>[
+    <String, Object?>{
+      'type': 'string',
+      'description': 'A path relative to this file, or package:<name>/<path>.',
+      'minLength': 1,
+    },
+    <String, Object?>{
+      'type': 'object',
+      'required': <String>['url', 'sha256'],
+      'additionalProperties': false,
+      'properties': <String, Object?>{
+        'url': <String, Object?>{
+          'type': 'string',
+          'description': 'The https URL of the base.',
+          'pattern': '^https://',
+        },
+        'sha256': <String, Object?>{
+          'type': 'string',
+          'description': 'The SHA-256 the content of the base must have.',
+          'pattern': r'^[0-9a-fA-F]{64}$',
+        },
+      },
+    },
+  ],
+};
+
+/// The schema of `extends` and `policy`, which the configuration reads
+/// before it is parsed.
+const _layerProperties = <String, Object?>{
+  'extends': <String, Object?>{
+    'description':
+        'The configurations this one builds on, from the lowest to the '
+        'highest precedence.',
+    'oneOf': <Object?>[
+      _baseEntry,
+      <String, Object?>{'type': 'array', 'items': _baseEntry},
+    ],
+  },
+  'policy': <String, Object?>{
+    'type': 'object',
+    'description':
+        'Options that the files extending this one, environment variables '
+        'and the command line must not change, or may only tighten.',
+    'additionalProperties': false,
+    'properties': <String, Object?>{
+      'locked': <String, Object?>{
+        'type': 'array',
+        'description': 'Dotted options that must keep their value.',
+        'items': <String, Object?>{'type': 'string'},
+      },
+      'minimum': <String, Object?>{
+        'type': 'object',
+        'description': 'The weakest allowed value of dotted options.',
+        'additionalProperties': <String, Object?>{
+          'type': <String>['boolean', 'number', 'string'],
+        },
+      },
+    },
+  },
+};
+
 /// The schema of the entries of each structured option.
 const _structuredEntries = <String, Map<String, Object?>>{
   'ignore': _ignoreEntry,
@@ -109,7 +173,7 @@ Map<String, Object?> buildConfigSchema() {
         'pubspec.yaml.',
     'type': 'object',
     'additionalProperties': false,
-    'properties': <String, Object?>{},
+    'properties': <String, Object?>{..._layerProperties},
   };
   for (final ConfigEntry entry in recorder.entries) {
     final List<String> parts = entry.key.split('.');

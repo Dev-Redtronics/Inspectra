@@ -20,8 +20,10 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/config_bases.dart';
 import 'package:inspectra/src/cli/exit_code.dart';
 import 'package:inspectra/src/cli/shared_options.dart';
+import 'package:inspectra/src/config/config_fetch_outcome.dart';
 import 'package:inspectra/src/config/config_loader.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
@@ -55,6 +57,10 @@ abstract class InspectraCommand extends Command<int> {
 
   /// The outside world.
   final CommandContext context;
+
+  /// The layers of the configuration the last run used, with the remote
+  /// bases it downloaded, or `null` before a run.
+  ConfigFetchOutcome? configBases;
 
   /// The severity that fails the command when `failOn` is not configured.
   Severity get defaultFailOn => Severity.unknown;
@@ -95,14 +101,20 @@ abstract class InspectraCommand extends Command<int> {
     CommandSession? session;
     try {
       final String directory = projectDirectory;
+      final Map<String, String> cli = SharedOptions.overrides(results);
+      final configFile = results['config'] as String?;
+      configBases = await prepareConfigBases(
+        context,
+        directory,
+        configFile: configFile,
+        cli: cli,
+      );
       final InspectraConfig config = loadConfig(
         directory,
-        overrides: ConfigOverrides(
-          cli: SharedOptions.overrides(results),
-          environment: context.environment,
-        ),
-        configFile: results['config'] as String?,
+        overrides: ConfigOverrides(cli: cli, environment: context.environment),
+        configFile: configFile,
         requirePubspec: false,
+        cacheRoot: cacheRootOf(context),
       );
       final active = CommandSession(
         context: context,

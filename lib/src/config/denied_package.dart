@@ -82,21 +82,32 @@ final class DeniedPackage {
   /// Throws an [InspectraConfigException] for malformed entries, entries
   /// without `name` or `reason`, and unknown keys.
   static List<DeniedPackage> listFromYaml(YamlReader yaml) {
-    final Object? raw = yaml.structured('denied', fallback: const <Object?>[]);
-    if (raw == null) {
-      return const <DeniedPackage>[];
+    final rules = <DeniedPackage>[];
+    for (final (Object? raw, String path, String? file)
+        in yaml.structuredLayers('denied', fallback: const <Object?>[])) {
+      if (raw == null) {
+        continue;
+      }
+      if (raw is! List) {
+        throw InspectraConfigException(
+          path,
+          'expected a list of entries with name and reason.',
+          file: file,
+        );
+      }
+      for (var index = 0; index < raw.length; index++) {
+        try {
+          rules.add(DeniedPackage._fromEntry(raw[index], '$path[$index]'));
+        } on InspectraConfigException catch (error) {
+          throw InspectraConfigException(
+            error.path,
+            error.message,
+            file: file ?? error.file,
+          );
+        }
+      }
     }
-    final path = yaml.path.isEmpty ? 'denied' : '${yaml.path}.denied';
-    if (raw is! List) {
-      throw InspectraConfigException(
-        path,
-        'expected a list of entries with name and reason.',
-      );
-    }
-    return <DeniedPackage>[
-      for (var index = 0; index < raw.length; index++)
-        DeniedPackage._fromEntry(raw[index], '$path[$index]'),
-    ];
+    return List<DeniedPackage>.unmodifiable(rules);
   }
 
   /// The forbidden package.

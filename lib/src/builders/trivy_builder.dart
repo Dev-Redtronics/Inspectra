@@ -180,7 +180,7 @@ final class _SecretScanBuilder extends TrivyBuilder {
       packageRoot,
       secret.config,
     );
-    if (secretConfig != null) {
+    if (secretConfig != null && p.isWithin(packageRoot, secretConfig)) {
       final id = AssetId(
         buildStep.inputId.package,
         posixRelative(secretConfig, from: packageRoot),

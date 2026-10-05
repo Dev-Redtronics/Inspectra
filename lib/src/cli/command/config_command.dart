@@ -15,6 +15,7 @@
  */
 
 import 'package:args/command_runner.dart';
+import 'package:inspectra/src/cli/command/config_fetch_command.dart';
 import 'package:inspectra/src/cli/command/config_lint_command.dart';
 import 'package:inspectra/src/cli/command/config_schema_command.dart';
 import 'package:inspectra/src/cli/command/config_show_command.dart';
@@ -31,6 +32,7 @@ final class ConfigCommand extends Command<int> {
     addSubcommand(ConfigValidateCommand(context));
     addSubcommand(ConfigLintCommand(context));
     addSubcommand(ConfigSchemaCommand(context));
+    addSubcommand(ConfigFetchCommand(context));
   }
 
   /// The outside world.
@@ -44,7 +46,7 @@ final class ConfigCommand extends Command<int> {
   @override
   String get description =>
       'Show where each configuration value comes from, validate and lint '
-      'the configuration, print its JSON Schema.';
+      'the configuration, print its JSON Schema, fetch its remote bases.';
 
   /// Prints the usage to standard output of the [context].
   @override

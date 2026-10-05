@@ -32,6 +32,7 @@ final class ConfigEntry {
     required this.origin,
     this.variable,
     this.line,
+    this.file,
     this.options,
     this.minimum,
     this.maximum,
@@ -58,6 +59,11 @@ final class ConfigEntry {
   /// The line of the option in the configuration file, if it is there.
   final int? line;
 
+  /// The base of the configuration the value comes from, such as
+  /// `package:acme_policy/inspectra.yaml`, or `null` when it comes from the
+  /// project's own configuration or not from a file.
+  final String? file;
+
   /// The allowed names of a [ConfigKind.choice] or [ConfigKind.enumList].
   final List<String>? options;
 
@@ -77,6 +83,7 @@ final class ConfigEntry {
     'default': defaultValue,
     'origin': origin.id,
     'variable': ?variable,
+    'file': ?file,
     'line': ?line,
   };
 

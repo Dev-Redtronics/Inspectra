@@ -18,7 +18,9 @@ import 'dart:io';
 
 import 'package:build/build.dart';
 
+import 'package:inspectra/src/config/config_loader.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/io/environment.dart';
 
 /// Whether the warning about an `inspectra.yaml` that build_runner cannot
 /// see has been logged, so that it is logged once per build, not per builder.
@@ -41,7 +43,13 @@ Future<InspectraConfig> readConfig(BuildStep buildStep) async {
     buildStep,
     AssetId(package, configFileName),
   );
-  return InspectraConfig.fromSources(pubspec: pubspec, configFile: configFile);
+  final String root = Directory.current.path;
+  return InspectraConfig.fromSources(
+    pubspec: pubspec,
+    configFile: configFile,
+    packageRoot: root,
+    cacheRoot: defaultCacheRoot(Environment.current()),
+  );
 }
 
 /// Reads `inspectra.yaml` through [buildStep] when it is a build source

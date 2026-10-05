@@ -22,8 +22,10 @@
 /// `INSPECTRA_*` environment variable or a command line override. It maps to
 /// exit code `65`.
 final class InspectraConfigException implements Exception {
-  /// Creates an exception for the key at [path] described by [message].
-  const InspectraConfigException(this.path, this.message);
+  /// Creates an exception for the key at [path] described by [message];
+  /// [file] names the base the key was read from, if it is not the
+  /// project's own configuration.
+  const InspectraConfigException(this.path, this.message, {this.file});
 
   /// The dotted path of the offending key.
   final String path;
@@ -31,7 +33,16 @@ final class InspectraConfigException implements Exception {
   /// What is wrong with the value at [path].
   final String message;
 
+  /// The base of the configuration the key was read from, such as
+  /// `package:acme_policy/inspectra.yaml`, or `null` for the project's own
+  /// configuration.
+  final String? file;
+
   /// Returns the complete, user facing description.
   @override
-  String toString() => 'Invalid Inspectra configuration at "$path": $message';
+  String toString() {
+    final String? base = file;
+    final where = base == null ? '"$path"' : '"$path" in $base';
+    return 'Invalid Inspectra configuration at $where: $message';
+  }
 }

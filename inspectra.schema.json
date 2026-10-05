@@ -6,6 +6,97 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "extends": {
+      "description": "The configurations this one builds on, from the lowest to the highest precedence.",
+      "oneOf": [
+        {
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "A path relative to this file, or package:<name>/<path>.",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "required": [
+                "url",
+                "sha256"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "description": "The https URL of the base.",
+                  "pattern": "^https://"
+                },
+                "sha256": {
+                  "type": "string",
+                  "description": "The SHA-256 the content of the base must have.",
+                  "pattern": "^[0-9a-fA-F]{64}$"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "A path relative to this file, or package:<name>/<path>.",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "required": [
+                  "url",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "The https URL of the base.",
+                    "pattern": "^https://"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "description": "The SHA-256 the content of the base must have.",
+                    "pattern": "^[0-9a-fA-F]{64}$"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "policy": {
+      "type": "object",
+      "description": "Options that the files extending this one, environment variables and the command line must not change, or may only tighten.",
+      "additionalProperties": false,
+      "properties": {
+        "locked": {
+          "type": "array",
+          "description": "Dotted options that must keep their value.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "minimum": {
+          "type": "object",
+          "description": "The weakest allowed value of dotted options.",
+          "additionalProperties": {
+            "type": [
+              "boolean",
+              "number",
+              "string"
+            ]
+          }
+        }
+      }
+    },
     "format": {
       "type": "object",
       "additionalProperties": false,

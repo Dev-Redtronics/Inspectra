@@ -63,6 +63,7 @@ final class ConfigShowCommand extends ConfigToolCommand {
     return ConfigShowReport(
       entries: recorder.entries,
       source: recorder.source,
+      layers: recorder.layers,
       explain: results['explain'] == true,
       onlyChanged: results['only-changed'] == true,
     );

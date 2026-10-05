@@ -15,6 +15,7 @@
  */
 
 import 'package:inspectra/src/config/config_entry.dart';
+import 'package:inspectra/src/config/config_layer.dart';
 
 /// Collects the effective value and origin of every configuration option
 /// while a configuration is parsed.
@@ -32,6 +33,10 @@ final class ConfigRecorder {
   /// The configuration file the values were read from, such as
   /// `inspectra.yaml` or `pubspec.yaml`, or `null` without one.
   String? source;
+
+  /// The layers of the configuration, from the lowest to the highest
+  /// precedence; empty when it extends no base.
+  var layers = const <ConfigLayer>[];
 
   /// Every recorded option, in the order it was first read.
   List<ConfigEntry> get entries =>

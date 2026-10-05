@@ -124,8 +124,15 @@ final class CommandContext {
   factory CommandContext.system();
 }
 
+sealed class ConfigBaseReference {
+  const ConfigBaseReference();
+  abstract String get label;
+  static List<ConfigBaseReference> listOf(Object? node, String path, {String? file});
+}
+
 final class ConfigEntry {
   final Object? defaultValue;
+  final String? file;
   final String key;
   final ConfigKind kind;
   final int? line;
@@ -135,7 +142,7 @@ final class ConfigEntry {
   final ConfigOrigin origin;
   final Object? value;
   final String? variable;
-  const ConfigEntry({required String key, required ConfigKind kind, required Object? value, required Object? defaultValue, required ConfigOrigin origin, String? variable, int? line, List<String>? options, num? minimum, num? maximum});
+  const ConfigEntry({required String key, required ConfigKind kind, required Object? value, required Object? defaultValue, required ConfigOrigin origin, String? variable, int? line, String? file, List<String>? options, num? minimum, num? maximum});
   static String formatDuration(Duration duration);
   static Object? jsonOf(Object? value);
   Map<String, Object?> toJson();
@@ -143,6 +150,33 @@ final class ConfigEntry {
 
 enum ConfigKind {
   boolean, string, integer, number, duration, strings, enumList, choice, structured;
+}
+
+final class ConfigLayer {
+  final String? directory;
+  final ConfigLayerKind kind;
+  final String label;
+  final String? location;
+  final Object? node;
+  final String yamlPath;
+  const ConfigLayer({required String label, required ConfigLayerKind kind, required Object? node, String yamlPath = '', String? directory, String? location});
+  bool get isBase;
+  Map<String, Object?> toJson();
+}
+
+enum ConfigLayerKind {
+  project, file, package, remote;
+  final String id;
+}
+
+final class ConfigLayerStack {
+  final List<ConfigLayer> layers;
+  final List<RemoteBaseReference> missing;
+  final List<int> starts;
+  const ConfigLayerStack({required List<ConfigLayer> layers, required List<int> starts, List<RemoteBaseReference> missing = const <RemoteBaseReference>[]});
+  List<ConfigLayer> get bases;
+  ConfigLayer get project;
+  List<ConfigLayer> stackOf(int index);
 }
 
 enum ConfigOrigin {
@@ -170,12 +204,28 @@ final class ConfigOverrides {
   ConfigOverride? resolve(String path);
 }
 
+final class ConfigPolicy {
+  final List<String> locked;
+  final Map<String, Object?> minimum;
+  const ConfigPolicy({List<String> locked = const <String>[], Map<String, Object?> minimum = const <String, Object?>{}});
+  factory ConfigPolicy.of(ConfigLayer layer);
+  bool get isEmpty;
+  static String pathIn(ConfigLayer layer, String key);
+}
+
 final class ConfigRecorder {
+  List<ConfigLayer> layers;
   String? source;
   ConfigRecorder();
   List<ConfigEntry> get entries;
   ConfigEntry? operator [](String key);
   void record(ConfigEntry entry);
+}
+
+enum ConfigStrictness {
+  higherNumber, enabledFlag, severityThreshold, lintLevel, trivyMode;
+  static ConfigStrictness? of(String key);
+  double? rankOf(Object? value);
 }
 
 final class CoverageConfig {
@@ -399,14 +449,16 @@ final class InspectraConfig {
   final TyposquatConfig typosquat;
   const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig(), BaselineConfig baseline = const BaselineConfig(), DependencyPolicyConfig dependencyPolicy = const DependencyPolicyConfig()});
   factory InspectraConfig.defaults(String packageName);
-  factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides, ConfigRecorder? recorder});
+  factory InspectraConfig.fromLayers(ConfigLayerStack stack, {required String packageName, ConfigOverrides? overrides, ConfigRecorder? recorder});
+  factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides, ConfigRecorder? recorder, String? packageRoot, String? cacheRoot, String? configDirectory});
   factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides, ConfigRecorder? recorder});
 }
 
 final class InspectraConfigException implements Exception {
+  final String? file;
   final String message;
   final String path;
-  const InspectraConfigException(String path, String message);
+  const InspectraConfigException(String path, String message, {String? file});
   String toString();
 }
 
@@ -493,6 +545,14 @@ final class NetworkConfig {
   final Duration timeout;
   const NetworkConfig({bool offline = false, Duration timeout = const Duration(seconds: 30), int maxAttempts = 3, Duration retryBaseDelay = const Duration(seconds: 1), int concurrency = 8, String? proxy, String? caCertificates, String osvUrl = defaultOsvUrl, String pubHostedUrl = defaultPubHostedUrl});
   factory NetworkConfig.fromYaml(YamlReader yaml);
+  NetworkConfig withResolvedPaths(String Function(String) resolve);
+}
+
+final class PackageBaseReference extends ConfigBaseReference {
+  final String package;
+  final String path;
+  const PackageBaseReference(String package, String path);
+  String get label;
 }
 
 class PackageGraph {
@@ -501,6 +561,12 @@ class PackageGraph {
   String? directoryOf(String name);
   static Future<PackageGraph> load(String packageRoot, {String? lockContent});
   Set<String> reachable({required bool includeDev});
+}
+
+final class PathBaseReference extends ConfigBaseReference {
+  final String path;
+  const PathBaseReference(String path);
+  String get label;
 }
 
 final class ProcessOutcome {
@@ -520,6 +586,13 @@ class PubspecLock {
   const PubspecLock(Map<String, LockedPackage> packages);
   factory PubspecLock.parse(String content);
   String retain(Iterable<String> names);
+}
+
+final class RemoteBaseReference extends ConfigBaseReference {
+  final String sha256;
+  final Uri url;
+  const RemoteBaseReference(Uri url, String sha256);
+  String get label;
 }
 
 abstract base class ScanConfig {
@@ -756,6 +829,8 @@ const String configEnvironmentVariable = 'INSPECTRA_CONFIG';
 
 const String configFileName = 'inspectra.yaml';
 
+String defaultCacheRoot(Environment environment);
+
 const String defaultSecretConfig = 'trivy-secret.yaml';
 
 String? diffApi({required String expected, required String actual});
@@ -764,7 +839,9 @@ Future<String> dumpApi(InspectraConfig config, String packageRoot);
 
 const String inspectraVersion = '1.0.0';
 
-InspectraConfig loadConfig(String packageRoot, {ConfigOverrides? overrides, String? configFile, bool requirePubspec = true, ConfigRecorder? recorder});
+InspectraConfig loadConfig(String packageRoot, {ConfigOverrides? overrides, String? configFile, bool requirePubspec = true, ConfigRecorder? recorder, String? cacheRoot});
+
+ConfigLayer loadProjectLayer(String packageRoot, {Environment? environment, String? configFile});
 
 const List<String> offlineArguments = <String>['--skip-db-update', '--offline-scan'];
 

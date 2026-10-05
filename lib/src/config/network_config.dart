@@ -66,7 +66,7 @@ final class NetworkConfig {
         fallback: defaults.concurrency,
       ),
       proxy: yaml.optionalString('proxy'),
-      caCertificates: yaml.optionalString('ca_certificates'),
+      caCertificates: yaml.optionalPath('ca_certificates'),
       osvUrl: _trimSlash(yaml.string('osv_url', fallback: defaults.osvUrl)),
       pubHostedUrl: _trimSlash(
         yaml.string(
@@ -130,4 +130,24 @@ final class NetworkConfig {
 
   /// The pub repository base URL, taken from `PUB_HOSTED_URL` by default.
   final String pubHostedUrl;
+
+  /// Returns these settings with the CA bundle resolved by [resolve], such
+  /// as against the project directory.
+  NetworkConfig withResolvedPaths(String Function(String path) resolve) {
+    final String? certificates = caCertificates;
+    if (certificates == null) {
+      return this;
+    }
+    return NetworkConfig(
+      offline: offline,
+      timeout: timeout,
+      maxAttempts: maxAttempts,
+      retryBaseDelay: retryBaseDelay,
+      concurrency: concurrency,
+      proxy: proxy,
+      caCertificates: resolve(certificates),
+      osvUrl: osvUrl,
+      pubHostedUrl: pubHostedUrl,
+    );
+  }
 }

@@ -47,7 +47,9 @@ const _remoteOptions = <String>[
 /// configuration file; [environment] are the environment variables and
 /// [knownPaths] the options that can be overridden, which reveal
 /// misspelled `INSPECTRA_*` variables. Ignore rules are judged at [now];
-/// [baselineExists] tells whether the baseline file exists.
+/// [baselineExists] tells whether the baseline file exists, and
+/// [ignoredPubspecSection] whether `pubspec.yaml` has an `inspectra:`
+/// section that a configuration file hides.
 ///
 /// Returns the findings of the source [FindingSource.config].
 List<Finding> lintConfig({
@@ -57,8 +59,20 @@ List<Finding> lintConfig({
   required List<String> knownPaths,
   required DateTime now,
   required bool baselineExists,
+  bool ignoredPubspecSection = false,
 }) {
   final lint = ConfigLintCollector(recorder);
+  if (ignoredPubspecSection) {
+    lint.add(
+      null,
+      'CONFIG_PUBSPEC_SECTION_IGNORED',
+      Severity.medium,
+      'The inspectra: section of pubspec.yaml is ignored',
+      '${recorder.source ?? 'The configuration file'} replaces the section '
+          'completely, including its extends and policy. Move the settings '
+          'into one place.',
+    );
+  }
   for (final String key in _remoteOptions) {
     final Object? value = recorder[key]?.value;
     if (value is String && value.toLowerCase().startsWith('http://')) {

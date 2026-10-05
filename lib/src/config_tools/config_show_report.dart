@@ -15,6 +15,7 @@
  */
 
 import 'package:inspectra/src/config/config_entry.dart';
+import 'package:inspectra/src/config/config_layer.dart';
 import 'package:inspectra/src/config/config_origin.dart';
 import 'package:inspectra/src/config_tools/config_yaml_writer.dart';
 import 'package:inspectra/src/io/ansi_styler.dart';
@@ -25,9 +26,10 @@ import 'package:inspectra/src/report/command_report.dart';
 /// The report of `config show`: the effective configuration.
 ///
 /// The text is the configuration as YAML; the JSON body has `source`, the
-/// configuration file or `null`, and `values`, one object per option with
-/// `key`, `value`, `default`, `origin` and, where known, `variable` and
-/// `line`.
+/// configuration file or `null`, `layers`, the bases and the project's file
+/// from the lowest to the highest precedence when there are bases, and
+/// `values`, one object per option with `key`, `value`, `default`, `origin`
+/// and, where known, `variable`, `file` and `line`.
 final class ConfigShowReport implements CommandReport {
   /// Creates the report of the [entries] read from [source]; [explain]
   /// comments every value with its origin and [onlyChanged] leaves out the
@@ -35,6 +37,7 @@ final class ConfigShowReport implements CommandReport {
   const ConfigShowReport({
     required this.entries,
     required this.source,
+    this.layers = const <ConfigLayer>[],
     this.explain = false,
     this.onlyChanged = false,
   });
@@ -44,6 +47,10 @@ final class ConfigShowReport implements CommandReport {
 
   /// The configuration file, or `null` without one.
   final String? source;
+
+  /// The layers of the configuration, from the lowest to the highest
+  /// precedence; empty when it extends no base.
+  final List<ConfigLayer> layers;
 
   /// Whether every value is commented with its origin.
   final bool explain;
@@ -79,6 +86,9 @@ final class ConfigShowReport implements CommandReport {
   @override
   Map<String, Object?> toJson() => <String, Object?>{
     'source': source,
+    'layers': <Map<String, Object?>>[
+      for (final ConfigLayer layer in layers) layer.toJson(),
+    ],
     'values': <Map<String, Object?>>[for (final entry in shown) entry.toJson()],
   };
 
@@ -90,9 +100,11 @@ final class ConfigShowReport implements CommandReport {
       out.writeln('# Every option has its default value.');
       return;
     }
-    final origin = source == null
+    final int bases = layers.isEmpty ? 0 : layers.length - 1;
+    final extended = bases == 0 ? '' : ', $bases base(s)';
+    final origin = source == null && bases == 0
         ? 'built-in defaults'
-        : '$source and its overrides';
+        : '${source ?? 'no file'}$extended and its overrides';
     out
       ..writeln('# The effective Inspectra configuration: $origin.')
       ..write(writeConfigYaml(visible, explain: explain, source: source));

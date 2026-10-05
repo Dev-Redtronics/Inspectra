@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import 'dart:io';
+
 import 'package:inspectra/src/host/host_platform.dart';
 import 'package:inspectra/src/host/operating_system.dart';
 import 'package:inspectra/src/io/environment.dart';
@@ -40,6 +42,14 @@ final class CacheDirectory {
 
   /// The application folder name appended to the platform cache root.
   static const _applicationFolder = 'inspectra';
+
+  /// Resolves the cache directory like [resolve], falling back to an
+  /// `inspectra` directory in the system temp directory without a home
+  /// directory.
+  ///
+  /// Returns the absolute directory.
+  String resolveOrTemp() =>
+      resolve() ?? p.join(Directory.systemTemp.path, _applicationFolder);
 
   /// Resolves the cache directory.
   ///

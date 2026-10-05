@@ -90,24 +90,8 @@ final class CommandSession {
   );
 
   /// The network settings with the CA bundle resolved against the project.
-  NetworkConfig get _resolvedNetwork {
-    final NetworkConfig network = config.network;
-    final String? certificates = network.caCertificates;
-    if (certificates == null) {
-      return network;
-    }
-    return NetworkConfig(
-      offline: network.offline,
-      timeout: network.timeout,
-      maxAttempts: network.maxAttempts,
-      retryBaseDelay: network.retryBaseDelay,
-      concurrency: network.concurrency,
-      proxy: network.proxy,
-      caCertificates: resolve(certificates),
-      osvUrl: network.osvUrl,
-      pubHostedUrl: network.pubHostedUrl,
-    );
-  }
+  NetworkConfig get _resolvedNetwork =>
+      config.network.withResolvedPaths(resolve);
 
   /// Releases network resources.
   void close() => _transport?.close();
@@ -134,13 +118,10 @@ final class CommandSession {
   }
 
   /// The per-user cache directory, falling back to the temp directory.
-  String get cacheRoot {
-    final String? resolved = CacheDirectory(
-      environment: context.environment,
-      host: context.host,
-    ).resolve();
-    return resolved ?? p.join(Directory.systemTemp.path, 'inspectra');
-  }
+  String get cacheRoot => CacheDirectory(
+    environment: context.environment,
+    host: context.host,
+  ).resolveOrTemp();
 
   /// Creates the reporting policy filter; with [baseline] it also leaves
   /// out the findings recorded in the package's baseline file.
