@@ -707,7 +707,7 @@ final class YamlReader {
   ///
   /// Returns the description.
   static String _describe(Object? value) {
-    if (value is YamlNode) {
+    if (value is YamlScalar) {
       return _describe(value.value);
     }
     if (value is String) {
