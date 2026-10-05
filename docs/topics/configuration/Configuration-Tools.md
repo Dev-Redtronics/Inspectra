@@ -92,6 +92,7 @@ configuration file. The shared options apply: `--fail-on`, `-f json|sarif|markdo
 | `CONFIG_MIN_SEVERITY` | low | `min_severity` hides findings from every report |
 | `CONFIG_NO_COVERAGE_THRESHOLD` | low | `coverage.enabled` without `min_line_coverage` |
 | `CONFIG_BASELINE_UNBOUNDED` | low | A [baseline](Baseline.md) file exists and `baseline.max_severity` is unset |
+| `CONFIG_PUBSPEC_SECTION_IGNORED` | medium | `pubspec.yaml` has an `inspectra:` section, but a configuration file replaces it, with its `extends` and `policy` |
 
 The environment variables `INSPECTRA_CONFIG`, `INSPECTRA_TRIVY`, `INSPECTRA_DEBUG` and `INSPECTRA_CACHE_DIR` are read
 by %product% itself and never reported. A misspelled variable is the most common configuration mistake in CI, because
@@ -101,6 +102,25 @@ nothing fails - the option just keeps its default:
 [MEDIUM]   The environment variable INSPECTRA_TRIVY_VERSON names no option and is ignored  (CONFIG_UNKNOWN_VARIABLE)
     Inspectra reads INSPECTRA_ followed by the upper case option path, such as INSPECTRA_TRIVY_VERSION for trivy.version. Did you mean "INSPECTRA_TRIVY_VERSION"?
 ```
+
+## config fetch {id="fetch"}
+
+```bash
+dart run %package% config fetch
+```
+
+Downloads the remote bases that the configuration [extends](Configuration-Inheritance.md), verifies them against their
+SHA-256 and caches them, so that later runs, `build_runner` and machines without network access can use them. Every
+command does this before reading the configuration; `config fetch` only lists the bases afterwards:
+
+```text
+✓ package:acme_policy/inspectra.yaml (package, available)
+✓ https://policy.acme.corp/flutter/v3.yaml (remote, downloaded)
+2 base(s) ready, 1 downloaded.
+```
+
+`config show --explain` comments values from a base with that base and its line, such as
+`# package:acme_policy/inspectra.yaml:4`, and `config show -f json` adds `layers` and a `file` per value.
 
 ## Editor support with the JSON Schema {id="schema"}
 

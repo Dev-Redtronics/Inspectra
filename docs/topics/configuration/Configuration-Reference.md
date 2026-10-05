@@ -494,6 +494,22 @@ Changelog generation and validation. See [Changelog](Changelog-Overview.md).
 
 Details: [Changelog configuration](Changelog-Configuration.md).
 
+## extends and policy {id="extends"}
+
+`extends` names the configurations this one builds on, and `policy` locks options or sets minimum values for the files
+that build on it. See [Inheritance and central policies](Configuration-Inheritance.md).
+
+```yaml
+extends:
+  - package:acme_policy/inspectra.yaml
+  - url: https://policy.acme.corp/inspectra.yaml
+    sha256: 9f2c6e0d…
+policy:
+  locked: [trivy.secret.enabled]
+  minimum:
+    coverage.min_line_coverage: 70
+```
+
 ## Lists replace, they do not merge
 
 Every list option replaces its default when you set it. To add a glob to the secret scan, repeat the defaults:
@@ -506,7 +522,8 @@ inspectra:
 ```
 
 The mappings with user defined keys, `changelog.types` and `style.rules`, are the exception: the keys you list
-replace their own defaults, and every other default stays.
+replace their own defaults, and every other default stays. Between a project and the bases it extends, `ignore` and
+`dependency_policy.denied` collect the entries of every file.
 
 <seealso>
     <category ref="config">

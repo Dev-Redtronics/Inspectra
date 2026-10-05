@@ -76,6 +76,8 @@ print(config.trivy.secret.severity);     // [Severity.critical, Severity.high, .
 | `InspectraConfig.defaults(packageName)` | Every default; every feature off. |
 | `loadConfig(root, {overrides, configFile, requirePubspec})` | With `ConfigOverrides` for `--set` values and `INSPECTRA_*` variables, and another configuration file. |
 | `loadConfig(root, {recorder})`, `parse(…, recorder:)`, `fromSources(…, recorder:)` | With a `ConfigRecorder`, which afterwards holds a `ConfigEntry` per option: `key`, `kind` (`ConfigKind`), `value`, `defaultValue`, `origin` (`ConfigOrigin`: `defaults`, `file`, `environment`, `commandLine`), `variable`, `line`, `options`, `minimum`, `maximum`; `recorder.source` names the file. This is what `config show --explain` prints. |
+| `loadConfig(root, {cacheRoot})`, `fromSources(…, packageRoot:, cacheRoot:, configDirectory:)` | Follow `extends`: relative paths, `package:` bases and remote bases from the cache. `entry.file` names the base of each value and `recorder.layers` lists the `ConfigLayer`s (`label`, `kind`: `ConfigLayerKind.project`, `file`, `package` or `remote`). |
+| `InspectraConfig.fromLayers(stack, packageName:)` | From a `ConfigLayerStack` of layers, enforcing their `ConfigPolicy` (`locked`, `minimum`, ordered by `ConfigStrictness`). |
 | `ConfigOverrides.resolve(path)` | The override of an option as a `ConfigOverride` with `value`, `origin` and `variable`; `knownPaths` lists every option that can be overridden. |
 | `configFileName`, `pubspecSectionKey` | `'%config_file%'`, `'%pubspec_key%'` |
 

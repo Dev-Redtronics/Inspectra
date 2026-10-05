@@ -639,6 +639,17 @@ while the others still run. Takes the [shared options](#shared-options) and the 
 | A report to merge cannot be read or is no Inspectra JSON report | `65` |
 | A section could not run completely, also with `--exit-zero`; the report is written first | `69` |
 
+## config fetch {id="config-fetch"}
+
+```bash
+dart run inspectra config fetch
+```
+
+Downloads and verifies the remote bases the configuration [extends](Configuration-Inheritance.md) into the cache and
+lists every base. Takes the shared and Trivy provisioning options; `-f json` writes `bases` with `label`, `kind` and
+`downloaded`. Exit code `0`; `65` for a malformed configuration or a download that does not match its SHA-256; `69`
+when a base cannot be downloaded, for example with `--offline`.
+
 ## Exit codes {id="exit-codes"}
 
 <include from="lib.topic" element-id="exit-codes"/>
@@ -665,6 +676,9 @@ Every exit code other than `0` and `1` comes with a message on standard error na
 | `error: The custom style rules of style.custom_rules could not be run (dart run exited with 254). …` | `65` |
 | `error: Invalid --also "pdf=a.pdf": expected <format>=<path> with one of json, sarif, …` | `64` |
 | `error: report.json is no Inspectra JSON report; create it with "--format json".` | `65` |
+| `error: Invalid Inspectra configuration at "coverage.min_line_coverage": 50.0 (the command line) is below the minimum 70 set by package:acme_policy/inspectra.yaml.` | `65` |
+| `error: Invalid Inspectra configuration at "extends": the base https://… is not in the cache; run "dart run inspectra config fetch" while online.` | `65` |
+| `error: The base https://… has the SHA-256 …, but extends pins …; it was not used.` | `65` |
 | `error: Git is not installed or not on the PATH.` | `69` |
 | `error: The report is incomplete: Trivy secret could not run completely.` | `69` |
 | `error: Trivy is not installed and downloading is disabled (trivy.download: false). Trivy is required (trivy.mode: required).` | `69` |

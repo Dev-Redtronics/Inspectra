@@ -54,7 +54,10 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
 - `config` parses the configuration through `YamlReader`, which can hand every value with its default,
   origin and line to a `ConfigRecorder`. `config_tools` builds on it: `config show --explain`, the
   JSON Schema of `config schema` (generated from a default parse, committed as `inspectra.schema.json`
-  and guarded by a test) and the rules of `config lint`. A new option needs no extra schema work; read
+  and guarded by a test) and the rules of `config lint`. A configuration is a `ConfigLayerStack`:
+  `resolveConfigLayers` follows `extends` (paths, `package:` bases, SHA-256 pinned URLs from
+  `ConfigBaseCache`, filled by `fetchConfigBases`), `YamlReader.layered` reads the layers key by key,
+  and `checkConfigPolicies` enforces the `policy` of each layer on everything above it. A new option needs no extra schema work; read
   it through `YamlReader` and regenerate the schema.
 - `deps` holds the dependency policy (`dependency_policy:`): `DependencyPolicy` checks a
   `PolicySource` (pubspec, lockfile, imports from `ImportCollector`) and reports `pubspec` findings,

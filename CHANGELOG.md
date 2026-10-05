@@ -86,6 +86,25 @@ All notable changes to this project are documented in this file. The format foll
 - Library: `FindingSource.quality` and `FindingSource.tryParse`, `Finding.fromJson`.
 - New runtime dependency: `xml`, for the JUnit and Checkstyle reports.
 
+### Configuration inheritance and central policies
+
+- `extends:` builds a configuration on bases: paths relative to the declaring file, `package:` files
+  resolved through `.dart_tool/package_config.json`, and `https` URLs pinned by their SHA-256, which
+  are verified and cached. Bases nest; mappings merge key by key, scalars and lists of the higher
+  layer win, `key: ~` resets a value, and `ignore` and `dependency_policy.denied` collect the entries
+  of every layer. License headers, secret rules and CA bundles named in a base resolve relative to it.
+- `policy:` with `locked` options and `minimum` values binds every layer above its file, including
+  `INSPECTRA_*` variables and the command line (`--set`, `--fail-on`, `coverage --min`); a violation is
+  a configuration error naming the option, its origin and the policy.
+- `inspectra config fetch` downloads and verifies remote bases for offline runs and `build_runner`;
+  every command fetches missing bases first. `config show --explain` names the base and line of each
+  value, `config show -f json` adds `layers` and `file`, and `config lint` reports
+  `CONFIG_PUBSPEC_SECTION_IGNORED`. The JSON Schema describes `extends` and `policy`.
+- Library: `ConfigLayer`, `ConfigLayerKind`, `ConfigLayerStack`, `ConfigBaseReference`,
+  `ConfigPolicy`, `ConfigStrictness`, `InspectraConfig.fromLayers`, `ConfigEntry.file`,
+  `ConfigRecorder.layers`, `InspectraConfigException.file`, `NetworkConfig.withResolvedPaths`, and
+  `cacheRoot`/`packageRoot` parameters of `loadConfig` and `InspectraConfig.fromSources`.
+
 ### Fixed
 
 - A list or mapping where the configuration expects another kind of value, such as

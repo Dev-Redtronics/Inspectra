@@ -159,6 +159,12 @@ the Git history and the release tags and need `fetch-depth: 0`. A release job ta
 changelog with `dart run inspectra changelog notes "${GITHUB_REF_NAME#v}" --output RELEASE_NOTES.md`. See
 [Releasing](Changelog-Releasing.md#ci) for complete jobs.
 
+## Shared configuration {id="inheritance"}
+
+Repositories that [extend](Configuration-Inheritance.md) a central configuration get its remote bases on the first
+run. On runners without network access, run `dart run %package% config fetch` in a step that has it and cache
+`INSPECTRA_CACHE_DIR`; a policy of the base also binds the `--set` and `INSPECTRA_*` values of the pipeline.
+
 ## Dashboards and CI reports {id="reports"}
 
 `dart run %package% report -f html -o inspectra-report.html` runs every evaluation and writes one self-contained HTML

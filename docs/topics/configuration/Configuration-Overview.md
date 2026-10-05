@@ -118,7 +118,11 @@ Every option can be set without editing the file. For each key, the first of the
    `--[no-]trivy-use-installed`. Only the commands with [shared options](CLI-Reference.md#shared-options) accept them.
 2. **The environment**: `INSPECTRA_` followed by the dotted path in upper case, with dots turned into underscores.
 3. **The configuration file**.
-4. **The built-in default**.
+4. **The bases it extends**, see [Inheritance and central policies](Configuration-Inheritance.md).
+5. **The built-in default**.
+
+A [policy](Configuration-Inheritance.md#policy) of a base can lock options or set minimums that the file, the
+environment and the command line must respect.
 
 | Key | Command line | Environment variable |
 |:--|:--|:--|

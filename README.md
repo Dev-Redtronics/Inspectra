@@ -55,7 +55,7 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra changelog generate [--write]` | The changelog section of the next release from Conventional Commits, with a suggested version (`--from`, `--to`, `--release`, `--date`) |
 | `inspectra changelog check` | Fail when `CHANGELOG.md` is malformed or misses the version of `pubspec.yaml` |
 | `inspectra changelog notes [version]` | Print the section of a release, for example as GitHub release notes |
-| `inspectra config show\|validate\|lint\|schema` | Effective configuration with the origin of each value (`--explain`), validation of referenced files, risky settings, JSON Schema |
+| `inspectra config show\|validate\|lint\|schema\|fetch` | Effective configuration with the origin of each value (`--explain`), validation of referenced files, risky settings, JSON Schema, remote bases for offline use |
 | `inspectra baseline create\|prune` | Record today's findings so that only new ones fail (`--only scan,lint,style,trivy`), or remove the fixed ones |
 | `inspectra report` | Every evaluation at once - lines of code with and without comments, supply chain, dependencies, configuration, format, lint, style, API, changelog, Trivy, coverage - for example as one self-contained HTML dashboard (`--skip`, `--also junit=…`, `--merge`) |
 
