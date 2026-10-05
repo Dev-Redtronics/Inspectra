@@ -34,7 +34,11 @@ const maxConfigDepth = 8;
 /// The most layers a configuration may consist of.
 const maxConfigLayers = 32;
 
-/// Parses the YAML [text] of the configuration file [source].
+/// Parses the YAML [text] of the configuration file [source], which is
+/// read from [sourceUrl] when known.
+///
+/// [source] only names the file in messages and may be a label such as
+/// `package:acme/inspectra.yaml`, which is no valid Windows path.
 ///
 /// Returns the document.
 ///
@@ -42,7 +46,10 @@ const maxConfigLayers = 32;
 /// syntax error.
 Object? loadConfigYaml(String text, String source, {Uri? sourceUrl}) {
   try {
-    return loadYaml(text, sourceUrl: sourceUrl ?? Uri.file(source));
+    return loadYaml(
+      text,
+      sourceUrl: sourceUrl ?? Uri.file(source, windows: false),
+    );
   } on YamlException catch (error) {
     final int? line = error.span?.start.line;
     final int? column = error.span?.start.column;
@@ -150,7 +157,11 @@ ConfigLayerStack resolveConfigLayers(
     return ConfigLayer(
       label: label,
       kind: kind,
-      node: loadConfigYaml(file.readAsStringSync(), label),
+      node: loadConfigYaml(
+        file.readAsStringSync(),
+        label,
+        sourceUrl: Uri.file(path),
+      ),
       directory: p.dirname(path),
       location: path,
     );

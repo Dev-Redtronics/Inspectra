@@ -16,6 +16,7 @@
 
 import 'package:inspectra/inspectra.dart';
 import 'package:inspectra/src/config/config_base_cache.dart';
+import 'package:inspectra/src/config/config_layers.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -166,6 +167,20 @@ void main() {
       expect(load, fails(<String>['"fail_on" in ../base.yaml', 'often']));
       write(<String, String>{'base.yaml': 'ignore:\n  - id: X\n'});
       expect(load, fails(<String>['ignore[0]', 'in ../base.yaml']));
+    });
+
+    test('a package label is no file path, also on Windows', () {
+      expect(
+        () => loadConfigYaml('a: [', 'package:acme/inspectra.yaml'),
+        fails(<String>['package:acme/inspectra.yaml', 'line 1']),
+      );
+      acmePackage('fail_on: [\n');
+      write(<String, String>{
+        'app/inspectra.yaml': 'extends: package:acme/inspectra.yaml\n',
+      });
+      expect(load, fails(<String>['package:acme/inspectra.yaml', 'line ']));
+      acmePackage('fail_on: high\n');
+      expect(load().failOn, Severity.high);
     });
 
     test('files named in a package base resolve in the package', () {
