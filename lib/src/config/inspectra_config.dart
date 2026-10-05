@@ -15,6 +15,7 @@
  */
 
 import 'package:inspectra/src/config/api_config.dart';
+import 'package:inspectra/src/config/baseline_config.dart';
 import 'package:inspectra/src/config/changelog_config.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/coverage_config.dart';
@@ -34,6 +35,7 @@ import 'package:yaml/yaml.dart';
 
 export 'package:inspectra/src/changelog/changelog_section.dart';
 export 'package:inspectra/src/config/api_config.dart';
+export 'package:inspectra/src/config/baseline_config.dart';
 export 'package:inspectra/src/config/build_scan_config.dart';
 export 'package:inspectra/src/config/changelog_config.dart';
 export 'package:inspectra/src/config/coverage_config.dart';
@@ -75,7 +77,9 @@ const pubspecSectionKey = 'inspectra';
 /// `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`) and changelog
 /// generation work without any configuration; the supply-chain commands
 /// are tuned by `fail_on`, `min_severity`, `ignore`, `network`, `inspect`,
-/// `trust`, `typosquat` and the provisioning keys of `trivy`.
+/// `trust`, `typosquat` and the provisioning keys of `trivy`. `baseline`
+/// names the file of accepted findings that `scan`, `audit`, `typosquat`,
+/// `trivy`, `lint`, `style` and `check` do not report.
 final class InspectraConfig {
   /// Creates a configuration from its parts.
   const InspectraConfig({
@@ -94,6 +98,7 @@ final class InspectraConfig {
     this.inspect = const InspectConfig(),
     this.trust = const TrustThresholds(),
     this.typosquat = const TyposquatConfig(),
+    this.baseline = const BaselineConfig(),
   });
 
   /// The configuration with every default, for the package [packageName].
@@ -138,6 +143,7 @@ final class InspectraConfig {
       inspect: InspectConfig.fromYaml(root.section('inspect')),
       trust: TrustThresholds.fromYaml(root.section('trust')),
       typosquat: TyposquatConfig.fromYaml(root.section('typosquat')),
+      baseline: BaselineConfig.fromYaml(root.section('baseline')),
     );
     root.ensureFullyRead();
     layers.ensureAllConsumed();
@@ -254,4 +260,7 @@ final class InspectraConfig {
 
   /// Typosquat detector settings.
   final TyposquatConfig typosquat;
+
+  /// The baseline of accepted findings.
+  final BaselineConfig baseline;
 }

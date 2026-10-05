@@ -19,6 +19,8 @@ import 'dart:io';
 
 import 'package:build/build.dart';
 import 'package:glob/glob.dart';
+import 'package:inspectra/src/baseline/baseline_gates.dart';
+import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/builders/build_step_config.dart';
 import 'package:inspectra/src/builders/log_build_outcome.dart';
 import 'package:inspectra/src/builders/quality_outcome.dart';
@@ -211,9 +213,9 @@ final class _LintBuilder extends QualityBuilder {
     if (await buildStep.canRead(analysisOptions)) {
       await buildStep.readAsBytes(analysisOptions);
     }
-    final LintResult result = await runLint(
-      config: config.lint,
-      packageRoot: packageRoot,
+    final LintResult result = baselineLint(
+      await runLint(config: config.lint, packageRoot: packageRoot),
+      BaselineMatcher.load(config.baseline, packageRoot),
     );
     return QualityOutcome(
       report: result.toJson(),
@@ -275,11 +277,15 @@ final class _StyleBuilder extends QualityBuilder {
     );
     await _track(buildStep, style.customRules, const []);
     final String package = buildStep.inputId.package;
-    final StyleResult result = await checkStyle(
+    final StyleResult checked = await checkStyle(
       config: style,
       packageRoot: packageRoot,
       files: files,
       read: (path) => _readSource(buildStep, AssetId(package, path)),
+    );
+    final StyleResult result = baselineStyle(
+      checked,
+      BaselineMatcher.load(config.baseline, packageRoot),
     );
     return QualityOutcome(
       report: result.toJson(),

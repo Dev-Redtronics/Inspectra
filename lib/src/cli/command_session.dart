@@ -18,6 +18,7 @@ import 'dart:io';
 
 import 'package:inspectra/src/add/safe_package_adder.dart';
 import 'package:inspectra/src/audit/audit_service.dart';
+import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/host/cache_directory.dart';
@@ -139,15 +140,28 @@ final class CommandSession {
     return resolved ?? p.join(Directory.systemTemp.path, 'inspectra');
   }
 
-  /// Creates the reporting policy filter.
+  /// Creates the reporting policy filter; with [baseline] it also leaves
+  /// out the findings recorded in the package's baseline file.
   ///
   /// Returns the filter evaluated at the current time.
-  FindingFilter filter() => FindingFilter(
+  ///
+  /// Throws an `InvalidInputException` when the baseline file is malformed.
+  FindingFilter filter({bool baseline = true}) => FindingFilter(
     minSeverity: config.minSeverity,
     rules: config.ignore,
     cliIgnores: cliIgnores,
     now: context.clock.now(),
+    baseline: baseline ? baselineMatcher() : null,
   );
+
+  /// Loads the baseline of the package in the working directory.
+  ///
+  /// Returns the matcher, which covers nothing when the baseline is
+  /// disabled or its file does not exist.
+  ///
+  /// Throws an `InvalidInputException` when the baseline file is malformed.
+  BaselineMatcher baselineMatcher() =>
+      BaselineMatcher.load(config.baseline, workingDirectory);
 
   /// Creates the pub repository client.
   ///

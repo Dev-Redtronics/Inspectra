@@ -46,6 +46,11 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
 - Each security feature is a package below `lib/src/`: `audit`, `inspect`, `trust`,
   `typosquat`, `add`, `hook`, `trivy`, `scan`. A feature returns a `CommandReport` with its own
   text and JSON layout.
+- `baseline` records accepted findings in `inspectra-baseline.json` (`baseline create|prune`) and
+  matches current findings against it: `FindingFilter` for the supply-chain commands,
+  `baseline_gates.dart` for the lint, style and Trivy scan results of the commands, `check` and the
+  builders. Keys leave out line numbers and package versions; counts make each further occurrence
+  new.
 - The package checks `check`, `format`, `lint`, `api`, `coverage` and `changelog check` extend
   `PackageCheckCommand`; their logic lives in `quality`, `api`, `coverage` and `changelog`, and
   `builders` runs the same checks and the Trivy scans from build_runner. `style` is an

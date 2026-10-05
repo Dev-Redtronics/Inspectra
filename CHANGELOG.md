@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Baseline
+
+- `inspectra baseline create` records the current findings of a package in a committed
+  `inspectra-baseline.json`, and `inspectra baseline prune` removes the fixed ones without ever adding
+  any. `--only scan,lint,style,trivy` selects scopes, `--recursive` covers nested packages; a scope
+  that cannot run completely exits with `69` and writes nothing.
+- `scan`, `audit`, `typosquat`, `trivy`, `lint`, `style`, `check` and the `build_runner` builders leave
+  out recorded findings. Entries are matched by scope, source, rule, package and file, without line
+  numbers or package versions, and count their occurrences. `inspect`, `add` and `trust` do not use the
+  baseline.
+- The `baseline:` configuration section: `enabled`, `file`, `max_severity`, `fail_on_stale`; the
+  public `BaselineConfig` and `BaselineSummary`, and the `baseline` field of `InspectraConfig`,
+  `StyleResult`, `LintResult` and `ScanResult`.
+- JSON: `baselined` in the reports of `scan` and `audit`, and `baseline` with `covered` and `stale` in
+  the results of `lint`, `style` and the Trivy scans, present only when a baseline was applied.
+
 ## 1.0.0
 
 ### Package quality gates

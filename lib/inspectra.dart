@@ -31,6 +31,7 @@ export 'src/api/api_command.dart'
     show ApiCheckResult, checkApi, dumpApi, renderPackageApi;
 export 'src/api/api_diff.dart' show diffApi;
 export 'src/api/api_renderer.dart' show apiDumpHeader, renderApi;
+export 'src/baseline/baseline_summary.dart';
 export 'src/changelog/changelog_check.dart' show checkChangelog;
 export 'src/changelog/changelog_check_result.dart';
 export 'src/changelog/changelog_problem.dart';

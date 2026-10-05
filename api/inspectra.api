@@ -37,6 +37,26 @@ final class ApiConfig {
   factory ApiConfig.fromYaml(YamlReader yaml, String packageName);
 }
 
+final class BaselineConfig {
+  static const String defaultFile = 'inspectra-baseline.json';
+  final bool enabled;
+  final bool failOnStale;
+  final String file;
+  final Severity? maxSeverity;
+  const BaselineConfig({bool enabled = true, String file = defaultFile, Severity? maxSeverity, bool failOnStale = false});
+  factory BaselineConfig.fromYaml(YamlReader yaml);
+}
+
+final class BaselineSummary {
+  final int covered;
+  final bool failOnStale;
+  final int stale;
+  const BaselineSummary({required int covered, required int stale, required bool failOnStale});
+  bool get failed;
+  List<String> render();
+  Map<String, Object?> toJson();
+}
+
 abstract base class BuildScanConfig extends ScanConfig {
   final bool runOnBuild;
   const BuildScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity});
@@ -284,6 +304,7 @@ final class InspectraCommandRunner extends CommandRunner<int> {
 
 final class InspectraConfig {
   final ApiConfig api;
+  final BaselineConfig baseline;
   final ChangelogConfig changelog;
   final CoverageConfig coverage;
   final Severity? failOn;
@@ -298,7 +319,7 @@ final class InspectraConfig {
   final TrivyConfig trivy;
   final TrustThresholds trust;
   final TyposquatConfig typosquat;
-  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig()});
+  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig(), BaselineConfig baseline = const BaselineConfig()});
   factory InspectraConfig.defaults(String packageName);
   factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides});
   factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides});
@@ -360,9 +381,10 @@ enum LintLevel {
 }
 
 class LintResult {
+  final BaselineSummary? baseline;
   final LintLevel failOn;
   final List<LintIssue> issues;
-  LintResult({required List<LintIssue> issues, required LintLevel failOn});
+  LintResult({required List<LintIssue> issues, required LintLevel failOn, BaselineSummary? baseline});
   bool get failed;
   Iterable<LintIssue> get failing;
   String render();
@@ -440,11 +462,12 @@ class ScanFinding {
 }
 
 class ScanResult {
+  final BaselineSummary? baseline;
   final bool failOnFindings;
   final List<ScanFinding> findings;
   final String scan;
   final String? skipped;
-  ScanResult({required String scan, required List<ScanFinding> findings, required bool failOnFindings, String? skipped});
+  ScanResult({required String scan, required List<ScanFinding> findings, required bool failOnFindings, String? skipped, BaselineSummary? baseline});
   ScanResult.skipped({required String scan, required String reason});
   bool get failed;
   String render();
@@ -505,11 +528,12 @@ enum StylePreset {
 }
 
 final class StyleResult {
+  final BaselineSummary? baseline;
   final int checked;
   final bool failOnFindings;
   final List<String> rules;
   final List<StyleViolation> violations;
-  StyleResult({required int checked, required List<String> rules, required List<StyleViolation> violations, required bool failOnFindings});
+  StyleResult({required int checked, required List<String> rules, required List<StyleViolation> violations, required bool failOnFindings, BaselineSummary? baseline});
   int get affectedFiles;
   bool get failed;
   String render();

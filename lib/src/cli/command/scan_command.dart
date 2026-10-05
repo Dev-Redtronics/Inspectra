@@ -82,6 +82,7 @@ final class ScanCommand extends InspectraCommand {
       result: result,
       findings: outcome.kept,
       suppressedCount: outcome.suppressed.length,
+      baselinedCount: outcome.baselined.length,
     );
   }
 }

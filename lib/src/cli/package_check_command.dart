@@ -18,6 +18,8 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:inspectra/src/api/api_command.dart';
+import 'package:inspectra/src/baseline/baseline_gates.dart';
+import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/changelog/changelog_check.dart';
 import 'package:inspectra/src/changelog/changelog_check_result.dart';
 import 'package:inspectra/src/cli/command_context.dart';
@@ -117,6 +119,15 @@ abstract class PackageCheckCommand extends Command<int> {
     overrides: ConfigOverrides(environment: context.environment),
   );
 
+  /// Loads the baseline of the package as [config] names it.
+  ///
+  /// Returns the matcher, which covers nothing when the baseline is
+  /// disabled or its file does not exist.
+  ///
+  /// Throws an `InvalidInputException` when the baseline file is malformed.
+  BaselineMatcher baselineMatcher(InspectraConfig config) =>
+      BaselineMatcher.load(config.baseline, packageRoot);
+
   /// Runs the style check and prints the outcome.
   ///
   /// Returns whether it passed.
@@ -124,7 +135,10 @@ abstract class PackageCheckCommand extends Command<int> {
   /// Throws an `InvalidInputException` for a missing header template or
   /// custom rules that cannot run.
   Future<bool> runStyleGate(InspectraConfig config) async {
-    final StyleResult result = await runStyleCheck(config, packageRoot);
+    final StyleResult result = baselineStyle(
+      await runStyleCheck(config, packageRoot),
+      baselineMatcher(config),
+    );
     out.writeln(result.render());
     return !result.failed;
   }
@@ -157,11 +171,14 @@ abstract class PackageCheckCommand extends Command<int> {
   /// Throws a [TrivyException] when Trivy is not available.
   Future<bool> runScans(InspectraConfig config, {Set<TrivyScan>? scans}) async {
     final String executable = await provisionTrivy(config);
-    final List<ScanResult> results = await runTrivyScans(
-      config,
-      packageRoot,
-      only: scans,
-      executable: executable,
+    final List<ScanResult> results = baselineScans(
+      await runTrivyScans(
+        config,
+        packageRoot,
+        only: scans,
+        executable: executable,
+      ),
+      baselineMatcher(config),
     );
     for (final result in results) {
       out.writeln(result.render());
@@ -220,7 +237,10 @@ abstract class PackageCheckCommand extends Command<int> {
   ///
   /// Returns `true` when the check passed.
   Future<bool> runLintGate(InspectraConfig config, {bool fix = false}) async {
-    final LintResult result = await runLintCheck(config, packageRoot, fix: fix);
+    final LintResult result = baselineLint(
+      await runLintCheck(config, packageRoot, fix: fix),
+      baselineMatcher(config),
+    );
     out.writeln(result.render());
     return !result.failed;
   }

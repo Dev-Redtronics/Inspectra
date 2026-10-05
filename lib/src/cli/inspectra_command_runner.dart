@@ -19,6 +19,7 @@ import 'package:args/command_runner.dart';
 import 'package:inspectra/src/cli/command/add_command.dart';
 import 'package:inspectra/src/cli/command/api_command.dart';
 import 'package:inspectra/src/cli/command/audit_command.dart';
+import 'package:inspectra/src/cli/command/baseline_command.dart';
 import 'package:inspectra/src/cli/command/changelog_command.dart';
 import 'package:inspectra/src/cli/command/check_command.dart';
 import 'package:inspectra/src/cli/command/coverage_command.dart';
@@ -41,7 +42,8 @@ import 'package:inspectra/src/version.dart';
 /// `scan`. The supply-chain commands are `scan`, `audit`, `inspect`,
 /// `trust`, `typosquat`, `add`, `hook` and `trivy`; the package checks are
 /// `check`, `format`, `lint`, `style`, `api` and `coverage`; `changelog`
-/// generates, checks and prints the changelog. The global `--directory`
+/// generates, checks and prints the changelog; `baseline` records the
+/// accepted findings so that only new ones fail. The global `--directory`
 /// option selects the package to work on. Usage errors exit with `64`;
 /// unexpected internal errors are caught, reported and exit with `70`
 /// instead of crashing with a stack trace (set `INSPECTRA_DEBUG=1` to print
@@ -80,6 +82,7 @@ final class InspectraCommandRunner extends CommandRunner<int> {
     addCommand(ApiCommand(context));
     addCommand(CoverageCommand(context));
     addCommand(ChangelogCommand(context));
+    addCommand(BaselineCommand(context));
   }
 
   /// The outside world.

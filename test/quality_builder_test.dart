@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:build/build.dart';
 import 'package:build_test/build_test.dart';
 
 import 'package:inspectra/builder.dart';
 import 'package:inspectra/src/builders/quality_builder.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+
+import 'support/fixtures.dart';
 
 /// Tests the format, lint and style builders.
 void main() {
@@ -119,6 +125,46 @@ void main() {
       expect(result.succeeded, isFalse);
       expect(logs.join('\n'), contains('is not a build_runner source'));
       expect(logs.join('\n'), contains('[license_header]'));
+    });
+
+    test('leaves out the violations of the baseline', () async {
+      final String root = temporaryDirectory();
+      final String baseline = p.join(root, 'baseline.json');
+      File(baseline).writeAsStringSync(
+        jsonEncode(<String, Object?>{
+          'schemaVersion': 1,
+          'entries': <Object?>[
+            <String, Object?>{
+              'scope': 'style',
+              'source': 'style',
+              'rule': 'file_named_after_type',
+              'path': 'lib/b.dart',
+              'count': 1,
+              'severity': 'low',
+              'title': 'recorded',
+            },
+          ],
+        }),
+      );
+      final TestBuilderResult result = await testBuilder(
+        builder,
+        {
+          'a|pubspec.yaml':
+              'name: a\ninspectra:\n  style:\n    enabled: true\n'
+              '    run_on_build: true\n  baseline:\n'
+              '    file: ${jsonEncode(baseline)}\n',
+          'a|lib/a.dart': '/// A.\nclass A {}\n',
+          'a|lib/b.dart': 'class Other {}\n',
+        },
+        rootPackage: 'a',
+        outputs: {
+          'a|inspectra/style.json': decodedMatches(
+            allOf(contains('"failed": false'), contains('"covered": 1')),
+          ),
+        },
+      );
+
+      expect(result.succeeded, isTrue);
     });
 
     test('fails without its header template', () async {

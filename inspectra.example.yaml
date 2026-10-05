@@ -25,6 +25,15 @@ ignore:
     reason: Not reachable, we never parse untrusted multipart bodies.
     expires: 2027-01-31              # optional: revisit after this day
 
+# The findings accepted for now, recorded by `inspectra baseline create` and
+# left out by scan, audit, typosquat, trivy, lint, style, check and the
+# builders; `inspectra baseline prune` removes the fixed ones.
+baseline:
+  enabled: true                      # apply the file when it exists
+  file: inspectra-baseline.json
+  # max_severity: high               # unset: cover every severity
+  fail_on_stale: false               # true: fail until fixed findings are pruned
+
 network:
   offline: false                     # true: never open a connection
   timeout: 30s
