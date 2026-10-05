@@ -21,7 +21,7 @@ checks pass? One command each:
 
 ```bash
 dart run build_runner build --only-check   # API dump current; checks enabled on build pass
-dart run inspectra check                   # format, lint, style, API, changelog, every enabled scan, coverage gate
+dart run inspectra check                   # format, lint, style, API, API semver, changelog, every enabled scan, coverage gate
 ```
 
 `--only-check` covers every builder - also those of `json_serializable`, `freezed` and the like - so it doubles as
@@ -158,6 +158,10 @@ With `changelog.enabled: true`, `inspectra check` also fails when `CHANGELOG.md`
 the Git history and the release tags and need `fetch-depth: 0`. A release job takes its description from the
 changelog with `dart run inspectra changelog notes "${GITHUB_REF_NAME#v}" --output RELEASE_NOTES.md`. See
 [Releasing](Changelog-Releasing.md#ci) for complete jobs.
+
+With `api.semver: true`, `inspectra check` compares the API with the dump at the last release tag, which also needs
+the tags: check out with `fetch-depth: 0` (GitHub Actions) or `GIT_DEPTH: 0` (GitLab). In a shallow clone without
+tags the check is skipped and warns. See [Semantic versioning](API-Semver.md).
 
 ## Shared configuration {id="inheritance"}
 

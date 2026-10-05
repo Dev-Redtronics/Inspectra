@@ -105,6 +105,24 @@ All notable changes to this project are documented in this file. The format foll
   `ConfigRecorder.layers`, `InspectraConfigException.file`, `NetworkConfig.withResolvedPaths`, and
   `cacheRoot`/`packageRoot` parameters of `loadConfig` and `InspectraConfig.fromSources`.
 
+### Semantic versioning from the API dump
+
+- `inspectra api semver [--from <revision>]` compares the API dump committed at the last release tag
+  (`changelog.tag_prefix`, read with `git show`) with the API of the current code, classifies every
+  change as breaking or additive with a reason, and checks that the `version` of `pubspec.yaml` makes
+  the required step: major for breaking changes, minor for additions, with Dart's rule before 1.0.0;
+  a pre-release counts as its release. Removed declarations and members, changed signatures, types,
+  default and constant values, added enum values and new abstract members are breaking; new
+  declarations, deprecations and optional parameters of members nobody can override are additive.
+- Findings `SEMVER_VIOLATION` (high, `pubspec.yaml`) and, with `changelog.enabled`,
+  `SEMVER_UNDECLARED_BREAKING` (medium) when no commit since the release announces a breaking change.
+  Without a release tag, a dump at the release or a version the check is skipped and exits with `0`.
+- `api.semver: true` adds the step "API semver" to `check` and the section "Semantic versioning"
+  (`--skip semver`) to `report`.
+- Library: `checkSemver`, `evaluateSemver`, `SemverResult`, `classifyApiChanges`, `ApiChange`,
+  `ApiChangeKind`, `ApiSurface`, `ApiDeclaration`, `ApiConfig.semver`, and the Git types `GitHistory`
+  (with `show` and `hasCommits`), `GitCommit`, `ReleaseTag`, `ConventionalCommit` and `VersionBump`.
+
 ### Fixed
 
 - A list or mapping where the configuration expects another kind of value, such as

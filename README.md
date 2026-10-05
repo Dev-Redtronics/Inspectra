@@ -47,17 +47,18 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra add <pkg> [version]` | Audits a package and adds **exactly** the audited version (`--dev`, `--dry-run`, `--force`) |
 | `inspectra hook [install\|remove]` | Git pre-commit hook for staged `pubspec.yaml` / `pubspec.lock` changes |
 | `inspectra trivy [secret\|license\|vulnerability\|filesystem…]` | The configured Trivy scans, or a `trivy fs` scan; `--install`, `--where` |
-| `inspectra check` | Every enabled package check: format, lint, style, API, changelog, Trivy scans, coverage |
+| `inspectra check` | Every enabled package check: format, lint, style, API, API semver, changelog, Trivy scans, coverage |
 | `inspectra format [--fix]` / `lint [--fix]` | `dart format` / `dart analyze` gates |
 | `inspectra style` | Built-in and custom style rules: license header, one type per file, documentation, no `else`, … (SARIF-capable) |
 | `inspectra api dump\|check` | Record or verify the public API dump |
+| `inspectra api semver [--from v1.2.0]` | Compare the API with the dump at the last release tag, classify each change as breaking or additive, and fail when the `pubspec.yaml` version is too low |
 | `inspectra coverage [--min 80]` | Run the tests with coverage and check the threshold |
 | `inspectra changelog generate [--write]` | The changelog section of the next release from Conventional Commits, with a suggested version (`--from`, `--to`, `--release`, `--date`) |
 | `inspectra changelog check` | Fail when `CHANGELOG.md` is malformed or misses the version of `pubspec.yaml` |
 | `inspectra changelog notes [version]` | Print the section of a release, for example as GitHub release notes |
 | `inspectra config show\|validate\|lint\|schema\|fetch` | Effective configuration with the origin of each value (`--explain`), validation of referenced files, risky settings, JSON Schema, remote bases for offline use |
 | `inspectra baseline create\|prune` | Record today's findings so that only new ones fail (`--only scan,lint,style,trivy`), or remove the fixed ones |
-| `inspectra report` | Every evaluation at once - lines of code with and without comments, supply chain, dependencies, configuration, format, lint, style, API, changelog, Trivy, coverage - for example as one self-contained HTML dashboard (`--skip`, `--also junit=…`, `--merge`) |
+| `inspectra report` | Every evaluation at once - lines of code with and without comments, supply chain, dependencies, configuration, format, lint, style, API, semantic versioning, changelog, Trivy, coverage - for example as one self-contained HTML dashboard (`--skip`, `--also junit=…`, `--merge`) |
 
 `-C <path>` before the command works on another package. The supply-chain commands share
 `--format text|json|sarif|markdown|junit|gitlab|sonarqube|checkstyle|html`, `--output`, `--fail-on`,

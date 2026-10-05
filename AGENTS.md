@@ -76,6 +76,11 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
   `PackageCheckCommand`; their logic lives in `quality`, `api`, `coverage` and `changelog`, and
   `builders` runs the same checks and the Trivy scans from build_runner. `style` is an
   `InspectraCommand`, so that its findings can be rendered as SARIF.
+- `api` renders the public API dump with the analyzer (`api dump|check`, the builder) and checks
+  semantic versioning (`api semver`): `ApiSurface` parses a dump back into libraries, declarations
+  and members, `classifyApiChanges` decides breaking or additive for each difference, and
+  `checkSemver` compares the dump at the last release tag (`GitHistory.show`) with the rendered API
+  and the version of `pubspec.yaml` (`VersionBump`, shared with `changelog`).
 - `style` runs structural rules on the syntax tree: the built-in rules in `style/rules`, selected by
   presets and switches, and custom rules of a package, which a generated program runs with `dart run`
   (`StyleHost`). Inspectra holds itself to the `strict` preset.

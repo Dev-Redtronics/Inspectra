@@ -21,11 +21,11 @@ Global options:
 
 Available commands:
   add         Audit a package and add its exact version to pubspec.yaml.
-  api         Record or check the public API dump.
+  api         Record or check the public API dump, and check semantic versioning.
   audit       Scan pubspec.lock against the OSV.dev vulnerability database.
   baseline    Record the accepted findings, so that only new ones fail, or prune the fixed ones.
   changelog   Generate the changelog from Conventional Commits, check it and print release notes.
-  check       Run every enabled package check: format, lint, style, API, changelog, Trivy scans, dependency policy and coverage.
+  check       Run every enabled package check: format, lint, style, API, API semver, changelog, Trivy scans, dependency policy and coverage.
   config      Show where each configuration value comes from, validate and lint the configuration, print its JSON Schema.
   coverage    Run the tests with coverage, write lcov.info and check the threshold.
   deps        Check the dependencies of pubspec.yaml against the pubspec rules and the dependency policy, offline; --fix applies the fixable rules.
@@ -300,11 +300,12 @@ Runs every enabled package check in this order and fails if any of them fails:
 2. The [lint check](#lint), when `lint.enabled`.
 3. The [style check](#style), when `style.enabled`.
 4. The [API check](#api-check), when `api.enabled`.
-5. The [changelog check](#changelog-check), when `changelog.enabled`.
-6. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
-7. The [dependency policy](#deps) with the pubspec rules, when `dependency_policy.enabled`; ignore rules and the
+5. The [semantic versioning check](#api-semver), when `api.semver`.
+6. The [changelog check](#changelog-check), when `changelog.enabled`.
+7. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
+8. The [dependency policy](#deps) with the pubspec rules, when `dependency_policy.enabled`; ignore rules and the
    baseline apply, and it fails from `fail_on`.
-8. The [coverage gate](#coverage), when `coverage.enabled`.
+9. The [coverage gate](#coverage), when `coverage.enabled`.
 
 All checks run even when an earlier one fails, so one run reports everything; an error such as a missing Trivy stops
 the run with its exit code. With nothing enabled it prints
@@ -399,6 +400,33 @@ Renders the public API and compares it with the dump at `api.output`.
 | Equal | `The public API matches api/<package>.api.` | `0` |
 | Different | `The public API changed.`, the diff, and how to record it | `1` |
 | No dump | `No public API dump has been recorded yet at …` | `1` |
+
+## api semver {id="api-semver"}
+
+```bash
+dart run inspectra api semver
+dart run inspectra api semver --from v1.2.0 -f json
+```
+
+Compares the public API of the code with the dump committed at the last release tag, classifies every change as
+breaking or additive, and checks that the `version` in `pubspec.yaml` makes the step the changes require. Works
+whether or not `api.semver` is set. See [Semantic versioning](API-Semver.md).
+
+| Option | Description |
+|:--|:--|
+| `--from <revision>` | Compare with the dump at this tag, branch or commit. Default: the release tag with the prefix `changelog.tag_prefix` and the highest version reachable from `HEAD`. |
+
+The shared options apply; `-f json` lists every change, the required version and the findings.
+
+| Result | Output | Exit code |
+|:--|:--|:--|
+| The version is high enough | `API semver: 2 change(s) since v1.0.0 (1.0.0).`, the changes, and the required version | `0` |
+| The version is too low, or a breaking change is not announced by a commit | The same, plus `SEMVER_VIOLATION` or `SEMVER_UNDECLARED_BREAKING` | `1` |
+| No release tag, no dump at the release, or no `version` in `pubspec.yaml` | `API semver: skipped, …` with the reason | `0` |
+| Not inside a Git repository, or a `--from` revision Git cannot resolve | The cause | `64` |
+| Git is missing or fails | The cause | `69` |
+
+In a shallow clone it warns that tags may be missing.
 
 ## coverage {id="coverage"}
 

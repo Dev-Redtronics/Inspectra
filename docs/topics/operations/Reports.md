@@ -42,6 +42,7 @@ The evaluations, in the order of the report:
 | Lint | `lint` | When `lint.enabled` |
 | Style | `style` | When `style.enabled` |
 | Public API | `api` | When `api.enabled` |
+| Semantic versioning | `semver` | When `api.semver`; the API changes since the last release tag and the version they require, see [Semantic versioning](API-Semver.md) |
 | Changelog | `changelog` | When `changelog.enabled` |
 | Trivy secret, license, … | `trivy` | Each enabled scan when `trivy.enabled` |
 | Coverage | `coverage` | When `coverage.enabled`; runs the tests once |

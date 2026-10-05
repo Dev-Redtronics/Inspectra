@@ -50,6 +50,13 @@ CHANGELOG.md is well-formed and documents version 1.2.0.
 ]]></code-block>
     </step>
     <step>
+        <p>With an <a href="API-Semver.md">API dump</a>, confirm that the version also matches the API changes since
+            the last release:</p>
+        <code-block lang="bash"><![CDATA[
+dart run inspectra api semver
+]]></code-block>
+    </step>
+    <step>
         <p>Commit, tag and push:</p>
         <code-block lang="bash"><![CDATA[
 git commit -am "chore: release 1.2.0"

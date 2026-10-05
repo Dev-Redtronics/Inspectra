@@ -254,6 +254,30 @@ final String? diff = diffApi(expected: oldDump, actual: dump);
 | `diffApi(expected:, actual:)` | The unified diff of two dumps, or `null`. |
 | `apiDumpHeader` | The two comment lines every dump starts with. |
 
+## Checking semantic versioning {id="semver"}
+
+```dart
+final SemverResult result = await checkSemver(
+  config,
+  packageRoot,
+  GitHistory(processRunner: const SystemProcessRunner(), workingDirectory: packageRoot),
+);
+print(result.render());
+
+final List<ApiChange> changes = classifyApiChanges(
+  ApiSurface.parse(oldDump),
+  ApiSurface.parse(newDump),
+);
+```
+
+| API | Description |
+|:--|:--|
+| `checkSemver(config, root, history, {from})` | Compares the dump at the last release tag, or at `from`, with the rendered API and checks the version, as `api semver` does. |
+| `evaluateSemver(before:, after:, baseline:, baselineVersion:, version:, commits:)` | The same comparison for two dumps you already have, without Git. |
+| `SemverResult` | `changes`, `breaking`, `additive`, `bump`, `required`, `violated`, `undeclaredBreaking`, `skipped`, `findings`, `render()`, `toJson()`. |
+| `classifyApiChanges(before, after)` | Every `ApiChange` between two `ApiSurface`s, with its `ApiChangeKind` and reason. |
+| `ApiSurface.parse(dump)` | The libraries, declarations, members and enum values of a dump. |
+
 ## Running the coverage gate
 
 ```dart

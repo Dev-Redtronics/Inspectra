@@ -7,7 +7,7 @@
 
 <link-summary>Enabling the dump, choosing its location, and keeping libraries and declarations out of it.</link-summary>
 
-<card-summary>enabled, output, ignored_libraries and non_public_annotations, with examples.</card-summary>
+<card-summary>enabled, output, ignored_libraries, non_public_annotations and semver, with examples.</card-summary>
 
 ```yaml
 inspectra:
@@ -16,6 +16,7 @@ inspectra:
     output: api/<package>.api                 # default
     ignored_libraries: []                     # default
     non_public_annotations: [internal, visibleForTesting]   # default
+    semver: false                             # default
 ```
 
 ## enabled
@@ -100,6 +101,21 @@ Matching is by name only, so your own <code>const internal = Object();</code> ma
 That is usually what you want: a project-specific marker works without configuration if it has the same name.
 </note>
 
+## semver
+
+`false` by default. When `true`, `dart run %package% check` also compares the API with the dump committed at the last
+release tag and fails when the `version` in `pubspec.yaml` is lower than the changes require, and
+`dart run %package% report` adds the section "Semantic versioning". `dart run %package% api semver` runs either way.
+
+```yaml
+inspectra:
+  api:
+    enabled: true
+    semver: true
+```
+
+The release tag is found with `changelog.tag_prefix`. See [Semantic versioning](API-Semver.md).
+
 ## Keeping things out of the API without configuration
 
 Before reaching for these options, consider the language's own tools - they also keep the analyzer and pub's scoring
@@ -113,6 +129,7 @@ honest:
     <category ref="api">
         <a href="API-Overview.md">Public API validation</a>
         <a href="API-Dump-Format.md">Dump format</a>
+        <a href="API-Semver.md">Semantic versioning</a>
     </category>
     <category ref="config">
         <a href="Configuration-Reference.md#api">Configuration reference</a>

@@ -46,6 +46,7 @@
         <toc-element topic="API-Workflow.md"/>
         <toc-element topic="API-Dump-Format.md"/>
         <toc-element topic="API-Diff.md"/>
+        <toc-element topic="API-Semver.md"/>
         <toc-element topic="API-Configuration.md"/>
     </toc-element>
 

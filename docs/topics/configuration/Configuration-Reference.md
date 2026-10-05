@@ -114,6 +114,7 @@ inspectra:
     output: api/<package>.api
     ignored_libraries: []
     non_public_annotations: [internal, visibleForTesting]
+    semver: false
 
   trivy:
     enabled: false
@@ -361,6 +362,7 @@ Public API validation. See [Public API validation](API-Overview.md).
 | `output` | string | `api/<package>.api` | The dump file. `<package>` is the `name` from `pubspec.yaml`. Changing it requires restarting `build_runner`, which reads it when the build starts. |
 | `ignored_libraries` | list of globs | `[]` | Public libraries left out of the dump, for example `[lib/testing.dart]`. Matched against the path relative to the package root. |
 | `non_public_annotations` | list of strings | `[internal, visibleForTesting]` | Annotations that keep a declaration out of the dump. Either the name of a constant (`internal`) or of the annotation class (`Internal`). |
+| `semver` | boolean | `false` | Whether `check` and `report` compare the API with the dump at the last release tag and check the version in `pubspec.yaml`. See [Semantic versioning](API-Semver.md). |
 
 Details: [API configuration](API-Configuration.md).
 
