@@ -300,14 +300,16 @@ final class Finding {
   final String title;
   final String? url;
   const Finding({required String ruleId, required FindingSource source, required Severity severity, required String title, String description = '', SourceLocation? location, String? packageName, String? packageVersion, String? fixedVersion, List<String> aliases = const <String>[], String? url, String? snippet, Map<String, Object?> attributes = const <String, Object?>{}});
+  factory Finding.fromJson(Object? json, String location);
   String get fingerprint;
   Set<String> get identifiers;
   Map<String, Object?> toJson();
 }
 
 enum FindingSource {
-  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion, style, config;
+  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion, style, config, quality;
   final String id;
+  static FindingSource? tryParse(String id);
 }
 
 final class FormatConfig {

@@ -32,6 +32,7 @@ import 'package:inspectra/src/io/verbosity.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/model/severity.dart';
 import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/report/incomplete_report.dart';
 import 'package:inspectra/src/report/output_format.dart';
 import 'package:inspectra/src/report/report_renderer.dart';
 import 'package:path/path.dart' as p;
@@ -167,7 +168,8 @@ abstract class InspectraCommand extends Command<int> {
 
   /// Renders [report], writes it and decides the exit code.
   ///
-  /// Returns the process exit code.
+  /// Returns the process exit code: `69` for an incomplete report, even with
+  /// `--exit-zero`, then `1` for failing findings and `0` otherwise.
   ///
   /// Throws an [UnavailableException] when the output file cannot be
   /// written.
@@ -183,22 +185,27 @@ abstract class InspectraCommand extends Command<int> {
     final AnsiStyler style = outputPath == null
         ? session.console.styler
         : const AnsiStyler(enabled: false);
+    final Severity threshold = session.config.failOn ?? defaultFailOn;
     final String rendered = const ReportRenderer().render(
       report,
       format,
       style: style,
       generatedAt: context.clock.now(),
+      failOn: threshold,
     );
     if (outputPath == null) {
       session.console.report(rendered);
     }
     if (outputPath != null) {
-      _writeFile(session.resolve(outputPath), rendered);
+      writeOutput(session.resolve(outputPath), rendered);
       session.console.info(
         'Report written to ${session.display(session.resolve(outputPath))}',
       );
     }
-    final Severity threshold = session.config.failOn ?? defaultFailOn;
+    if (report case IncompleteReport(incompleteReason: final String reason)) {
+      session.console.error(reason);
+      return ExitCode.unavailable.code;
+    }
     if (!report.isFailing(threshold) || results['exit-zero'] == true) {
       return ExitCode.success.code;
     }
@@ -208,7 +215,7 @@ abstract class InspectraCommand extends Command<int> {
   /// Writes [content] to [path], creating parent directories.
   ///
   /// Throws an [UnavailableException] when the file cannot be written.
-  void _writeFile(String path, String content) {
+  void writeOutput(String path, String content) {
     try {
       final file = File(path);
       file.parent.createSync(recursive: true);

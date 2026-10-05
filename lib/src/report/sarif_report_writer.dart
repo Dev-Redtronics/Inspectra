@@ -86,11 +86,11 @@ final class SarifReportWriter {
       'helpUri': ?url,
       'properties': <String, Object?>{
         'tags': <String>[
-          if (finding.source == FindingSource.style) 'maintainability',
-          if (finding.source != FindingSource.style) 'security',
+          if (isMaintainability(finding)) 'maintainability',
+          if (!isMaintainability(finding)) 'security',
           finding.source.id,
         ],
-        if (finding.source != FindingSource.style)
+        if (!isMaintainability(finding))
           'security-severity': _securitySeverity[finding.severity],
       },
     };
@@ -141,4 +141,10 @@ final class SarifReportWriter {
     Severity.low => 'note',
     Severity.unknown => 'note',
   };
+
+  /// Returns whether [finding] is about maintainability rather than
+  /// security: style violations and the package quality gates.
+  static bool isMaintainability(Finding finding) =>
+      finding.source == FindingSource.style ||
+      finding.source == FindingSource.quality;
 }

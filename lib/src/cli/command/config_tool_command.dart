@@ -14,16 +14,23 @@
  * limitations under the License.
  */
 
+import 'dart:io';
+
 import 'package:args/args.dart';
+import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/cli/inspectra_command.dart';
 import 'package:inspectra/src/cli/shared_options.dart';
 import 'package:inspectra/src/config/config_loader.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/config_tools/config_lint.dart';
+import 'package:inspectra/src/config_tools/config_lint_report.dart';
+import 'package:inspectra/src/model/finding.dart';
+import 'package:inspectra/src/policy/filter_outcome.dart';
 
-/// The common part of `config show`, `config validate` and `config lint`:
-/// reading the configuration once more, recording where each value comes
-/// from.
+/// The common part of `config show`, `config validate`, `config lint` and
+/// `report`: reading the configuration once more, recording where each
+/// value comes from.
 abstract class ConfigToolCommand extends InspectraCommand {
   /// Creates the command with the shared and Trivy options, so that it sees
   /// the configuration exactly as `scan` with the same options would.
@@ -53,5 +60,36 @@ abstract class ConfigToolCommand extends InspectraCommand {
       recorder: recorder,
     );
     return (config, overrides);
+  }
+
+  /// Checks the configuration of the project, read as the command line
+  /// [results] give, for risky settings, with the ignore rules of [session]
+  /// applied.
+  ///
+  /// Returns the report of `config lint`.
+  ///
+  /// Throws an `InspectraConfigException` for an invalid configuration.
+  ConfigLintReport lintReport(CommandSession session, ArgResults results) {
+    final recorder = ConfigRecorder();
+    final (InspectraConfig config, ConfigOverrides overrides) = recordConfig(
+      results,
+      recorder,
+    );
+    final List<Finding> findings = lintConfig(
+      config: config,
+      recorder: recorder,
+      environment: context.environment.variables,
+      knownPaths: overrides.knownPaths,
+      now: context.clock.now(),
+      baselineExists: File(session.resolve(config.baseline.file)).existsSync(),
+    );
+    final FilterOutcome outcome = session
+        .filter(baseline: false)
+        .apply(findings);
+    return ConfigLintReport(
+      findings: outcome.kept,
+      source: recorder.source,
+      suppressedCount: outcome.suppressed.length,
+    );
   }
 }

@@ -29,6 +29,7 @@ import 'package:inspectra/src/cli/command/format_command.dart';
 import 'package:inspectra/src/cli/command/hook_command.dart';
 import 'package:inspectra/src/cli/command/inspect_command.dart';
 import 'package:inspectra/src/cli/command/lint_command.dart';
+import 'package:inspectra/src/cli/command/report_command.dart';
 import 'package:inspectra/src/cli/command/scan_command.dart';
 import 'package:inspectra/src/cli/command/style_command.dart';
 import 'package:inspectra/src/cli/command/trivy_command.dart';
@@ -89,6 +90,7 @@ final class InspectraCommandRunner extends CommandRunner<int> {
     addCommand(ChangelogCommand(context));
     addCommand(BaselineCommand(context));
     addCommand(ConfigCommand(context));
+    addCommand(ReportCommand(context));
   }
 
   /// The outside world.

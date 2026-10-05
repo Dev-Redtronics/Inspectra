@@ -15,11 +15,19 @@
  */
 
 import 'package:inspectra/src/io/ansi_styler.dart';
+import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/report/aggregate_report.dart';
+import 'package:inspectra/src/report/checkstyle_report_writer.dart';
 import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/report/gitlab_report_writer.dart';
+import 'package:inspectra/src/report/html_report_writer.dart';
 import 'package:inspectra/src/report/json_report_writer.dart';
+import 'package:inspectra/src/report/junit_report_writer.dart';
 import 'package:inspectra/src/report/markdown_report_writer.dart';
 import 'package:inspectra/src/report/output_format.dart';
+import 'package:inspectra/src/report/report_sections.dart';
 import 'package:inspectra/src/report/sarif_report_writer.dart';
+import 'package:inspectra/src/report/sonarqube_report_writer.dart';
 
 /// Renders a [CommandReport] in the requested [OutputFormat].
 final class ReportRenderer {
@@ -27,7 +35,8 @@ final class ReportRenderer {
   const ReportRenderer();
 
   /// Renders [report] as [format], using [style] for text output and
-  /// stamping machine readable formats with [generatedAt].
+  /// stamping machine readable formats with [generatedAt]; [failOn] is the
+  /// severity from which a section of the JUnit and HTML formats fails.
   ///
   /// Returns the rendered document.
   String render(
@@ -35,11 +44,28 @@ final class ReportRenderer {
     OutputFormat format, {
     required AnsiStyler style,
     required DateTime generatedAt,
+    Severity failOn = Severity.unknown,
   }) => switch (format) {
     OutputFormat.text => _text(report, style),
     OutputFormat.json => const JsonReportWriter().render(report, generatedAt),
     OutputFormat.sarif => const SarifReportWriter().render(report),
     OutputFormat.markdown => const MarkdownReportWriter().render(report),
+    OutputFormat.junit => const JunitReportWriter().render(
+      sectionsOf(report, failOn),
+      generatedAt,
+    ),
+    OutputFormat.gitlab => const GitlabReportWriter().render(report.findings),
+    OutputFormat.sonarqube => const SonarqubeReportWriter().render(
+      report.findings,
+    ),
+    OutputFormat.checkstyle => const CheckstyleReportWriter().render(
+      report.findings,
+    ),
+    OutputFormat.html => const HtmlReportWriter().render(
+      sectionsOf(report, failOn),
+      project: report is AggregateReport ? report.project : null,
+      generatedAt: generatedAt,
+    ),
   };
 
   /// Renders the human readable layout of [report].
