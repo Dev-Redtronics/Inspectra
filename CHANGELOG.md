@@ -22,6 +22,12 @@ All notable changes to this project are documented in this file. The format foll
 - JSON: `baselined` in the reports of `scan` and `audit`, and `baseline` with `covered` and `stale` in
   the results of `lint`, `style` and the Trivy scans, present only when a baseline was applied.
 
+### Fixed
+
+- `trivy.executable` is a known option again while `INSPECTRA_TRIVY` is set: the key in the
+  configuration file no longer fails as an unknown option, and `--trivy-executable` or
+  `--set trivy.executable=…` now wins over `INSPECTRA_TRIVY` as the command line should.
+
 ## 1.0.0
 
 ### Package quality gates
