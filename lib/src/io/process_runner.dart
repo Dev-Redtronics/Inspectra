@@ -23,8 +23,10 @@ import 'package:inspectra/src/io/process_outcome.dart';
 abstract interface class ProcessRunner {
   /// Runs [executable] with [arguments] and waits for it to finish.
   ///
-  /// [workingDirectory] defaults to the current directory. [runInShell] must
-  /// be `true` to start Windows batch shims such as `dart.bat`. When
+  /// [workingDirectory] defaults to the current directory. [environment]
+  /// adds variables to, or replaces variables of, the environment of the
+  /// current process. [runInShell] must be `true` to start Windows batch
+  /// shims such as `dart.bat`. When
   /// [timeout] elapses the process is killed and a [ProcessOutcome] with
   /// exit code `-1` is returned whose stderr explains the timeout.
   ///
@@ -35,6 +37,7 @@ abstract interface class ProcessRunner {
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Map<String, String>? environment,
     bool runInShell = false,
     Duration? timeout,
   });

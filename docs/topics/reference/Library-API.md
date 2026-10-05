@@ -52,7 +52,7 @@ final int code = await InspectraCommandRunner(context).run(['scan', '--offline']
 | `ExitCode` | `success` `0`, `findings` `1`, `usage` `64`, `dataError` `65`, `unavailable` `69`, `software` `70`; `code`, and `ExitCode.of(error)` for an `InspectraException`. |
 | `Environment(variables)`, `Environment.current()` | The environment variables; `homeDirectory`, `pathEntries(separator)`. |
 | `Clock(now)`, `Clock.system()` | The current time, replaceable in tests. |
-| `ProcessRunner` | Starts external processes: `run(executable, arguments, {workingDirectory, runInShell, timeout})`. |
+| `ProcessRunner` | Starts external processes: `run(executable, arguments, {workingDirectory, environment, runInShell, timeout})`. |
 | `SystemProcessRunner` | The `dart:io` implementation; a timed-out process reports `timedOutExitCode`. |
 | `ProcessOutcome` | `exitCode`, `stdout`, `stderr`, `succeeded`. |
 | `HostPlatform` | Operating system and CPU architecture: `HostPlatform.current()`, `isWindows`, `pathListSeparator`. |

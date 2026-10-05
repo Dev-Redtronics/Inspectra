@@ -650,7 +650,7 @@ final class ProcessOutcome {
 }
 
 abstract interface class ProcessRunner {
-  abstract Future<ProcessOutcome> run(String executable, List<String> arguments, {String? workingDirectory, bool runInShell = false, Duration? timeout});
+  abstract Future<ProcessOutcome> run(String executable, List<String> arguments, {String? workingDirectory, Map<String, String>? environment, bool runInShell = false, Duration? timeout});
 }
 
 class PubspecLock {
@@ -807,7 +807,7 @@ final class StyleViolation {
 final class SystemProcessRunner implements ProcessRunner {
   static const int timedOutExitCode = -1;
   const SystemProcessRunner();
-  Future<ProcessOutcome> run(String executable, List<String> arguments, {String? workingDirectory, bool runInShell = false, Duration? timeout});
+  Future<ProcessOutcome> run(String executable, List<String> arguments, {String? workingDirectory, Map<String, String>? environment, bool runInShell = false, Duration? timeout});
 }
 
 class Trivy {

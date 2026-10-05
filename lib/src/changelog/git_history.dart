@@ -25,8 +25,8 @@ import 'package:inspectra/src/model/inspectra_exception.dart';
 /// Reads commits and release tags with the `git` command line.
 ///
 /// Every call disables the settings that would change the output Inspectra
-/// parses: signature verification in `git log`, colours and the log
-/// encoding.
+/// parses: signature verification in `git log`, colours, the log encoding
+/// and the language of the messages, which Inspectra matches in English.
 final class GitHistory {
   /// Creates a reader for the repository containing [workingDirectory].
   const GitHistory({
@@ -49,6 +49,10 @@ final class GitHistory {
     '-c',
     'color.ui=false',
   ];
+
+  /// The environment of every `git` call: the C locale, so that Git writes
+  /// its error messages untranslated.
+  static const _environment = <String, String>{'LC_ALL': 'C', 'LANGUAGE': ''};
 
   /// Separates the hash from the message of a commit in `git log` output.
   static const _fieldSeparator = '\u001f';
@@ -203,10 +207,12 @@ final class GitHistory {
   Future<String> _git(List<String> arguments) async {
     final ProcessOutcome result;
     try {
-      result = await processRunner.run('git', <String>[
-        ..._settings,
-        ...arguments,
-      ], workingDirectory: workingDirectory);
+      result = await processRunner.run(
+        'git',
+        <String>[..._settings, ...arguments],
+        workingDirectory: workingDirectory,
+        environment: _environment,
+      );
     } on ProcessException {
       throw const UnavailableException(
         'Git is not installed or not on the PATH.',

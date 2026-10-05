@@ -53,6 +53,15 @@ void main() {
     );
   });
 
+  test('runs git in the C locale to read untranslated messages', () async {
+    final git = FakeGit(empty: true);
+    expect(await history(git).hasCommits(), isFalse);
+    expect(git.runner.environments.single, <String, String>{
+      'LC_ALL': 'C',
+      'LANGUAGE': '',
+    });
+  });
+
   test('reads every commit without a start', () async {
     final git = FakeGit(
       logs: <String, List<GitCommit>>{'HEAD': const <GitCommit>[]},

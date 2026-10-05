@@ -130,6 +130,9 @@ All notable changes to this project are documented in this file. The format foll
 - `trivy.executable` is a known option again while `INSPECTRA_TRIVY` is set: the key in the
   configuration file no longer fails as an unknown option, and `--trivy-executable` or
   `--set trivy.executable=…` now wins over `INSPECTRA_TRIVY` as the command line should.
+- Git runs in the C locale, so a translated Git no longer breaks `api semver`, `changelog` and the
+  semver step of `check`: an empty repository or an unknown revision failed with exit code `69` instead
+  of being recognised. `ProcessRunner.run` takes an `environment` for this.
 
 ## 1.0.0
 
