@@ -57,10 +57,11 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra changelog notes [version]` | Print the section of a release, for example as GitHub release notes |
 | `inspectra config show\|validate\|lint\|schema` | Effective configuration with the origin of each value (`--explain`), validation of referenced files, risky settings, JSON Schema |
 | `inspectra baseline create\|prune` | Record today's findings so that only new ones fail (`--only scan,lint,style,trivy`), or remove the fixed ones |
+| `inspectra report` | Every evaluation at once - lines of code with and without comments, supply chain, dependencies, configuration, format, lint, style, API, changelog, Trivy, coverage - for example as one self-contained HTML dashboard (`--skip`, `--also junit=…`, `--merge`) |
 
 `-C <path>` before the command works on another package. The supply-chain commands share
-`--format text|json|sarif|markdown`, `--output`, `--fail-on`, `--min-severity`, `--ignore`,
-`--exit-zero`, `--offline`, `--config`, `--set key=value`, `--[no-]color`, `-q` and `-v`.
+`--format text|json|sarif|markdown|junit|gitlab|sonarqube|checkstyle|html`, `--output`, `--fail-on`,
+`--min-severity`, `--ignore`, `--exit-zero`, `--offline`, `--config`, `--set key=value`, `--[no-]color`, `-q` and `-v`.
 
 ## Installation
 
@@ -228,7 +229,8 @@ skipped in `trivy.mode: auto` and exits with `69` in `required`.
 
 ## Output and exit codes
 
-The supply-chain commands render `--format text|json|sarif|markdown`; progress goes to stderr, so
+The supply-chain commands render `--format text|json|sarif|markdown`, the CI formats
+`junit|gitlab|sonarqube|checkstyle` and a self-contained `html` dashboard; progress goes to stderr, so
 `inspectra audit -f json > report.json` always produces valid JSON. JSON documents carry
 `schemaVersion`, `tool` and `generatedAt` and keep the `dart_audit` field names.
 
@@ -391,7 +393,9 @@ steps:
 `scan` and `check` provision Trivy automatically. Trivy builders with `run_on_build` need it on the
 `PATH`: run `dart run inspectra trivy --install --format json --output "$RUNNER_TEMP/trivy.json"` and
 append the directory of its `trivy.executable` to `$GITHUB_PATH` before `build_runner`. Use
-`-f markdown >> "$GITHUB_STEP_SUMMARY"` for a job summary.
+`-f markdown >> "$GITHUB_STEP_SUMMARY"` for a job summary, and
+`dart run inspectra report -f html -o inspectra-report.html` for one dashboard of every evaluation to keep as an
+artifact. GitLab, Azure DevOps, Jenkins and SonarQube read `-f gitlab`, `junit`, `checkstyle` and `sonarqube`.
 
 ## Contributing
 

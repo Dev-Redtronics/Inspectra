@@ -7,7 +7,7 @@
 
 <link-summary>Every command and option of the inspectra command line, with output and exit codes.</link-summary>
 
-<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog, baseline, config and deps; options and exit codes.</card-summary>
+<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog, baseline, config, deps and report; options and exit codes.</card-summary>
 
 ```text
 Supply-chain security scanner for Dart and Flutter projects.
@@ -33,6 +33,7 @@ Available commands:
   hook        Install or remove the Git pre-commit hook.
   inspect     Statically analyse a pub.dev package before adding it.
   lint        Analyze the package with the rules of analysis_options.yaml.
+  report      Run every evaluation - codebase, supply chain, dependencies, configuration, format, lint, style, API, changelog, Trivy and coverage - and report them at once, for example as an HTML dashboard.
   scan        Run every project check: OSV.dev audit, supply chain checks and Trivy (default).
   style       Check the Dart files against the built-in and custom style rules.
   trivy       Run Trivy: the configured scans, or a filesystem scan of the package.
@@ -71,13 +72,13 @@ inspectra --version
 ## Shared options {id="shared-options"}
 
 The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `deps`, `add`, `hook` - `trivy`, `style`,
-`changelog generate`, `changelog notes`, `baseline create|prune` and `config show|validate|lint` share these options:
+`changelog generate`, `changelog notes`, `baseline create|prune`, `config show|validate|lint` and `report` share these options:
 
 | Option | Description |
 |:--|:--|
 | `--config <path>` | The configuration file. Default: `%config_file%` if present, else the `%pubspec_key%:` section of `pubspec.yaml`. See [Where the configuration lives](Configuration-Overview.md). |
 | `--set <key=value>` | Override a configuration key by its dotted path, for example `--set trivy.version=latest`. Repeatable. An unknown key is a configuration error. |
-| `-f`, `--format` | `text` (default), `json`, `sarif` or `markdown`. |
+| `-f`, `--format` | `text` (default), `json`, `sarif`, `markdown`, `junit`, `gitlab`, `sonarqube`, `checkstyle` or `html`. See [Reports and dashboards](Reports.md#formats). |
 | `-o`, `--output <path>` | Write the report to a file instead of standard output. |
 | `--[no-]color` | Force or disable ANSI colours. Default: detected from the terminal. |
 | `-q`, `--quiet` | Only print warnings and errors. |
@@ -88,7 +89,7 @@ The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `d
 | `-i`, `--ignore <ID>` | Ignore a rule, advisory id or alias. Repeatable. For a documented, expiring suppression use the [`ignore`](Configuration-Reference.md#ignore) list. |
 | `--exit-zero` | Exit with `0` even when findings reach the threshold. Never hides usage, input or availability errors. |
 
-`scan`, `trivy`, `baseline create|prune` and `config show|validate|lint` also take the Trivy provisioning options:
+`scan`, `trivy`, `baseline create|prune`, `config show|validate|lint` and `report` also take the Trivy provisioning options:
 
 | Option | Configuration key | Description |
 |:--|:--|:--|
@@ -607,6 +608,37 @@ Prints the JSON Schema (draft-07) of `inspectra.yaml`, generated from the option
 project configuration and takes only `-o`, `--output <path>`. Exit code `0`, or `69` when the file cannot be written.
 See [Editor support](Configuration-Tools.md#schema).
 
+## report {id="report"}
+
+```bash
+dart run inspectra report -f html -o inspectra-report.html --also junit=build/junit.xml
+dart run inspectra report --skip scan,coverage
+dart run inspectra report --merge app.json --merge api.json -f html -o inspectra-report.html
+```
+
+Runs every evaluation - the size of the code base, supply chain, dependencies, configuration, format, lint, style,
+public API, changelog, the configured Trivy scans and coverage - and reports each as a section with its status, summary, key figures and findings.
+Package checks that are not enabled are reported as skipped. An evaluation that cannot run is reported with its cause
+while the others still run. Takes the [shared options](#shared-options) and the Trivy provisioning options. See
+[Reports and dashboards](Reports.md).
+
+| Option | Description |
+|:--|:--|
+| `--skip <section>` | Leave out sections: `codebase`, `scan`, `deps`, `config`, `format`, `lint`, `style`, `api`, `changelog`, `trivy`, `coverage`. Repeatable or comma-separated. |
+| `--also <format>=<path>` | Also write the report in another format, such as `junit=build/junit.xml`. Repeatable. |
+| `--merge <report.json>` | Merge JSON reports of earlier runs instead of running the evaluations. Repeatable. |
+
+`-f json` writes `project`, `status` and `sections`, one object per section with `id`, `title`, `status` (`passed`,
+`failed`, `skipped` or `error`), `summary`, `metrics`, `findings` and, where known, `reason` and `details`.
+
+| Result | Exit code |
+|:--|:--|
+| Every section passed or was skipped | `0` |
+| A section failed, without `--exit-zero` | `1` |
+| `--also` without a known format and a path | `64` |
+| A report to merge cannot be read or is no Inspectra JSON report | `65` |
+| A section could not run completely, also with `--exit-zero`; the report is written first | `69` |
+
 ## Exit codes {id="exit-codes"}
 
 <include from="lib.topic" element-id="exit-codes"/>
@@ -631,7 +663,10 @@ Every exit code other than `0` and `1` comes with a message on standard error na
 | `error: The baseline …/inspectra-baseline.json needs an "entries" list.` | `65` |
 | `error: The configuration has 2 problem(s): …` | `65` |
 | `error: The custom style rules of style.custom_rules could not be run (dart run exited with 254). …` | `65` |
+| `error: Invalid --also "pdf=a.pdf": expected <format>=<path> with one of json, sarif, …` | `64` |
+| `error: report.json is no Inspectra JSON report; create it with "--format json".` | `65` |
 | `error: Git is not installed or not on the PATH.` | `69` |
+| `error: The report is incomplete: Trivy secret could not run completely.` | `69` |
 | `error: Trivy is not installed and downloading is disabled (trivy.download: false). Trivy is required (trivy.mode: required).` | `69` |
 | `error: The configured Trivy executable "…" (trivy.executable) cannot be run.` | `69` |
 | `error: Network access is disabled (offline mode), so api.osv.dev cannot be contacted.` | `69` |

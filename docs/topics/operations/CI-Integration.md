@@ -7,7 +7,7 @@
 
 <link-summary>Complete GitHub Actions and GitLab CI pipelines that run every Inspectra check.</link-summary>
 
-<card-summary>Pipelines with Trivy provisioning, database caching, scheduled scans and report artifacts.</card-summary>
+<card-summary>Pipelines with Trivy provisioning, database caching, scheduled scans, dashboards and report artifacts.</card-summary>
 
 <tldr>
 <p><b>Two commands</b>: <code>dart run build_runner build --only-check</code> and <code>dart run %package% check</code></p>
@@ -158,6 +158,13 @@ With `changelog.enabled: true`, `inspectra check` also fails when `CHANGELOG.md`
 the Git history and the release tags and need `fetch-depth: 0`. A release job takes its description from the
 changelog with `dart run inspectra changelog notes "${GITHUB_REF_NAME#v}" --output RELEASE_NOTES.md`. See
 [Releasing](Changelog-Releasing.md#ci) for complete jobs.
+
+## Dashboards and CI reports {id="reports"}
+
+`dart run %package% report -f html -o inspectra-report.html` runs every evaluation and writes one self-contained HTML
+dashboard to keep as a job artifact; `--also gitlab=gl-code-quality.json --also junit=inspectra-junit.xml` feeds the
+merge request widget and the test report of GitLab from the same run. Jenkins, Azure DevOps and SonarQube read the
+`junit`, `checkstyle` and `sonarqube` formats. See [Reports and dashboards](Reports.md) for complete jobs.
 
 ## Splitting the work
 

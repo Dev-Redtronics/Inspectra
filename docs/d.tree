@@ -72,6 +72,7 @@
 
     <toc-element toc-title="Operations">
         <toc-element topic="CI-Integration.md"/>
+        <toc-element topic="Reports.md"/>
         <toc-element topic="Troubleshooting.md"/>
         <toc-element topic="Migrating-From-Kreate.md"/>
         <toc-element topic="Inspectra-On-Itself.md"/>

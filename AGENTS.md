@@ -61,6 +61,14 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
   `DependencyFixer` applies the fixable rules with `yaml_edit`, and `DepsService` runs both with the
   built-in pubspec rules for `deps`, `check` and, through `ScanService`, `scan`. Pubspec lines come
   from `PubspecLocator`, which knows the section a key belongs to.
+- `report` holds the output formats: `ReportRenderer` renders any `CommandReport` as text, JSON, SARIF,
+  Markdown, JUnit, GitLab Code Quality, SonarQube, Checkstyle or the HTML dashboard (`HtmlReportWriter`,
+  inline assets in the style of shadcn/ui, allowed by CSP hashes). Section-based formats see a report as `ReportSection`s:
+  an `AggregateReport` has many, any other report one. `dashboard` runs every evaluation for
+  `inspectra report` (`ReportRunner`, one isolated `ReportStep` each), converts the package check
+  results into sections and `quality` findings (`section_adapters.dart`) and merges JSON reports.
+  `metrics` counts the lines of Dart files (`countDartLines`, a scanner, not a parser) for the
+  codebase section.
 - The package checks `check`, `format`, `lint`, `api`, `coverage` and `changelog check` extend
   `PackageCheckCommand`; their logic lives in `quality`, `api`, `coverage` and `changelog`, and
   `builders` runs the same checks and the Trivy scans from build_runner. `style` is an
@@ -101,7 +109,7 @@ comments.
   unless the value is provably present, no broad `catch` without `on`.
 - Name intermediate results and computed conditions instead of nesting calls.
 - Runtime dependencies are limited to `args`, `yaml`, `crypto`, `path`, `pub_semver`,
-  `archive` and `yaml_edit` for the security command line, and `analyzer`, `build`, `coverage` and
+  `archive`, `yaml_edit` and `xml` for the security command line, and `analyzer`, `build`, `coverage` and
   `glob` for the quality gates and the builders. HTTP uses `dart:io`. Adding a dependency needs a maintainer's
   approval.
 

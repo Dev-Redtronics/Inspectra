@@ -60,8 +60,36 @@ All notable changes to this project are documented in this file. The format foll
   `InspectraConfig.parse` and `InspectraConfig.fromSources`, and `FindingSource.config`.
 - `trivy.filesystem.scanners` accepts scanner names in any case, like the severities.
 
+### Reports and dashboards
+
+- `inspectra report` runs every evaluation - supply chain, dependencies, configuration, format, lint,
+  style, public API, changelog, each configured Trivy scan and coverage - and reports each as a section
+  with status, summary, key figures and findings. Package checks that are not enabled are reported as
+  skipped with the option that enables them; an evaluation that cannot run is reported with its cause
+  while the others still run, and the command exits with `69` after writing the report, also with
+  `--exit-zero`. `--skip` leaves out sections, `--also <format>=<path>` writes further formats from
+  the same run and `--merge` combines JSON reports of earlier runs.
+- `-f html` writes a self-contained, offline HTML dashboard in the style of shadcn/ui: a sidebar with
+  every evaluation, key figure cards, charts of findings by severity, line coverage and code
+  composition, a table of the evaluations, a filterable finding explorer and an accordion with the
+  details of each evaluation - coverage per file, the API diff, the code base per directory; light and
+  dark mode, responsive and printable, with a content security policy that allows only its own inline
+  stylesheet and script.
+- The codebase section of `report` counts the lines of every Dart file: code with and without
+  comments, comment and documentation lines, blank lines, the comment ratio and TODO markers, per
+  directory and for the largest files, apart from generated files; and the dependencies of
+  `pubspec.yaml` and `pubspec.lock`.
+- New output formats for every command with `--format`: `junit`, `gitlab` (Code Quality, with
+  fingerprints that survive moved lines), `sonarqube` (generic issue import) and `checkstyle`.
+- The package check results become findings of the new source `quality`: `UNFORMATTED`, lint codes,
+  `API_CHANGED`, `API_DUMP_MISSING`, `CHANGELOG_PROBLEM` and `COVERAGE_BELOW_THRESHOLD`.
+- Library: `FindingSource.quality` and `FindingSource.tryParse`, `Finding.fromJson`.
+- New runtime dependency: `xml`, for the JUnit and Checkstyle reports.
+
 ### Fixed
 
+- A list or mapping where the configuration expects another kind of value, such as
+  `style.rules: [no_else]`, is reported as a configuration error instead of crashing with exit code `70`.
 - `trivy.executable` is a known option again while `INSPECTRA_TRIVY` is set: the key in the
   configuration file no longer fails as an unknown option, and `--trivy-executable` or
   `--set trivy.executable=…` now wins over `INSPECTRA_TRIVY` as the command line should.

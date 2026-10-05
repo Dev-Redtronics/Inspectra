@@ -28,6 +28,12 @@ This document lists the third-party software Inspectra uses or integrates with.
   [BSD 3-Clause License](https://github.com/dart-lang/tools/blob/main/pkgs/glob/LICENSE).
 - [yaml_edit](https://pub.dev/packages/yaml_edit) - fixing pubspec.yaml files while keeping their comments,
   licensed under the [BSD 3-Clause License](https://github.com/dart-lang/tools/blob/main/pkgs/yaml_edit/LICENSE).
+- [xml](https://pub.dev/packages/xml) - the JUnit and Checkstyle reports, licensed under the
+  [MIT License](https://github.com/renggli/dart-xml/blob/main/LICENSE).
+- [shadcn/ui](https://ui.shadcn.com) - the theme and component styles the HTML report is modelled on,
+  licensed under the [MIT License](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).
+- [Lucide](https://lucide.dev) - the icons embedded in the HTML report, licensed under the
+  [ISC License](https://github.com/lucide-icons/lucide/blob/main/LICENSE).
 - [Trivy](https://github.com/aquasecurity/trivy) - vulnerability, secret, misconfiguration and
   license scanner, licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
   Inspectra downloads and runs the unmodified official release.

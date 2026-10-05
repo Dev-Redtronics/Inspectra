@@ -211,12 +211,12 @@ Generating a changelog reads the Git history; run it through the command line, i
 ## The finding model {id="findings"}
 
 The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook` and `trivy` without
-configured scans - report the normalised `Finding`, which the JSON, SARIF and Markdown reports serialise.
+configured scans - report the normalised `Finding`, which the JSON, SARIF, Markdown and CI reports serialise.
 
 | API | Description |
 |:--|:--|
 | `Finding` | `ruleId`, `source`, `severity`, `title`, `description`, `location`, `packageName`, `packageVersion`, `fixedVersion`, `aliases`, `url`, `snippet`, `attributes`; `identifiers`, `fingerprint` (a stable SHA-256), `toJson()`. |
-| `FindingSource` | The scanner: `osv`, `trivy`, `regex`, `entropy`, `unicode`, `archive`, `pubspec`, `trust`, `typosquat`, `confusion`, `style`, `config`; `id`. |
+| `FindingSource` | The scanner: `osv`, `trivy`, `regex`, `entropy`, `unicode`, `archive`, `pubspec`, `trust`, `typosquat`, `confusion`, `style`, `config`, `quality`; `id`, `tryParse`. |
 | `SourceLocation(path, {line})` | The file and line a finding refers to. |
 | `Severity` | `critical`, `high`, `medium`, `low`, `unknown`; `label`, `trivyName`, `isAtLeast(threshold)`, `parse`, `tryParse`, `fromCvssScore`. Shared by `Finding` and `ScanFinding`. |
 | `IgnoreRule({id:, reason:, package, expires})` | An `ignore:` entry; `matches(finding)`, `isExpired(now)`. |
