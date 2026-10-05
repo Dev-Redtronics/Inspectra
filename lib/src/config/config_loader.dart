@@ -29,7 +29,8 @@ const configEnvironmentVariable = 'INSPECTRA_CONFIG';
 /// The configuration file is, in order: [configFile] (the `--config` flag),
 /// the file named by `INSPECTRA_CONFIG`, `inspectra.yaml` in [packageRoot],
 /// and finally the `inspectra:` section of `pubspec.yaml`. [overrides]
-/// layers environment variables and command line values on top.
+/// layers environment variables and command line values on top, and a
+/// [recorder] records every value with its origin.
 ///
 /// With [requirePubspec], a missing `pubspec.yaml` is an error; the
 /// supply-chain commands pass `false` because they also work outside of a
@@ -45,6 +46,7 @@ InspectraConfig loadConfig(
   ConfigOverrides? overrides,
   String? configFile,
   bool requirePubspec = true,
+  ConfigRecorder? recorder,
 }) {
   final pubspec = File(p.join(packageRoot, 'pubspec.yaml'));
   final bool hasPubspec = pubspec.existsSync();
@@ -69,5 +71,6 @@ InspectraConfig loadConfig(
     configFile: hasConfig ? config.readAsStringSync() : null,
     configFileLabel: p.basename(config.path),
     overrides: overrides,
+    recorder: recorder,
   );
 }

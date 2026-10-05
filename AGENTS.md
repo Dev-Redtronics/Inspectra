@@ -51,6 +51,11 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
   `baseline_gates.dart` for the lint, style and Trivy scan results of the commands, `check` and the
   builders. Keys leave out line numbers and package versions; counts make each further occurrence
   new.
+- `config` parses the configuration through `YamlReader`, which can hand every value with its default,
+  origin and line to a `ConfigRecorder`. `config_tools` builds on it: `config show --explain`, the
+  JSON Schema of `config schema` (generated from a default parse, committed as `inspectra.schema.json`
+  and guarded by a test) and the rules of `config lint`. A new option needs no extra schema work; read
+  it through `YamlReader` and regenerate the schema.
 - The package checks `check`, `format`, `lint`, `api`, `coverage` and `changelog check` extend
   `PackageCheckCommand`; their logic lives in `quality`, `api`, `coverage` and `changelog`, and
   `builders` runs the same checks and the Trivy scans from build_runner. `style` is an

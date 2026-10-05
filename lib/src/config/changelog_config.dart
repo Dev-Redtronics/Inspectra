@@ -55,7 +55,11 @@ final class ChangelogConfig {
     final config = ChangelogConfig(
       enabled: yaml.boolean('enabled', fallback: false),
       file: yaml.string('file', fallback: defaultFile),
-      tagPrefix: _tagPrefix(yaml),
+      tagPrefix: yaml.string(
+        'tag_prefix',
+        fallback: defaultTagPrefix,
+        allowEmpty: true,
+      ),
       types: Map<String, ChangelogSection>.unmodifiable(types),
       unconventional: yaml.choice(
         'unconventional',
@@ -68,23 +72,6 @@ final class ChangelogConfig {
     );
     yaml.ensureFullyRead();
     return config;
-  }
-
-  /// Reads `tag_prefix`, which, unlike other strings, may be empty for
-  /// tags without a prefix.
-  ///
-  /// Returns the prefix.
-  static String _tagPrefix(YamlReader yaml) {
-    final emptyInFile = yaml.structured('tag_prefix') == '';
-    final overridden =
-        yaml.overrides.lookup(
-          yaml.keyPath.isEmpty ? 'tag_prefix' : '${yaml.keyPath}.tag_prefix',
-        ) !=
-        null;
-    if (emptyInFile && !overridden) {
-      return '';
-    }
-    return yaml.optionalString('tag_prefix') ?? defaultTagPrefix;
   }
 
   /// Reads the URL template at [key], which must contain [placeholder].

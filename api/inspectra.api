@@ -124,14 +124,58 @@ final class CommandContext {
   factory CommandContext.system();
 }
 
+final class ConfigEntry {
+  final Object? defaultValue;
+  final String key;
+  final ConfigKind kind;
+  final int? line;
+  final num? maximum;
+  final num? minimum;
+  final List<String>? options;
+  final ConfigOrigin origin;
+  final Object? value;
+  final String? variable;
+  const ConfigEntry({required String key, required ConfigKind kind, required Object? value, required Object? defaultValue, required ConfigOrigin origin, String? variable, int? line, List<String>? options, num? minimum, num? maximum});
+  static String formatDuration(Duration duration);
+  static Object? jsonOf(Object? value);
+  Map<String, Object?> toJson();
+}
+
+enum ConfigKind {
+  boolean, string, integer, number, duration, strings, enumList, choice, structured;
+}
+
+enum ConfigOrigin {
+  defaults, file, environment, commandLine;
+  final String id;
+}
+
+final class ConfigOverride {
+  final ConfigOrigin origin;
+  final String value;
+  final String? variable;
+  const ConfigOverride({required String value, required ConfigOrigin origin, String? variable});
+  String describe();
+}
+
 final class ConfigOverrides {
   final Map<String, String> cli;
   final Environment environment;
   ConfigOverrides({Map<String, String> cli = const <String, String>{}, Environment environment = const Environment(<String, String>{})});
   factory ConfigOverrides.none();
+  List<String> get knownPaths;
   (String, String)? lookup(String path);
   void ensureAllConsumed();
   static String environmentName(String path);
+  ConfigOverride? resolve(String path);
+}
+
+final class ConfigRecorder {
+  String? source;
+  ConfigRecorder();
+  List<ConfigEntry> get entries;
+  ConfigEntry? operator [](String key);
+  void record(ConfigEntry entry);
 }
 
 final class CoverageConfig {
@@ -231,7 +275,7 @@ final class Finding {
 }
 
 enum FindingSource {
-  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion, style;
+  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion, style, config;
   final String id;
 }
 
@@ -321,8 +365,8 @@ final class InspectraConfig {
   final TyposquatConfig typosquat;
   const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig(), BaselineConfig baseline = const BaselineConfig()});
   factory InspectraConfig.defaults(String packageName);
-  factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides});
-  factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides});
+  factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides, ConfigRecorder? recorder});
+  factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides, ConfigRecorder? recorder});
 }
 
 final class InspectraConfigException implements Exception {
@@ -401,6 +445,7 @@ class LockedPackage {
 }
 
 final class NetworkConfig {
+  static const String pubHostedUrlVariable = 'PUB_HOSTED_URL';
   static const String defaultOsvUrl = 'https://api.osv.dev';
   static const String defaultPubHostedUrl = 'https://pub.dev';
   final String? caCertificates;
@@ -685,7 +730,7 @@ Future<String> dumpApi(InspectraConfig config, String packageRoot);
 
 const String inspectraVersion = '1.0.0';
 
-InspectraConfig loadConfig(String packageRoot, {ConfigOverrides? overrides, String? configFile, bool requirePubspec = true});
+InspectraConfig loadConfig(String packageRoot, {ConfigOverrides? overrides, String? configFile, bool requirePubspec = true, ConfigRecorder? recorder});
 
 const List<String> offlineArguments = <String>['--skip-db-update', '--offline-scan'];
 

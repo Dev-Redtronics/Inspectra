@@ -15,8 +15,8 @@
  */
 
 import 'package:inspectra/inspectra.dart';
-import 'package:inspectra/src/typosquat/levenshtein.dart';
 import 'package:inspectra/src/typosquat/typosquat_detector.dart';
+import 'package:inspectra/src/util/levenshtein.dart';
 import 'package:test/test.dart';
 
 /// Tests typosquatting detection, including the false positives of

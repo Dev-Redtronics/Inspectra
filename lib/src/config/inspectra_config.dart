@@ -18,6 +18,7 @@ import 'package:inspectra/src/config/api_config.dart';
 import 'package:inspectra/src/config/baseline_config.dart';
 import 'package:inspectra/src/config/changelog_config.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
+import 'package:inspectra/src/config/config_recorder.dart';
 import 'package:inspectra/src/config/coverage_config.dart';
 import 'package:inspectra/src/config/format_config.dart';
 import 'package:inspectra/src/config/ignore_rule.dart';
@@ -38,6 +39,11 @@ export 'package:inspectra/src/config/api_config.dart';
 export 'package:inspectra/src/config/baseline_config.dart';
 export 'package:inspectra/src/config/build_scan_config.dart';
 export 'package:inspectra/src/config/changelog_config.dart';
+export 'package:inspectra/src/config/config_entry.dart';
+export 'package:inspectra/src/config/config_kind.dart';
+export 'package:inspectra/src/config/config_origin.dart';
+export 'package:inspectra/src/config/config_override.dart';
+export 'package:inspectra/src/config/config_recorder.dart';
 export 'package:inspectra/src/config/coverage_config.dart';
 export 'package:inspectra/src/config/coverage_runner.dart';
 export 'package:inspectra/src/config/filesystem_scan_config.dart';
@@ -108,7 +114,8 @@ final class InspectraConfig {
       InspectraConfig.parse(null, packageName: packageName);
 
   /// Parses the configuration mapping [node], which lives at [path], with
-  /// the [overrides] layered on top.
+  /// the [overrides] layered on top; a [recorder] records every value with
+  /// its origin.
   ///
   /// Returns the configuration.
   ///
@@ -119,9 +126,16 @@ final class InspectraConfig {
     required String packageName,
     String path = '',
     ConfigOverrides? overrides,
+    ConfigRecorder? recorder,
   }) {
     final ConfigOverrides layers = overrides ?? ConfigOverrides.none();
-    final root = YamlReader(node, path, overrides: layers, keyPath: '');
+    final root = YamlReader(
+      node,
+      path,
+      overrides: layers,
+      keyPath: '',
+      recorder: recorder,
+    );
     final severities = <String, Severity?>{
       for (final severity in Severity.values) severity.name: severity,
     };
@@ -136,7 +150,7 @@ final class InspectraConfig {
       changelog: ChangelogConfig.fromYaml(root.section('changelog')),
       failOn: root.choice('fail_on', severities, fallback: null),
       minSeverity:
-          root.choice('min_severity', severities, fallback: null) ??
+          root.choice('min_severity', severities, fallback: Severity.unknown) ??
           Severity.unknown,
       ignore: IgnoreRule.listFromYaml(root),
       network: NetworkConfig.fromYaml(root.section('network')),
@@ -154,7 +168,8 @@ final class InspectraConfig {
   ///
   /// [pubspec] is the content of `pubspec.yaml`, or `null` outside of a
   /// package; [configFile] that of `inspectra.yaml`, or `null` when there
-  /// is none, and wins when both are present.
+  /// is none, and wins when both are present. A [recorder] records every
+  /// value with its origin and the file it was read from.
   ///
   /// Returns the configuration.
   ///
@@ -165,6 +180,7 @@ final class InspectraConfig {
     String? configFile,
     String configFileLabel = configFileName,
     ConfigOverrides? overrides,
+    ConfigRecorder? recorder,
   }) {
     final Object? pubspecYaml = pubspec == null
         ? null
@@ -178,20 +194,24 @@ final class InspectraConfig {
     }
     final String packageName = name is String ? name : 'package';
     if (configFile != null) {
+      recorder?.source = configFileLabel;
       return InspectraConfig.parse(
         _load(configFile, configFileLabel),
         packageName: packageName,
         overrides: overrides,
+        recorder: recorder,
       );
     }
     final Object? section = pubspecYaml is Map
         ? pubspecYaml[pubspecSectionKey]
         : null;
+    recorder?.source = section == null ? null : 'pubspec.yaml';
     return InspectraConfig.parse(
       section,
       packageName: packageName,
       path: section == null ? '' : pubspecSectionKey,
       overrides: overrides,
+      recorder: recorder,
     );
   }
 

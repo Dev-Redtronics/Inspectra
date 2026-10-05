@@ -51,7 +51,10 @@ enum FindingSource {
   confusion('confusion'),
 
   /// The style check and its custom rules.
-  style('style');
+  style('style'),
+
+  /// The checks of the Inspectra configuration itself, `config lint`.
+  config('config');
 
   /// Creates a source with its stable machine readable [id].
   const FindingSource(this.id);

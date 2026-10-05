@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/config_kind.dart';
+import 'package:inspectra/src/config/config_origin.dart';
 import 'package:inspectra/src/config/filesystem_scan_config.dart';
 import 'package:inspectra/src/config/license_scan_config.dart';
 import 'package:inspectra/src/config/secret_scan_config.dart';
@@ -119,7 +121,18 @@ final class TrivyConfig {
     if (fromCommandLine != null && fromCommandLine.isNotEmpty) {
       return configured;
     }
-    return yaml.overrides.environment[legacyExecutableVariable] ?? configured;
+    final String? legacy = yaml.overrides.environment[legacyExecutableVariable];
+    if (legacy == null) {
+      return configured;
+    }
+    yaml.recordValue(
+      'executable',
+      ConfigKind.string,
+      legacy,
+      origin: ConfigOrigin.environment,
+      variable: legacyExecutableVariable,
+    );
+    return legacy;
   }
 
   /// The Trivy release Inspectra downloads unless configured otherwise.

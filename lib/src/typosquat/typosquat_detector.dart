@@ -18,8 +18,8 @@ import 'package:inspectra/src/model/finding.dart';
 import 'package:inspectra/src/model/finding_source.dart';
 import 'package:inspectra/src/model/severity.dart';
 import 'package:inspectra/src/model/source_location.dart';
-import 'package:inspectra/src/typosquat/levenshtein.dart';
 import 'package:inspectra/src/typosquat/popular_packages.dart';
+import 'package:inspectra/src/util/levenshtein.dart';
 
 /// Detects dependency names that imitate popular packages.
 ///

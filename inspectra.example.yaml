@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davils-com/Inspectra/main/inspectra.schema.json
 # Inspectra configuration with every option and its default.
 #
 # Put these keys into inspectra.yaml next to pubspec.yaml, or under an

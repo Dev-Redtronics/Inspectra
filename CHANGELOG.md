@@ -22,6 +22,28 @@ All notable changes to this project are documented in this file. The format foll
 - JSON: `baselined` in the reports of `scan` and `audit`, and `baseline` with `covered` and `stale` in
   the results of `lint`, `style` and the Trivy scans, present only when a baseline was applied.
 
+### Configuration tools
+
+- `inspectra config show` prints the effective configuration as YAML; `--explain` comments every
+  value with its origin (file and line, environment variable, command line or default) and
+  `--only-changed` leaves out the defaults. `-f json` lists `key`, `value`, `default`, `origin`,
+  `variable` and `line` per option.
+- `inspectra config validate` checks the configuration and that every file it refers to exists, and
+  lists all problems at once (exit code `65`).
+- `inspectra config lint` reports risky settings as findings of the new source `config`:
+  `CONFIG_INSECURE_URL`, `CONFIG_UNKNOWN_VARIABLE`, `CONFIG_TRIVY_DISABLED`, `CONFIG_UNPINNED_TRIVY`,
+  `CONFIG_IGNORE_EXPIRED`, `CONFIG_IGNORE_WITHOUT_EXPIRY`, `CONFIG_GATE_NOT_FAILING`,
+  `CONFIG_MIN_SEVERITY`, `CONFIG_NO_COVERAGE_THRESHOLD` and `CONFIG_BASELINE_UNBOUNDED`.
+- `inspectra config schema` prints the JSON Schema of `inspectra.yaml`, generated from the code and
+  published as `inspectra.schema.json`; `inspectra.example.yaml` starts with its
+  `yaml-language-server` modeline.
+- Unknown keys in the configuration file, in `ignore` entries and on the command line name the closest
+  valid option: `Did you mean "secret"?`.
+- Library: `ConfigRecorder`, `ConfigEntry`, `ConfigKind`, `ConfigOrigin`, `ConfigOverride`,
+  `ConfigOverrides.resolve` and `knownPaths`, a `recorder` parameter of `loadConfig`,
+  `InspectraConfig.parse` and `InspectraConfig.fromSources`, and `FindingSource.config`.
+- `trivy.filesystem.scanners` accepts scanner names in any case, like the severities.
+
 ### Fixed
 
 - `trivy.executable` is a known option again while `INSPECTRA_TRIVY` is set: the key in the

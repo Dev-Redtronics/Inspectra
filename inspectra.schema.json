@@ -1,0 +1,1348 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/davils-com/Inspectra/main/inspectra.schema.json",
+  "title": "Inspectra configuration",
+  "description": "The keys of inspectra.yaml, or of the inspectra: section of pubspec.yaml.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "run_on_build": {
+          "type": "boolean",
+          "default": false
+        },
+        "fail_on_findings": {
+          "type": "boolean",
+          "default": true
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            "**.dart"
+          ]
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            "**/.dart_tool/**",
+            "**/build/**",
+            "**.g.dart",
+            "**.freezed.dart",
+            "**.mocks.dart"
+          ]
+        },
+        "page_width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      }
+    },
+    "lint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "run_on_build": {
+          "type": "boolean",
+          "default": false
+        },
+        "fail_on": {
+          "enum": [
+            "error",
+            "warning",
+            "info",
+            "none",
+            "ERROR",
+            "WARNING",
+            "INFO",
+            "NONE"
+          ],
+          "default": "info"
+        }
+      }
+    },
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "custom_rules": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        },
+        "license_header": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "rules": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "properties": {
+            "license_header": {
+              "type": "boolean"
+            },
+            "public_docs": {
+              "type": "boolean"
+            },
+            "private_docs": {
+              "type": "boolean"
+            },
+            "one_type_per_file": {
+              "type": "boolean"
+            },
+            "one_public_type_per_file": {
+              "type": "boolean"
+            },
+            "file_named_after_type": {
+              "type": "boolean"
+            },
+            "no_comments": {
+              "type": "boolean"
+            },
+            "no_else": {
+              "type": "boolean"
+            },
+            "no_default_case": {
+              "type": "boolean"
+            },
+            "no_wildcard_case": {
+              "type": "boolean"
+            }
+          }
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "run_on_build": {
+          "type": "boolean",
+          "default": false
+        },
+        "fail_on_findings": {
+          "type": "boolean",
+          "default": true
+        },
+        "preset": {
+          "enum": [
+            "none",
+            "recommended",
+            "strict",
+            "NONE",
+            "RECOMMENDED",
+            "STRICT"
+          ],
+          "default": "recommended"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            "**.dart"
+          ]
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            "**/.dart_tool/**",
+            "**/build/**",
+            "**.g.dart",
+            "**.freezed.dart",
+            "**.mocks.dart"
+          ]
+        }
+      }
+    },
+    "trivy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "mode": {
+          "enum": [
+            "auto",
+            "required",
+            "disabled",
+            "AUTO",
+            "REQUIRED",
+            "DISABLED"
+          ],
+          "default": "auto"
+        },
+        "version": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "0.75.0"
+        },
+        "use_installed": {
+          "type": "boolean",
+          "default": true
+        },
+        "download": {
+          "type": "boolean",
+          "default": true
+        },
+        "executable": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "install_directory": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "download_base_url": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "https://github.com/aquasecurity/trivy/releases/download"
+        },
+        "latest_release_url": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "https://github.com/aquasecurity/trivy/releases/latest"
+        },
+        "report_directory": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": ".dart_tool/inspectra/trivy"
+        },
+        "skip_db_update": {
+          "type": "boolean",
+          "default": false
+        },
+        "db_repository": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "cache_directory": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "timeout": {
+          "type": [
+            "string",
+            "integer"
+          ],
+          "pattern": "^\\d+\\s*(ms|s|m|h)?$",
+          "default": "10m"
+        },
+        "connectivity_timeout": {
+          "type": [
+            "string",
+            "integer"
+          ],
+          "pattern": "^\\d+\\s*(ms|s|m|h)?$",
+          "default": "3s"
+        },
+        "extra_args": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        },
+        "secret": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "run_on_build": {
+              "type": "boolean",
+              "default": true
+            },
+            "fail_on_findings": {
+              "type": "boolean",
+              "default": true
+            },
+            "severity": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "CRITICAL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                  "UNKNOWN",
+                  "critical",
+                  "high",
+                  "medium",
+                  "low",
+                  "unknown"
+                ]
+              },
+              "default": [
+                "CRITICAL",
+                "HIGH",
+                "MEDIUM",
+                "LOW"
+              ]
+            },
+            "config": {
+              "type": [
+                "string",
+                "number"
+              ]
+            },
+            "include": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "default": [
+                "**.dart",
+                "**.yaml",
+                "**.yml",
+                "**.json",
+                "**.env",
+                "**.properties"
+              ]
+            },
+            "exclude": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "default": [
+                "**/.dart_tool/**",
+                "**/build/**",
+                "**/.git/**"
+              ]
+            }
+          }
+        },
+        "license": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "run_on_build": {
+              "type": "boolean",
+              "default": false
+            },
+            "fail_on_findings": {
+              "type": "boolean",
+              "default": true
+            },
+            "severity": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "CRITICAL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                  "UNKNOWN",
+                  "critical",
+                  "high",
+                  "medium",
+                  "low",
+                  "unknown"
+                ]
+              },
+              "default": [
+                "CRITICAL",
+                "HIGH",
+                "UNKNOWN"
+              ]
+            },
+            "ignored_licenses": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "default": []
+            },
+            "ignored_packages": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "default": []
+            },
+            "include_dev_dependencies": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "vulnerability": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "run_on_build": {
+              "type": "boolean",
+              "default": false
+            },
+            "fail_on_findings": {
+              "type": "boolean",
+              "default": true
+            },
+            "severity": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "CRITICAL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                  "UNKNOWN",
+                  "critical",
+                  "high",
+                  "medium",
+                  "low",
+                  "unknown"
+                ]
+              },
+              "default": [
+                "CRITICAL",
+                "HIGH",
+                "MEDIUM",
+                "LOW"
+              ]
+            },
+            "include_dev_dependencies": {
+              "type": "boolean",
+              "default": true
+            },
+            "ignore_unfixed": {
+              "type": "boolean",
+              "default": false
+            },
+            "ignored_vulnerabilities": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "default": []
+            }
+          }
+        },
+        "filesystem": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "fail_on_findings": {
+              "type": "boolean",
+              "default": true
+            },
+            "severity": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "CRITICAL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                  "UNKNOWN",
+                  "critical",
+                  "high",
+                  "medium",
+                  "low",
+                  "unknown"
+                ]
+              },
+              "default": [
+                "CRITICAL",
+                "HIGH",
+                "MEDIUM",
+                "LOW"
+              ]
+            },
+            "scanners": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "vuln",
+                  "secret",
+                  "misconfig",
+                  "license",
+                  "VULN",
+                  "SECRET",
+                  "MISCONFIG",
+                  "LICENSE"
+                ]
+              },
+              "default": [
+                "vuln",
+                "secret",
+                "misconfig"
+              ]
+            },
+            "skip_dirs": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "default": [
+                ".dart_tool",
+                "build",
+                ".git"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "output": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "api/<package>.api"
+        },
+        "ignored_libraries": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        },
+        "non_public_annotations": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            "internal",
+            "visibleForTesting"
+          ]
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "runner": {
+          "enum": [
+            "dart",
+            "flutter",
+            "DART",
+            "FLUTTER"
+          ],
+          "default": "dart"
+        },
+        "output_directory": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "coverage"
+        },
+        "report_on": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            "lib"
+          ]
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            "**.g.dart",
+            "**.freezed.dart",
+            "**.mocks.dart"
+          ]
+        },
+        "min_line_coverage": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0
+        },
+        "test_arguments": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        }
+      }
+    },
+    "changelog": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "types": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "added",
+              "changed",
+              "deprecated",
+              "removed",
+              "fixed",
+              "security",
+              "hidden",
+              "ADDED",
+              "CHANGED",
+              "DEPRECATED",
+              "REMOVED",
+              "FIXED",
+              "SECURITY",
+              "HIDDEN"
+            ]
+          },
+          "properties": {
+            "feat": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "added"
+            },
+            "fix": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "fixed"
+            },
+            "perf": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "changed"
+            },
+            "refactor": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "changed"
+            },
+            "revert": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "changed"
+            },
+            "deprecate": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "deprecated"
+            },
+            "remove": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "removed"
+            },
+            "security": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "security"
+            },
+            "docs": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "hidden"
+            },
+            "style": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "hidden"
+            },
+            "test": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "hidden"
+            },
+            "build": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "hidden"
+            },
+            "ci": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "hidden"
+            },
+            "chore": {
+              "enum": [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "hidden",
+                "ADDED",
+                "CHANGED",
+                "DEPRECATED",
+                "REMOVED",
+                "FIXED",
+                "SECURITY",
+                "HIDDEN"
+              ],
+              "default": "hidden"
+            }
+          }
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "file": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "CHANGELOG.md"
+        },
+        "tag_prefix": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "v"
+        },
+        "unconventional": {
+          "enum": [
+            "added",
+            "changed",
+            "deprecated",
+            "removed",
+            "fixed",
+            "security",
+            "hidden",
+            "ADDED",
+            "CHANGED",
+            "DEPRECATED",
+            "REMOVED",
+            "FIXED",
+            "SECURITY",
+            "HIDDEN"
+          ],
+          "default": "hidden"
+        },
+        "repository": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "commit_url": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "{repository}/commit/{hash}"
+        },
+        "compare_url": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "{repository}/compare/{from}...{to}"
+        }
+      }
+    },
+    "fail_on": {
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "unknown",
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "UNKNOWN"
+      ]
+    },
+    "min_severity": {
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "unknown",
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "UNKNOWN"
+      ],
+      "default": "unknown"
+    },
+    "ignore": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The rule id, advisory id or alias to suppress."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the finding is acceptable."
+          },
+          "package": {
+            "type": "string",
+            "description": "Restricts the entry to findings of this package."
+          },
+          "expires": {
+            "type": "string",
+            "description": "The last day the entry applies, YYYY-MM-DD.",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+          }
+        }
+      },
+      "default": []
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "offline": {
+          "type": "boolean",
+          "default": false
+        },
+        "timeout": {
+          "type": [
+            "string",
+            "integer"
+          ],
+          "pattern": "^\\d+\\s*(ms|s|m|h)?$",
+          "default": "30s"
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 3
+        },
+        "retry_base_delay": {
+          "type": [
+            "string",
+            "integer"
+          ],
+          "pattern": "^\\d+\\s*(ms|s|m|h)?$",
+          "default": "1s"
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256,
+          "default": 8
+        },
+        "proxy": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "ca_certificates": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "osv_url": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "https://api.osv.dev"
+        },
+        "pub_hosted_url": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "https://pub.dev"
+        }
+      }
+    },
+    "inspect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fail_score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 30
+        },
+        "max_archive_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776,
+          "default": 67108864
+        },
+        "max_extracted_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776,
+          "default": 268435456
+        },
+        "max_entries": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000000,
+          "default": 20000
+        },
+        "entropy_excludes": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            ".g.dart",
+            ".freezed.dart",
+            ".mocks.dart",
+            ".pb.dart",
+            ".gr.dart"
+          ]
+        },
+        "exclude_directories": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": [
+            "test",
+            "integration_test",
+            "example",
+            "benchmark",
+            "doc",
+            "docs",
+            "tool",
+            "extension"
+          ]
+        },
+        "trusted_hosts": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        }
+      }
+    },
+    "trust": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fresh_package_days": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824,
+          "default": 7
+        },
+        "young_package_days": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824,
+          "default": 30
+        },
+        "fresh_release_hours": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824,
+          "default": 24
+        },
+        "min_likes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824,
+          "default": 5
+        },
+        "min_downloads": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824,
+          "default": 100
+        },
+        "min_points_ratio": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.5
+        }
+      }
+    },
+    "typosquat": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        },
+        "popular": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "default": []
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "file": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "default": "inspectra-baseline.json"
+        },
+        "max_severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "unknown",
+            "CRITICAL",
+            "HIGH",
+            "MEDIUM",
+            "LOW",
+            "UNKNOWN"
+          ]
+        },
+        "fail_on_stale": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  }
+}
