@@ -81,7 +81,8 @@ print(config.trivy.secret.severity);     // [Severity.critical, Severity.high, .
 
 The configuration classes - `FormatConfig`, `LintConfig`, `TrivyConfig`, `SecretScanConfig`, `LicenseScanConfig`,
 `VulnerabilityScanConfig`, `FilesystemScanConfig`, `ApiConfig`, `CoverageConfig`, and for the supply-chain commands
-`NetworkConfig`, `InspectConfig`, `TrustThresholds`, `TyposquatConfig`, `IgnoreRule` and `BaselineConfig` - are immutable and have
+`NetworkConfig`, `InspectConfig`, `TrustThresholds`, `TyposquatConfig`, `IgnoreRule`, `BaselineConfig`,
+`DependencyPolicyConfig` and `DeniedPackage` - are immutable and have
 `const` constructors, so tooling can also build a configuration without YAML.
 
 ## Running the format and lint checks

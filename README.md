@@ -43,6 +43,7 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra inspect <pkg> <version>` | Downloads, verifies and statically analyses a package's published source |
 | `inspectra trust <pkg> [version]` | Trust assessment from pub.dev: age, release freshness, publisher, popularity |
 | `inspectra typosquat` | Typosquatting and dependency confusion analysis of `pubspec.yaml` |
+| `inspectra deps [--fix] [-r]` | Pubspec rules and the dependency policy, offline; `--fix` bounds constraints, moves dev packages and adds `publish_to: none` |
 | `inspectra add <pkg> [version]` | Audits a package and adds **exactly** the audited version (`--dev`, `--dry-run`, `--force`) |
 | `inspectra hook [install\|remove]` | Git pre-commit hook for staged `pubspec.yaml` / `pubspec.lock` changes |
 | `inspectra trivy [secret\|license\|vulnerability\|filesystem…]` | The configured Trivy scans, or a `trivy fs` scan; `--install`, `--where` |
@@ -179,6 +180,27 @@ ignore:
 
 `--ignore <id>` (repeatable) works as in `dart_audit`. Trivy scans additionally have their own
 `ignored_vulnerabilities`, `ignored_licenses` and `ignored_packages`.
+
+### Dependency policy
+
+```yaml
+inspectra:
+  dependency_policy:
+    enabled: true
+    denied: [{name: http_parser_legacy, reason: Unmaintained., replacement: http}]
+    allowed_hosts: [https://pub.acme.corp, https://pub.dev]
+    require_upper_bound: true
+    min_sdk: 3.6.0
+    dev_only: [mockito, build_runner, lints, test]
+    require_publish_to: true
+```
+
+Organisation rules for dependencies, checked by `inspectra deps` (offline, `-r` for workspaces), `scan` and `check`:
+denied packages (also transitive), allowed packages, registries and Git hosts, upper bounds, SDK minimums,
+development packages in `dependencies`, a missing `publish_to` that would let `dart pub publish` upload an internal
+package to pub.dev, required metadata, a `pubspec.lock` out of sync or without checksums, and unused or misplaced
+dependencies found from the imports. `inspectra deps --fix` applies the fixable rules while keeping comments and
+formatting. Every rule is opt-in.
 
 ### Baseline for existing code
 

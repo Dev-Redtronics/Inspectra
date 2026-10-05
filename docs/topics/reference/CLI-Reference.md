@@ -7,7 +7,7 @@
 
 <link-summary>Every command and option of the inspectra command line, with output and exit codes.</link-summary>
 
-<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog, baseline and config; options and exit codes.</card-summary>
+<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog, baseline, config and deps; options and exit codes.</card-summary>
 
 ```text
 Supply-chain security scanner for Dart and Flutter projects.
@@ -25,9 +25,10 @@ Available commands:
   audit       Scan pubspec.lock against the OSV.dev vulnerability database.
   baseline    Record the accepted findings, so that only new ones fail, or prune the fixed ones.
   changelog   Generate the changelog from Conventional Commits, check it and print release notes.
-  check       Run every enabled package check: format, lint, style, API, changelog, Trivy scans and coverage.
+  check       Run every enabled package check: format, lint, style, API, changelog, Trivy scans, dependency policy and coverage.
   config      Show where each configuration value comes from, validate and lint the configuration, print its JSON Schema.
   coverage    Run the tests with coverage, write lcov.info and check the threshold.
+  deps        Check the dependencies of pubspec.yaml against the pubspec rules and the dependency policy, offline; --fix applies the fixable rules.
   format      Check that the Dart files are formatted, or format them with --fix.
   hook        Install or remove the Git pre-commit hook.
   inspect     Statically analyse a pub.dev package before adding it.
@@ -69,7 +70,7 @@ inspectra --version
 
 ## Shared options {id="shared-options"}
 
-The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook` - `trivy`, `style`,
+The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `deps`, `add`, `hook` - `trivy`, `style`,
 `changelog generate`, `changelog notes`, `baseline create|prune` and `config show|validate|lint` share these options:
 
 | Option | Description |
@@ -300,11 +301,13 @@ Runs every enabled package check in this order and fails if any of them fails:
 4. The [API check](#api-check), when `api.enabled`.
 5. The [changelog check](#changelog-check), when `changelog.enabled`.
 6. Every [enabled Trivy scan](#trivy), when `trivy.enabled`.
-7. The [coverage gate](#coverage), when `coverage.enabled`.
+7. The [dependency policy](#deps) with the pubspec rules, when `dependency_policy.enabled`; ignore rules and the
+   baseline apply, and it fails from `fail_on`.
+8. The [coverage gate](#coverage), when `coverage.enabled`.
 
 All checks run even when an earlier one fails, so one run reports everything; an error such as a missing Trivy stops
 the run with its exit code. With nothing enabled it prints
-`Nothing is enabled. Enable "format", "lint", "style", "api", "changelog", "trivy" or "coverage" in the Inspectra configuration.`
+`Nothing is enabled. Enable "format", "lint", "style", "api", "changelog", "trivy", "dependency_policy" or "coverage" in the Inspectra configuration.`
 and exits with `0`.
 
 `check`, `format`, `lint`, `api`, `coverage` and `changelog check` need a `pubspec.yaml` in the package root. They take no shared options;
@@ -518,6 +521,30 @@ dart run inspectra baseline prune
 Runs the scopes like [`baseline create`](#baseline-create) and removes what was fixed: every count drops to the number
 of findings that still occur, and entries without any are removed. Nothing is ever added. Options, report and exit
 codes are those of `baseline create`.
+
+## deps {id="deps"}
+
+```bash
+dart run inspectra deps
+dart run inspectra deps -r --fix
+```
+
+Checks every `pubspec.yaml` against the built-in pubspec rules and, with `dependency_policy.enabled`, the
+[dependency policy](Dependency-Policy.md), without network access. `directory` defaults to the current one. The shared
+options apply; findings are of the source `pubspec`. With `-f json` the report holds `pubspecs`, `fixed`, `suppressed`,
+`baselined` and `findings`.
+
+| Option | Description |
+|:--|:--|
+| `-r`, `--recursive` | Also check the packages below the directory, such as the members of a pub workspace. |
+| `--fix` | Bound constraints with a caret, move `dev_only` packages to `dev_dependencies` and add `publish_to: none`, keeping comments and formatting; then report what remains. |
+
+| Result | Exit code |
+|:--|:--|
+| No finding at or above `--fail-on` (default: any) | `0` |
+| Findings | `1` |
+| No `pubspec.yaml`, a malformed pubspec or lockfile, an invalid configuration | `65` |
+| A fixed `pubspec.yaml` cannot be written | `69` |
 
 ## config show {id="config-show"}
 

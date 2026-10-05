@@ -35,6 +35,24 @@ inspectra:
     # max_severity: high             # unset: the baseline covers every severity
     fail_on_stale: false
 
+  dependency_policy:
+    enabled: false
+    denied: []                       # entries: name, reason, replacement
+    allowed: []
+    allowed_hosts: []
+    allowed_git_hosts: []
+    require_upper_bound: false
+    # min_sdk: 3.6.0
+    # min_flutter: 3.27.0
+    dev_only: []
+    require_publish_to: false
+    published_packages: []
+    required_metadata: []
+    lockfile_in_sync: false
+    lockfile_checksums: false
+    check_imports: false
+    unused_allow: [cupertino_icons]
+
   network:
     offline: false
     timeout: 30s
@@ -215,6 +233,30 @@ The file of accepted findings that `baseline create` records and `scan`, `audit`
 | `file` | string | `inspectra-baseline.json` | The baseline file, relative to the package root. |
 | `max_severity` | severity | unset | Findings more severe than this are never covered by the baseline. |
 | `fail_on_stale` | bool | `false` | Fail a check while recorded findings have been fixed and `baseline prune` has not run. |
+
+## dependency_policy {id="dependency_policy"}
+
+Rules for the dependencies of every package, checked by `deps`, `scan` and `check` once `enabled` is set; `deps --fix`
+applies the fixable ones. Every rule is off until configured. Details: [Dependency policy](Dependency-Policy.md).
+
+| Key | Type | Default | Description |
+|:--|:--|:--|:--|
+| `enabled` | bool | `false` | Apply the policy. |
+| `denied` | list of entries | `[]` | `name` and `reason` (required) and `replacement` of a forbidden package, direct or transitive. |
+| `allowed` | list of strings | `[]` | When not empty, the only hosted packages that may be declared. |
+| `allowed_hosts` | list of strings | `[]` | When not empty, the only package registries, such as `https://pub.dev`. |
+| `allowed_git_hosts` | list of strings | `[]` | When not empty, the only Git hosts. |
+| `require_upper_bound` | bool | `false` | Every hosted constraint needs an upper bound. |
+| `min_sdk` | version | unset | The lowest Dart SDK `environment.sdk` may allow. |
+| `min_flutter` | version | unset | The lowest Flutter SDK `environment.flutter` may allow. |
+| `dev_only` | list of strings | `[]` | Packages that belong in `dev_dependencies`. |
+| `require_publish_to` | bool | `false` | Every package needs `publish_to`, except `published_packages`. |
+| `published_packages` | list of strings | `[]` | Packages meant for pub.dev. |
+| `required_metadata` | list | `[]` | Of `description`, `repository`, `homepage`, `issue_tracker`, `documentation`, `topics`: required in publishable packages. |
+| `lockfile_in_sync` | bool | `false` | `pubspec.lock` must match the direct dependencies. |
+| `lockfile_checksums` | bool | `false` | Every hosted package of `pubspec.lock` needs a `sha256`. |
+| `check_imports` | bool | `false` | Report unused dependencies and development dependencies imported by `lib/` or `bin/`. |
+| `unused_allow` | list of strings | `[cupertino_icons]` | Packages never reported as unused. |
 
 ## network {id="network"}
 
