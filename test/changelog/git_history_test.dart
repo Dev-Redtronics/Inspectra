@@ -17,9 +17,6 @@
 import 'dart:io';
 
 import 'package:inspectra/inspectra.dart';
-import 'package:inspectra/src/changelog/git_commit.dart';
-import 'package:inspectra/src/changelog/git_history.dart';
-import 'package:inspectra/src/changelog/release_tag.dart';
 import 'package:test/test.dart';
 
 import '../support/fake_git.dart';
@@ -145,4 +142,36 @@ void main() {
       throwsA(isA<UnavailableException>()),
     );
   });
+
+  test('reads a file as it was at a revision', () async {
+    final git = FakeGit(
+      tags: <String>['v1.0.0'],
+      files: <String, String>{'v1.0.0:api/app.api': 'library a\n'},
+    );
+    expect(await history(git).show('v1.0.0', r'api\app.api'), 'library a\n');
+    expect(git.runner.calls.single, endsWith('show v1.0.0:./api/app.api'));
+    expect(await history(git).show('v1.0.0', 'api/other.api'), isNull);
+    expect(
+      history(git).show('v2.0.0', 'api/app.api'),
+      throwsA(isA<InvalidUsageException>()),
+    );
+    expect(
+      history(FakeGit(failure: _failed('fatal: out of memory')))
+          .show('v1.0.0', 'api/app.api'),
+      throwsA(isA<UnavailableException>()),
+    );
+  });
+
+  test('tells whether the repository has a commit', () async {
+    expect(await history(FakeGit()).hasCommits(), isTrue);
+    expect(await history(FakeGit(empty: true)).hasCommits(), isFalse);
+    expect(
+      history(FakeGit(failure: _failed('fatal: out of memory'))).hasCommits(),
+      throwsA(isA<UnavailableException>()),
+    );
+  });
 }
+
+/// Returns a failed `git` call that reports [error].
+ProcessOutcome _failed(String error) =>
+    ProcessOutcome(exitCode: 128, stdout: '', stderr: error);

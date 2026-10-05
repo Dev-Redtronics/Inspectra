@@ -19,6 +19,7 @@ import 'package:inspectra/src/dashboard/section_adapters.dart';
 import 'package:inspectra/src/report/report_section.dart';
 import 'package:inspectra/src/report/section_details.dart';
 import 'package:inspectra/src/report/section_status.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:test/test.dart';
 
 /// Tests the conversion of the package check results into report
@@ -127,6 +128,43 @@ void main() {
     expect(same.status, SectionStatus.passed);
     expect(same.findings, isEmpty);
     expect(same.summary, 'Matches api/a.api');
+  });
+
+  test('semantic versioning lists the API changes', () {
+    final ReportSection violated = semverSection(
+      evaluateSemver(
+        before: 'library a\n\nint x();\nint y();\n',
+        after: 'library a\n\nint x();\nint z();\n',
+        baseline: 'v1.0.0',
+        baselineVersion: Version(1, 0, 0),
+        version: Version(1, 1, 0),
+      ),
+    );
+    expect(violated.status, SectionStatus.failed);
+    expect(violated.summary, 'Version 1.1.0 is too low; 2.0.0 is required');
+    expect(violated.metrics['Breaking changes'], '1');
+    expect(violated.findings.single.ruleId, 'SEMVER_VIOLATION');
+    expect(
+      (violated.details as DiffDetails).diff,
+      '- y: The declaration was removed.\n+ z: The declaration was added.',
+    );
+    final ReportSection same = semverSection(
+      evaluateSemver(
+        before: 'library a\n\nint x();\n',
+        after: 'library a\n\nint x();\n',
+        baseline: 'v1.0.0',
+        baselineVersion: Version(1, 0, 0),
+        version: Version(1, 0, 0),
+      ),
+    );
+    expect(same.status, SectionStatus.passed);
+    expect(same.summary, '0 API change(s) since v1.0.0, version 1.0.0');
+    expect(same.metrics['Required'], '-');
+    expect(same.details, isA<NoDetails>());
+    final ReportSection skipped = semverSection(
+      const SemverResult.skipped('no release tag yet.'),
+    );
+    expect(skipped.status, SectionStatus.skipped);
   });
 
   test('changelog problems keep their line', () {

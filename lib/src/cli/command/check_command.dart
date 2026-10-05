@@ -30,8 +30,8 @@ final class CheckCommand extends PackageCheckCommand {
   /// The one line description.
   @override
   String get description =>
-      'Run every enabled package check: format, lint, style, API, changelog, '
-      'Trivy scans, dependency policy and coverage.';
+      'Run every enabled package check: format, lint, style, API, API '
+      'semver, changelog, Trivy scans, dependency policy and coverage.';
 
   /// Runs the enabled checks one after the other.
   ///
@@ -44,6 +44,7 @@ final class CheckCommand extends PackageCheckCommand {
       (config.lint.enabled, () => runLintGate(config)),
       (config.style.enabled, () => runStyleGate(config)),
       (config.api.enabled, () => runApiCheck(config)),
+      (config.api.semver, () => runSemverGate(config)),
       (config.changelog.enabled, () => runChangelogCheck(config)),
       (config.trivy.enabled, () => runScans(config)),
       (config.dependencyPolicy.enabled, () => runDependencyPolicy(config)),

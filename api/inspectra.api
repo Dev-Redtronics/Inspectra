@@ -19,6 +19,24 @@ Builder vulnerabilityScanBuilder(BuilderOptions options);
 
 library package:inspectra/inspectra.dart
 
+final class ApiChange {
+  final String? after;
+  final String? before;
+  final String declaration;
+  final ApiChangeKind kind;
+  final String library;
+  final String? member;
+  final String reason;
+  const ApiChange({required ApiChangeKind kind, required String library, required String declaration, required String reason, String? member, String? before, String? after});
+  String get subject;
+  Map<String, Object?> toJson();
+}
+
+enum ApiChangeKind {
+  breaking, additive;
+  final String id;
+}
+
 class ApiCheckResult {
   final String? diff;
   final String dumpPath;
@@ -33,8 +51,30 @@ final class ApiConfig {
   final List<String> ignoredLibraries;
   final List<String> nonPublicAnnotations;
   final String output;
-  const ApiConfig({required bool enabled, required String output, required List<String> ignoredLibraries, required List<String> nonPublicAnnotations});
+  final bool semver;
+  const ApiConfig({required bool enabled, required String output, required List<String> ignoredLibraries, required List<String> nonPublicAnnotations, bool semver = false});
   factory ApiConfig.fromYaml(YamlReader yaml, String packageName);
+}
+
+final class ApiDeclaration {
+  final bool isType;
+  final String line;
+  final Map<String, String> members;
+  final String name;
+  final List<String> values;
+  const ApiDeclaration({required String name, required String line, bool isType = false, Map<String, String> members = const <String, String>{}, List<String> values = const <String>[]});
+}
+
+final class ApiSurface {
+  final Map<String, Map<String, ApiDeclaration>> libraries;
+  const ApiSurface(Map<String, Map<String, ApiDeclaration>> libraries);
+  factory ApiSurface.parse(String dump);
+  static bool isDeprecated(String line);
+  static String keyOf(String line);
+  static int openingOf(String text, int closing);
+  static int topLevelIndexOf(String text, String pattern);
+  static String typeName(String header);
+  static String withoutDeprecation(String line);
 }
 
 final class BaselineConfig {
@@ -228,6 +268,19 @@ enum ConfigStrictness {
   double? rankOf(Object? value);
 }
 
+final class ConventionalCommit {
+  final bool breaking;
+  final List<String> breakingNotes;
+  final String description;
+  final String hash;
+  final List<String> revertedHashes;
+  final String? scope;
+  final String? type;
+  const ConventionalCommit({required String hash, required String? type, required String description, String? scope, bool breaking = false, List<String> breakingNotes = const <String>[], List<String> revertedHashes = const <String>[]});
+  bool get isConventional;
+  String get shortHash;
+}
+
 final class CoverageConfig {
   final bool enabled;
   final List<String> exclude;
@@ -384,6 +437,25 @@ class FormatResult {
   bool get failed;
   String render();
   Map<String, Object?> toJson();
+}
+
+final class GitCommit {
+  final String hash;
+  final String message;
+  const GitCommit({required String hash, required String message});
+  String get shortHash;
+  String get subject;
+}
+
+final class GitHistory {
+  final ProcessRunner processRunner;
+  final String workingDirectory;
+  const GitHistory({required ProcessRunner processRunner, required String workingDirectory});
+  Future<List<GitCommit>> commits({required String to, String? from});
+  Future<bool> hasCommits();
+  Future<bool> isShallow();
+  Future<ReleaseTag?> latestTag({required String to, required String prefix});
+  Future<String?> show(String revision, String path);
 }
 
 final class HostPlatform {
@@ -588,6 +660,13 @@ class PubspecLock {
   String retain(Iterable<String> names);
 }
 
+final class ReleaseTag {
+  final String name;
+  final Version version;
+  const ReleaseTag(String name, Version version);
+  static ReleaseTag? tryParse(String name, String prefix);
+}
+
 final class RemoteBaseReference extends ConfigBaseReference {
   final String sha256;
   final Uri url;
@@ -636,6 +715,27 @@ final class SecretScanConfig extends BuildScanConfig {
   final List<String> include;
   const SecretScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity, required String? config, required List<String> include, required List<String> exclude});
   factory SecretScanConfig.fromYaml(YamlReader yaml);
+}
+
+final class SemverResult {
+  final String? baseline;
+  final Version? baselineVersion;
+  final List<ApiChange> changes;
+  final String dumpPath;
+  final String? skipped;
+  final bool undeclaredBreaking;
+  final Version? version;
+  const SemverResult({required String? baseline, required Version? baselineVersion, required Version? version, required List<ApiChange> changes, bool undeclaredBreaking = false, String dumpPath = ''});
+  const SemverResult.skipped(String skipped, {String dumpPath = ''});
+  List<ApiChange> get additive;
+  List<ApiChange> get breaking;
+  VersionBump? get bump;
+  bool get failed;
+  List<Finding> get findings;
+  Version? get required;
+  bool get violated;
+  String render();
+  Map<String, Object?> toJson();
 }
 
 enum Severity {
@@ -803,6 +903,12 @@ final class UnavailableException extends InspectraException {
   const UnavailableException(String message);
 }
 
+enum VersionBump {
+  patch, minor, major;
+  final String id;
+  Version apply(Version current);
+}
+
 final class VulnerabilityScanConfig extends BuildScanConfig {
   static const List<Severity> defaultSeverity = <Severity>[Severity.critical, Severity.high, Severity.medium, Severity.low];
   static const VulnerabilityScanConfig defaults = VulnerabilityScanConfig(enabled: true, runOnBuild: false, failOnFindings: true, severity: defaultSeverity, includeDevDependencies: true, ignoreUnfixed: false, ignoredVulnerabilities: <String>[]);
@@ -821,7 +927,11 @@ ChangelogCheckResult checkChangelog(InspectraConfig config, String packageRoot);
 
 Future<FormatResult> checkFormat({required FormatConfig config, required String packageRoot, required List<String> files, bool fix = false});
 
+Future<SemverResult> checkSemver(InspectraConfig config, String packageRoot, GitHistory history, {String? from});
+
 Future<StyleResult> checkStyle({required StyleConfig config, required String packageRoot, required List<String> files, Future<String?> Function(String)? read});
+
+List<ApiChange> classifyApiChanges(ApiSurface before, ApiSurface after);
 
 Map<String, List<int>> collectFiles(String root, List<String> include, List<String> exclude);
 
@@ -836,6 +946,8 @@ const String defaultSecretConfig = 'trivy-secret.yaml';
 String? diffApi({required String expected, required String actual});
 
 Future<String> dumpApi(InspectraConfig config, String packageRoot);
+
+SemverResult evaluateSemver({required String before, required String after, required String baseline, required Version? baselineVersion, required Version version, List<ConventionalCommit>? commits, String dumpPath = ''});
 
 const String inspectraVersion = '1.0.0';
 

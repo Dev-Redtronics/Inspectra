@@ -17,9 +17,11 @@
 import 'dart:io';
 
 import 'package:inspectra/src/api/api_command.dart';
+import 'package:inspectra/src/api/semver_check.dart';
 import 'package:inspectra/src/baseline/baseline_gates.dart';
 import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/changelog/changelog_check.dart';
+import 'package:inspectra/src/changelog/git_history.dart';
 import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
@@ -155,6 +157,21 @@ final class ReportRunner {
       _config.api.enabled,
       () async => apiSection(await checkApi(_config, _root)),
     ),
+    ReportStep.semver => await _ifEnabled(
+      step,
+      _config.api.semver,
+      () async => semverSection(
+        await checkSemver(
+          _config,
+          _root,
+          GitHistory(
+            processRunner: session.context.processRunner,
+            workingDirectory: _root,
+          ),
+        ),
+      ),
+      option: 'api.semver',
+    ),
     ReportStep.changelog => await _ifEnabled(
       step,
       _config.changelog.enabled,
@@ -175,11 +192,12 @@ final class ReportRunner {
   Future<List<ReportSection>> _ifEnabled(
     ReportStep step,
     bool enabled,
-    Future<ReportSection> Function() run,
-  ) async {
+    Future<ReportSection> Function() run, {
+    String? option,
+  }) async {
     if (!enabled) {
       return <ReportSection>[
-        notEnabledSection(step.id, step.title, '${step.id}.enabled'),
+        notEnabledSection(step.id, step.title, option ?? '${step.id}.enabled'),
       ];
     }
     return <ReportSection>[await run()];

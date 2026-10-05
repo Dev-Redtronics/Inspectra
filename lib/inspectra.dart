@@ -22,19 +22,31 @@
 /// wants to run the checks programmatically: the command line itself
 /// (`InspectraCommandRunner`), the configuration model, the normalised
 /// finding model of the supply-chain commands, the Trivy scans, the public
-/// API dump, the format, lint and style checks, the coverage gate and the
-/// changelog check. Custom style rules are written against
-/// `package:inspectra/style.dart`.
+/// API dump and its semantic versioning check, the format, lint and style
+/// checks, the coverage gate and the changelog check. Custom style rules
+/// are written against `package:inspectra/style.dart`.
 library;
 
+export 'src/api/api_change.dart';
+export 'src/api/api_change_kind.dart';
+export 'src/api/api_changes.dart';
 export 'src/api/api_command.dart'
     show ApiCheckResult, checkApi, dumpApi, renderPackageApi;
+export 'src/api/api_declaration.dart';
 export 'src/api/api_diff.dart' show diffApi;
 export 'src/api/api_renderer.dart' show apiDumpHeader, renderApi;
+export 'src/api/api_surface.dart';
+export 'src/api/semver_check.dart';
+export 'src/api/semver_result.dart';
 export 'src/baseline/baseline_summary.dart';
 export 'src/changelog/changelog_check.dart' show checkChangelog;
 export 'src/changelog/changelog_check_result.dart';
 export 'src/changelog/changelog_problem.dart';
+export 'src/changelog/conventional_commit.dart';
+export 'src/changelog/git_commit.dart';
+export 'src/changelog/git_history.dart';
+export 'src/changelog/release_tag.dart';
+export 'src/changelog/version_bump.dart';
 export 'src/cli/command_context.dart';
 export 'src/cli/exit_code.dart';
 export 'src/cli/inspectra_command_runner.dart';

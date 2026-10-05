@@ -197,6 +197,9 @@ api:
   # output: api/<package>.api        # the committed dump
   ignored_libraries: []
   non_public_annotations: [internal, visibleForTesting]
+  # Whether check also compares the API with the dump committed at the last
+  # release tag and requires a matching version in pubspec.yaml.
+  semver: false
 
 coverage:
   enabled: false

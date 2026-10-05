@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/api/api_change.dart';
 import 'package:inspectra/src/api/api_check_result.dart';
+import 'package:inspectra/src/api/semver_result.dart';
 import 'package:inspectra/src/baseline/baseline_summary.dart';
 import 'package:inspectra/src/changelog/changelog_check_result.dart';
 import 'package:inspectra/src/changelog/changelog_problem.dart';
@@ -174,6 +176,46 @@ ReportSection apiSection(ApiCheckResult result) {
     metrics: <String, String>{'Dump': result.dumpPath},
     findings: <Finding>[?finding],
     details: diff == null ? const NoDetails() : DiffDetails(diff),
+  );
+}
+
+/// Describes the comparison of the public API with the last release:
+/// [result] lists every change as a diff, removed and breaking lines
+/// marked, and fails when the version in `pubspec.yaml` is too low.
+///
+/// Returns the section, skipped when there was nothing to compare with.
+ReportSection semverSection(SemverResult result) {
+  final String? skipped = result.skipped;
+  if (skipped != null) {
+    return skippedSection('semver', 'Semantic versioning', skipped);
+  }
+  final String required = result.required?.toString() ?? '-';
+  return ReportSection(
+    id: 'semver',
+    title: 'Semantic versioning',
+    status: _statusOf(failed: result.failed),
+    summary: result.violated
+        ? 'Version ${result.version} is too low; $required is required'
+        : '${result.changes.length} API change(s) since ${result.baseline}, '
+              'version ${result.version}',
+    metrics: <String, String>{
+      'Compared with': '${result.baseline}',
+      'Version': '${result.version}',
+      'Required': required,
+      'Breaking changes': '${result.breaking.length}',
+      'Additive changes': '${result.additive.length}',
+    },
+    findings: result.findings,
+    details: result.changes.isEmpty
+        ? const NoDetails()
+        : DiffDetails(
+            <String>[
+              for (final ApiChange change in result.breaking)
+                '- ${change.subject}: ${change.reason}',
+              for (final ApiChange change in result.additive)
+                '+ ${change.subject}: ${change.reason}',
+            ].join('\n'),
+          ),
   );
 }
 

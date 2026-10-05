@@ -97,6 +97,7 @@ int f(bool a) {
     expect(html, contains('MISSING_PUBLISH_TO'));
     expect(html, contains('no_else'));
     expect(html, contains('Not enabled; set coverage.enabled: true'));
+    expect(html, contains('Not enabled; set api.semver: true'));
     expect(html, contains('Code lines, no comments'));
     final json =
         jsonDecode(read(harness, 'build/report.json')) as Map<String, Object?>;
@@ -120,6 +121,7 @@ int f(bool a) {
       'lint': 'skipped',
       'style': 'failed',
       'api': 'skipped',
+      'semver': 'skipped',
       'changelog': 'skipped',
       'trivy': 'skipped',
       'coverage': 'skipped',

@@ -18,10 +18,13 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:inspectra/src/api/api_command.dart';
+import 'package:inspectra/src/api/semver_check.dart';
+import 'package:inspectra/src/api/semver_result.dart';
 import 'package:inspectra/src/baseline/baseline_gates.dart';
 import 'package:inspectra/src/baseline/baseline_matcher.dart';
 import 'package:inspectra/src/changelog/changelog_check.dart';
 import 'package:inspectra/src/changelog/changelog_check_result.dart';
+import 'package:inspectra/src/changelog/git_history.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/cli/config_bases.dart';
@@ -197,6 +200,26 @@ abstract class PackageCheckCommand extends Command<int> {
   /// Throws an `InvalidInputException` when `pubspec.yaml` is malformed.
   Future<bool> runChangelogCheck(InspectraConfig config) async {
     final ChangelogCheckResult result = checkChangelog(config, packageRoot);
+    out.writeln(result.render());
+    return !result.failed;
+  }
+
+  /// Compares the API with the last release and checks the version in
+  /// `pubspec.yaml`, printing the outcome.
+  ///
+  /// Returns whether the version follows the API changes.
+  ///
+  /// Throws an `InvalidUsageException` outside of a Git repository and an
+  /// `UnavailableException` when Git is missing.
+  Future<bool> runSemverGate(InspectraConfig config) async {
+    final SemverResult result = await checkSemver(
+      config,
+      packageRoot,
+      GitHistory(
+        processRunner: context.processRunner,
+        workingDirectory: packageRoot,
+      ),
+    );
     out.writeln(result.render());
     return !result.failed;
   }

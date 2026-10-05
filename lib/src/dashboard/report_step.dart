@@ -41,6 +41,9 @@ enum ReportStep {
   /// The public API check.
   api('api', 'Public API'),
 
+  /// The comparison of the public API with the last release.
+  semver('semver', 'Semantic versioning'),
+
   /// The changelog check.
   changelog('changelog', 'Changelog'),
 

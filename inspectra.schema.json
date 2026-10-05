@@ -711,6 +711,10 @@
             "internal",
             "visibleForTesting"
           ]
+        },
+        "semver": {
+          "type": "boolean",
+          "default": false
         }
       }
     },
