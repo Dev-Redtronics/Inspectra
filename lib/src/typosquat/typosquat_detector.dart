@@ -23,7 +23,7 @@ import 'package:inspectra/src/util/levenshtein.dart';
 
 /// Detects dependency names that imitate popular packages.
 ///
-/// Rules (identifiers as in `dart_audit`):
+/// Rules, with stable identifiers:
 ///
 /// * `LEVENSHTEIN_1` (CRITICAL): one edit away from a popular package;
 /// * `LEVENSHTEIN_2` (HIGH): two edits away;
@@ -35,10 +35,10 @@ import 'package:inspectra/src/util/levenshtein.dart';
 /// Explicit extensions of a popular name (an affix or a separated suffix)
 /// are classified as such before edit distances are considered.
 ///
-/// Improvements over `dart_audit`: the closest popular package is reported
-/// instead of the first one within reach, names that are popular themselves
-/// are never reported, at most one finding per name is produced, and an
-/// allow list removes known false positives.
+/// The closest popular package is reported rather than the first one within
+/// reach, names that are popular themselves are never reported, at most one
+/// finding per name is produced, and an allow list removes known false
+/// positives.
 final class TyposquatDetector {
   /// Creates a detector protecting the built-in popular packages plus
   /// [extraPopular] and never reporting names in [allow].

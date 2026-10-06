@@ -37,8 +37,8 @@ import 'package:pub_semver/pub_semver.dart';
 ///   version is above fifty, a typical sign of version inflation used to
 ///   win resolution against a private package.
 ///
-/// Unlike `dart_audit`, failures are not silently swallowed: if the public
-/// repository cannot be queried the scan reports the outage.
+/// Failures are not silently swallowed: if the public repository cannot be
+/// queried the scan reports the outage.
 final class ConfusionDetector {
   /// Creates a detector querying the public repository [publicRepository]
   /// with at most [concurrency] requests in flight; [mirrorUrl] is the

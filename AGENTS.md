@@ -96,7 +96,8 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
 - Expected failures are `InspectraException` subtypes; `ExitCode.of` maps them exhaustively:
   usage `64`, input `65`, unavailable `69`. Anything else is an internal error, `70`.
 - Command names, flags, rule ids, JSON field names and exit codes are the consumer contract and
-  change only in a major version. The `dart_audit` compatible names must never change.
+  change only in a major version. The names of the supply-chain commands, their rule ids and
+  JSON fields must never change.
 
 ## Code rules
 

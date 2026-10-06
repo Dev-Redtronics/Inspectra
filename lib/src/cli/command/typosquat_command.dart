@@ -51,7 +51,7 @@ final class TyposquatCommand extends InspectraCommand {
   String get description =>
       'Scan pubspec.yaml for typosquatting and dependency confusion risks.';
 
-  /// HIGH or worse fails the command, as in `dart_audit`.
+  /// HIGH or worse fails the command.
   @override
   Severity get defaultFailOn => Severity.high;
 

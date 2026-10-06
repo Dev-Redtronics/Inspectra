@@ -44,7 +44,7 @@ final class TrustCommand extends InspectraCommand {
   @override
   String get invocation => 'inspectra trust <package> [version] [options]';
 
-  /// Only CRITICAL trust findings fail the command, as in `dart_audit`.
+  /// Only CRITICAL trust findings fail the command.
   @override
   Severity get defaultFailOn => Severity.critical;
 

@@ -81,7 +81,7 @@ final class TrustInfo {
   /// Whether the package has a verified publisher.
   bool get isVerifiedPublisher => publisher != null;
 
-  /// Serialises the assessment with the field names of `dart_audit`.
+  /// Serialises the assessment with its stable field names.
   ///
   /// Returns the JSON object.
   Map<String, Object?> toJson() => <String, Object?>{

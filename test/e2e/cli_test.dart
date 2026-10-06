@@ -126,7 +126,7 @@ dependencies:
   }
 
   group('audit', () {
-    test('reports advisories in the dart_audit JSON layout', () async {
+    test('reports advisories in the stable JSON layout', () async {
       serveAdvisory();
       final TestHarness harness = project(<String, String>{
         'pubspec.lock': lockfile,

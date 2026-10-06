@@ -19,14 +19,14 @@ import 'package:inspectra/src/model/severity.dart';
 
 /// The built-in pattern rules of the source inspector.
 ///
-/// The first fourteen rules keep the identifiers of `dart_audit` so that
-/// existing ignore lists keep working. Compared to `dart_audit`:
+/// The rule identifiers are stable, so that ignore lists keep working.
+/// Notable details:
 ///
-/// * the URL rule checks the exact host instead of a prefix, so
-///   `https://github.com.evil.io` is no longer considered trusted;
-/// * `BASE64_EVAL` and `DATA_EXFIL` really span lines;
+/// * the URL rule checks the exact host, so `https://github.com.evil.io`
+///   is not considered trusted;
+/// * `BASE64_EVAL` and `DATA_EXFIL` span lines;
 /// * `PROCESS_RUN` also covers `Process.runSync`;
-/// * the crypto mining rule no longer fires on the word "monero" in prose;
+/// * the crypto mining rule does not fire on the word "monero" in prose;
 /// * two rules cover shell and PowerShell scripts shipped in packages.
 final class RegexRules {
   /// Prevents instantiation; this type only offers the rule list.

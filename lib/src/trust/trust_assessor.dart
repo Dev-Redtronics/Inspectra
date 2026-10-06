@@ -41,9 +41,9 @@ import 'package:inspectra/src/trust/trust_info.dart';
 /// * `LOW_LIKES`, `LOW_DOWNLOADS`, `LOW_QUALITY_SCORE` (MEDIUM): weak
 ///   community signals.
 ///
-/// Unlike `dart_audit`, the age is derived from the version history and the
-/// publisher from the dedicated endpoint, both of which pub.dev actually
-/// provides, and the requested version rather than the latest is assessed.
+/// The age is derived from the version history and the publisher from the
+/// dedicated endpoint, both of which pub.dev provides, and the requested
+/// version rather than the latest is assessed.
 final class TrustAssessor {
   /// Creates an assessor.
   const TrustAssessor({

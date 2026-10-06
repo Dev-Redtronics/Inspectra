@@ -22,7 +22,7 @@ import 'package:inspectra/src/report/command_report.dart';
 
 /// The report of the `typosquat` command.
 ///
-/// The JSON body keeps the `dart_audit` fields `packages`,
+/// The JSON body has the stable fields `packages`,
 /// `typosquatFindings` and `confusionFindings`.
 final class TyposquatReport implements CommandReport {
   /// Creates a report for the analysed [packages] of [pubspecPath] with the

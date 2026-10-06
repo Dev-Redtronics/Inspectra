@@ -20,8 +20,8 @@ import 'package:inspectra/src/model/severity.dart';
 
 /// Turns inspection findings into a 0–100 risk score and label.
 ///
-/// The weights are those of `dart_audit`, so scores remain comparable. Two
-/// changes stop a single noisy rule from saturating the score: each
+/// The weights are fixed, so scores remain comparable between runs. Two
+/// measures stop a single noisy rule from saturating the score: each
 /// combination of rule and file counts only once, and severities without a
 /// weight count zero.
 final class RiskScorer {

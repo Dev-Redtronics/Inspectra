@@ -33,5 +33,4 @@
     <var name="issues" value="https://github.com/davils-com/Inspectra/issues"/>
     <var name="trivy_docs" value="https://trivy.dev/latest/docs"/>
     <var name="trivy_install" value="https://trivy.dev/latest/getting-started/installation/"/>
-    <var name="kreate" value="https://github.com/davils-com/kreate"/>
 </vars>

@@ -25,7 +25,7 @@ import 'package:inspectra/src/report/output_format.dart';
 /// configuration overrides.
 ///
 /// They are declared on each command rather than globally so that they can
-/// follow the command name, exactly like `dart_audit audit --format json`.
+/// follow the command name, as in `inspectra audit --format json`.
 final class SharedOptions {
   /// Prevents instantiation; this type only offers static helpers.
   const SharedOptions._();

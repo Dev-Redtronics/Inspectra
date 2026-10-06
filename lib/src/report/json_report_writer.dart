@@ -22,8 +22,8 @@ import 'package:inspectra/src/version.dart';
 /// Renders reports as versioned JSON documents.
 ///
 /// The document always starts with `schemaVersion`, `tool`, `generatedAt`
-/// and `command`, followed by the command specific body, which keeps every
-/// field name of the equivalent `dart_audit` output. When the body has no
+/// and `command`, followed by the command specific body, whose field names
+/// are stable. When the body has no
 /// `findings` key, the normalised findings are added under that key.
 final class JsonReportWriter {
   /// Creates a writer.

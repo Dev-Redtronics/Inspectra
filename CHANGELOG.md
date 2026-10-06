@@ -263,8 +263,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Supply-chain security
 
-Every command of `dart_audit` 0.3.1 with the same names, flags, rule ids, JSON fields and the exit
-codes `0`, `1` and `64`:
+The supply-chain commands, with stable names, flags, rule ids, JSON fields and the exit codes `0`,
+`1` and `64`:
 
 - `scan`, the default command: OSV.dev audit, pubspec rules, typosquatting, dependency confusion
   and a Trivy filesystem scan in one report, with `--recursive` for monorepos and pub workspaces.
@@ -276,11 +276,11 @@ codes `0`, `1` and `64`:
 - Proxy, custom CA bundle, `PUB_HOSTED_URL`, OSV mirror, retries with back-off and `Retry-After`,
   response size limits and an OSV advisory cache.
 
-Fixed compared to `dart_audit`: full OSV records with pagination, CVSS v3/v2 scoring and per-range
-fix versions; checksum verified, in-memory package inspection without zip-slip or decompression
-bombs; the archive and pubspec scanners actually run; correct pub.dev trust endpoints for the
-requested version; code point based Unicode scanning; exact URL host matching; far fewer typosquat
-false positives; `add` installs exactly the inspected version and works with Flutter on Windows.
+Full OSV records with pagination, CVSS v3/v2 scoring and per-range fix versions; checksum verified,
+in-memory package inspection without zip-slip or decompression bombs; the archive and pubspec
+scanners; the pub.dev trust endpoints of the requested version; code point based Unicode scanning;
+exact URL host matching; typosquat detection with few false positives; `add` installs exactly the
+inspected version and works with Flutter on Windows.
 
 ### Trivy provisioning
 

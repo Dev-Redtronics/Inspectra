@@ -18,9 +18,9 @@ import 'package:inspectra/src/model/inspectra_exception.dart';
 
 /// The process exit codes of Inspectra, following `sysexits.h`.
 ///
-/// `0`, `1` and `64` are identical to `dart_audit`, so existing pipelines
-/// keep working; the additional codes let a pipeline tell a finding apart
-/// from broken input and from a verification that could not run.
+/// `0` means clean, `1` findings and `64` a usage error; the other codes
+/// let a pipeline tell a finding apart from broken input and from a
+/// verification that could not run.
 enum ExitCode {
   /// No finding reached the failure threshold.
   success(0),

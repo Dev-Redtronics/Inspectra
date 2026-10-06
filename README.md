@@ -5,9 +5,8 @@ CLI and one YAML configuration:
 
 - **Supply-chain security** — OSV.dev vulnerability audit, static inspection of a package's published
   source before you add it, pub.dev trust assessment, typosquatting and dependency confusion
-  detection, safe installation of exactly the audited version, a Git pre-commit hook. Everything
-  [`dart_audit`](https://pub.dev/packages/dart_audit) does, with the same commands, flags, rule ids,
-  JSON fields and exit codes, and without its correctness and security gaps.
+  detection, safe installation of exactly the audited version, a Git pre-commit hook - with stable
+  commands, flags, rule ids, JSON fields and exit codes.
 - **Trivy** — secret, license, vulnerability, misconfiguration and filesystem scans. Inspectra finds
   an installed Trivy or **downloads a pinned, checksum-verified release for Linux, macOS and Windows —
   only when the network is available**. Version, mode and download are configurable.
@@ -17,58 +16,6 @@ CLI and one YAML configuration:
 - **Changelog** — the next release of `CHANGELOG.md` generated from Conventional Commits in the Keep a
   Changelog layout, a suggested semantic version, a CI check that every version is documented, and the
   release notes of a version. Built in, with no extra dependency: it reads the history with `git`.
-
-It is the Dart counterpart of the static analysis, security and API features of
-[Kreate](https://github.com/davils-com/kreate) for Gradle:
-
-| Kreate (Gradle)                | Inspectra (Dart)                                                             |
-|:-------------------------------|:-----------------------------------------------------------------------------|
-| Detekt with `kreateRules`      | `inspectra lint`, `inspectra:lint` builder, `package:inspectra/lints/strict.yaml` |
-| Detekt custom rule sets        | `inspectra style`, custom rules with `package:inspectra/style.dart`           |
-| Formatting rules               | `inspectra format [--fix]`, `inspectra:format` builder                        |
-| `kreateTrivySecretScan`        | `inspectra:secret_scan` builder, `inspectra trivy secret`                     |
-| `kreateTrivyLicenseScan`       | `inspectra:license_scan` builder, `inspectra trivy license`                   |
-| `kreateTrivyVulnerabilityScan` | `inspectra:vulnerability_scan` builder, `inspectra trivy vulnerability`       |
-| `kreateApiDump` / `ApiCheck`   | `dart run build_runner build [--only-check]`, `inspectra api dump\|check`     |
-| Kover threshold gate           | `inspectra coverage`                                                         |
-| —                              | `inspectra scan`, `audit`, `inspect`, `trust`, `typosquat`, `add`, `hook`     |
-| —                              | `inspectra changelog generate\|check\|notes`                                |
-
-## Commands
-
-| Command | What it does |
-|---|---|
-| `inspectra [scan]` | **Default.** OSV.dev audit + pubspec rules + typosquatting + dependency confusion + Trivy filesystem scan, one report (`-r` for monorepos) |
-| `inspectra audit` | Checks every package of `pubspec.lock` against [OSV.dev](https://osv.dev) |
-| `inspectra inspect <pkg> <version>` | Downloads, verifies and statically analyses a package's published source |
-| `inspectra trust <pkg> [version]` | Trust assessment from pub.dev: age, release freshness, publisher, popularity |
-| `inspectra typosquat` | Typosquatting and dependency confusion analysis of `pubspec.yaml` |
-| `inspectra deps [--fix] [-r] [--online]` | Pubspec rules and the dependency policy, offline unless `--online` checks outdated dependencies; `--fix` bounds and restyles constraints, moves dev packages and adds `publish_to: none` |
-| `inspectra graph [-f text\|dot\|mermaid\|json]` | Dependency graph of a pub workspace, grouped by the layers of `workspace_policy` |
-| `inspectra workspace affected --since <rev>` | The workspace packages a change affects, with their dependents, for a CI matrix; `deps -r --changed-since <rev>` checks only those |
-| `inspectra add <pkg> [version]` | Audits a package and adds **exactly** the audited version (`--dev`, `--dry-run`, `--force`) |
-| `inspectra hook [install\|remove\|run]` | Git pre-commit hook: `hook.checks` (audit, typosquat, deps, format, style) on the staged files |
-| `inspectra explain [RULE_ID]` | What a rule reports, why, and how to resolve it - offline; without an id, every rule |
-| `inspectra doctor` | Configuration, SDKs, Git, Trivy, proxy, CA bundle, registry token, network and cache in one check |
-| `inspectra trivy [secret\|license\|vulnerability\|filesystem…]` | The configured Trivy scans, or a `trivy fs` scan; `--install`, `--where` |
-| `inspectra check` | Every enabled package check: format, lint, style, API, API semver, changelog, Trivy scans, dependency and workspace policy, coverage |
-| `inspectra format [--fix]` / `lint [--fix]` | `dart format` / `dart analyze` gates |
-| `inspectra style` | Built-in and custom style rules: license header, one type per file, documentation, no `else`, … (SARIF-capable) |
-| `inspectra api dump\|check` | Record or verify the public API dump |
-| `inspectra api semver [--from v1.2.0]` | Compare the API with the dump at the last release tag, classify each change as breaking or additive, and fail when the `pubspec.yaml` version is too low |
-| `inspectra coverage [--min 80]` | Run the tests with coverage and check the threshold |
-| `inspectra changelog generate [--write]` | The changelog section of the next release from Conventional Commits, with a suggested version (`--from`, `--to`, `--release`, `--date`) |
-| `inspectra changelog check` | Fail when `CHANGELOG.md` is malformed or misses the version of `pubspec.yaml` |
-| `inspectra changelog notes [version]` | Print the section of a release, for example as GitHub release notes |
-| `inspectra config show\|validate\|lint\|schema\|fetch\|init\|migrate\|diff` | Effective configuration with the origin of each value (`--explain`), validation of referenced files and profiles, risky settings, JSON Schema, remote bases for offline use, starting presets, migration of renamed options, comparison of configurations |
-| `inspectra baseline create\|prune` | Record today's findings so that only new ones fail (`--only scan,lint,style,trivy`), or remove the fixed ones |
-| `inspectra report` | Every evaluation at once - lines of code with and without comments, supply chain, dependencies, configuration, format, lint, style, API, semantic versioning, changelog, Trivy, coverage - for example as one self-contained HTML dashboard (`--skip`, `--also junit=…`, `--merge`) |
-
-`-C <path>` before the command works on another package. The supply-chain commands share
-`--format text|json|sarif|markdown|junit|gitlab|sonarqube|checkstyle|html`, `--output`, `--fail-on`,
-`--min-severity`, `--ignore`, `--exit-zero`, `--offline`, `--config`, `--set key=value`, `--[no-]color`, `-q` and `-v`.
-
-## Installation
 
 ```bash
 dart pub global activate inspectra
@@ -91,7 +38,7 @@ Native executables for Linux, macOS and Windows with SHA-256 checksums are attac
 ```bash
 inspectra                                   # full supply-chain scan of the current project
 inspectra scan -f sarif -o inspectra.sarif  # for GitHub code scanning
-inspectra audit --format json               # dart_audit compatible JSON
+inspectra audit --format json               # machine-readable JSON
 inspectra inspect http 1.2.0                # vet a package before adding it
 inspectra add http 1.2.0                    # ... and add exactly that version
 dart run inspectra check                    # every enabled package gate
@@ -192,7 +139,7 @@ ignore:
     expires: 2027-01-31              # optional; afterwards the rule stops matching
 ```
 
-`--ignore <id>` (repeatable) works as in `dart_audit`. Trivy scans additionally have their own
+`--ignore <id>` (repeatable) ignores a rule, advisory id or alias for one run. Trivy scans additionally have their own
 `ignored_vulnerabilities`, `ignored_licenses` and `ignored_packages`.
 
 ### Dependency policy
@@ -246,7 +193,7 @@ skipped in `trivy.mode: auto` and exits with `69` in `required`.
 The supply-chain commands render `--format text|json|sarif|markdown`, the CI formats
 `junit|gitlab|sonarqube|checkstyle` and a self-contained `html` dashboard; progress goes to stderr, so
 `inspectra audit -f json > report.json` always produces valid JSON. JSON documents carry
-`schemaVersion`, `tool` and `generatedAt` and keep the `dart_audit` field names.
+`schemaVersion`, `tool` and `generatedAt`; their field names are stable.
 
 | Code | Meaning |
 |---|---|
