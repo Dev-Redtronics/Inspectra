@@ -102,6 +102,46 @@ void main() {
       );
     });
 
+    test('a key with + adds to the list of the lower layers', () {
+      write(<String, String>{
+        'base.yaml':
+            'dependency_policy:\n  dev_only: [mockito]\n'
+            'coverage:\n  report_on+: [bin]\n'
+            'trivy:\n  filesystem:\n    scanners: [secret]\n',
+        'app/inspectra.yaml':
+            'extends: ../base.yaml\n'
+            'dependency_policy:\n  dev_only+: [build_runner]\n'
+            'trivy:\n  filesystem:\n    scanners+: [license]\n',
+      });
+      final recorder = ConfigRecorder();
+      final InspectraConfig config = load(recorder: recorder);
+      expect(config.dependencyPolicy.devOnly, <String>[
+        'mockito',
+        'build_runner',
+      ]);
+      expect(config.coverage.reportOn, <String>['lib', 'bin']);
+      expect(recorder['dependency_policy.dev_only']?.line, 3);
+      expect(recorder['dependency_policy.dev_only']?.file, isNull);
+      expect(
+        load(cli: <String, String>{'dependency_policy.dev_only': 'lints'})
+            .dependencyPolicy
+            .devOnly,
+        <String>['lints'],
+      );
+      write(<String, String>{
+        'app/inspectra.yaml':
+            'extends: ../base.yaml\n'
+            'dependency_policy:\n  dev_only: [a]\n  dev_only+: [b]\n',
+      });
+      expect(load, fails(<String>['dev_only+', 'not both']));
+      write(<String, String>{
+        'app/inspectra.yaml': 'dependency_policy:\n  dev_only+: b\n',
+      });
+      expect(load, fails(<String>['dependency_policy.dev_only+', 'a list']));
+      write(<String, String>{'app/inspectra.yaml': 'fail_on+: [high]\n'});
+      expect(load, fails(<String>['"fail_on+"', 'unknown option']));
+    });
+
     test('ignore and denied collect the entries of every layer', () {
       write(<String, String>{
         'base.yaml':
@@ -401,6 +441,31 @@ void main() {
       expect(load, fails(<String>['unset (the default)', 'inspectra.yaml']));
     });
 
+    test('collects the severities no ignore may hide from every policy', () {
+      acmePackage('policy:\n  forbid_ignore_of: [CRITICAL]\n');
+      write(<String, String>{
+        'app/inspectra.yaml':
+            'extends: package:acme/inspectra.yaml\n'
+            'policy:\n  forbid_ignore_of: [high]\n',
+      });
+      expect(load().forbiddenIgnoreSeverities, <Severity>{
+        Severity.critical,
+        Severity.high,
+      });
+    });
+
+    test('a value from an environment reference is bound like any other', () {
+      project('fail_on: \${env:FAIL_ON}\n');
+      expect(
+        () => load(environment: <String, String>{'FAIL_ON': 'critical'}),
+        fails(<String>['"critical"', 'is below the minimum "high"']),
+      );
+      expect(
+        load(environment: <String, String>{'FAIL_ON': 'low'}).failOn,
+        Severity.low,
+      );
+    });
+
     test('a policy of the project binds the environment and command line', () {
       write(<String, String>{
         'app/inspectra.yaml':
@@ -421,13 +486,104 @@ void main() {
         'policy:\n  minimum:\n    fail_on: often\n': 'no value of fail_on',
         'policy:\n  minimum:\n    trivy.version: 1\n': 'lock it instead',
         'policy:\n  forbid: [x]\n': 'policy.forbid',
-        'policy: [x]\n': 'expected a mapping with locked and minimum',
+        'policy: [x]\n': 'expected a mapping with locked, minimum and',
+        'policy:\n  forbid_ignore_of: critical\n':
+            'expected a list of severities',
+        'policy:\n  forbid_ignore_of: [fatal]\n': '"fatal" is no severity',
         'policy:\n  locked: x\n': 'expected a list of dotted option names',
         'policy:\n  minimum: [x]\n': 'expected a mapping from dotted option',
       };
       for (final MapEntry<String, String> entry in cases.entries) {
         write(<String, String>{'app/inspectra.yaml': entry.key});
         expect(load, fails(<String>[entry.value]), reason: entry.key);
+      }
+    });
+  });
+
+  group('profiles', () {
+    test('a selected profile wins over the files but not the command line', () {
+      write(<String, String>{
+        'base.yaml':
+            'fail_on: high\n'
+            'profiles:\n  ci:\n    coverage:\n      min_line_coverage: 60\n',
+        'app/inspectra.yaml':
+            'extends: ../base.yaml\n'
+            'coverage:\n  enabled: true\n  min_line_coverage: 50\n'
+            'profiles:\n'
+            '  ci:\n    fail_on: low\n    network:\n      offline: true\n'
+            '  local:\n    fail_on: critical\n',
+      });
+      expect(load().failOn, Severity.high);
+      expect(load().coverage.minLineCoverage, 50);
+      final recorder = ConfigRecorder();
+      final InspectraConfig ci = load(
+        cli: <String, String>{'profile': 'ci'},
+        recorder: recorder,
+      );
+      expect(ci.failOn, Severity.low);
+      expect(ci.network.offline, isTrue);
+      expect(ci.coverage.minLineCoverage, 60);
+      expect(ci.coverage.enabled, isTrue);
+      expect(recorder['fail_on']?.file, 'profile ci of inspectra.yaml');
+      expect(recorder['fail_on']?.line, 7);
+      expect(recorder['profile']?.value, 'ci');
+      expect(recorder['profile']?.origin, ConfigOrigin.commandLine);
+      expect(
+        load(environment: <String, String>{'INSPECTRA_PROFILE': 'local'})
+            .failOn,
+        Severity.critical,
+      );
+      expect(
+        load(cli: <String, String>{'profile': 'ci', 'fail_on': 'medium'})
+            .failOn,
+        Severity.medium,
+      );
+    });
+
+    test('a policy binds the profiles of every layer', () {
+      acmePackage(
+        'policy:\n  locked: [trivy.secret.enabled]\n'
+        'trivy:\n  secret:\n    enabled: true\n',
+      );
+      write(<String, String>{
+        'app/inspectra.yaml':
+            'extends: package:acme/inspectra.yaml\n'
+            'profiles:\n  fast:\n    trivy:\n      secret:\n'
+            '        enabled: false\n',
+      });
+      expect(load().trivy.secret.enabled, isTrue);
+      expect(
+        () => load(cli: <String, String>{'profile': 'fast'}),
+        fails(<String>[
+          '"trivy.secret.enabled"',
+          'got false from profile fast of inspectra.yaml:6',
+        ]),
+      );
+    });
+
+    test('rejects unknown and malformed profiles', () {
+      write(<String, String>{
+        'app/inspectra.yaml': 'profiles:\n  ci:\n    fail_on: low\n',
+      });
+      expect(
+        () => load(cli: <String, String>{'profile': 'cl'}),
+        fails(<String>['unknown profile "cl"', 'Did you mean "ci"?']),
+      );
+      final cases = <String, String>{
+        'fail_on: low\n': 'no configuration defines the profile "ci"',
+        'profiles: [ci]\n': 'expected a mapping from profile names',
+        'profiles:\n  ci: [x]\n': '"profiles.ci": expected a mapping',
+        'profiles:\n  ci:\n    extends: ../base.yaml\n':
+            'a profile cannot set extends',
+        'profiles:\n  ci:\n    fail_onn: low\n': 'Did you mean "fail_on"?',
+      };
+      for (final MapEntry<String, String> entry in cases.entries) {
+        write(<String, String>{'app/inspectra.yaml': entry.key});
+        expect(
+          () => load(cli: <String, String>{'profile': 'ci'}),
+          fails(<String>[entry.value]),
+          reason: entry.key,
+        );
       }
     });
   });

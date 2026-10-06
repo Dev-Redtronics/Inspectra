@@ -19,11 +19,15 @@ import 'package:inspectra/src/model/finding.dart';
 /// The outcome of checking the pubspecs of a project with `deps`.
 final class DepsResult {
   /// Creates the result of checking [pubspecs], which found [findings]
-  /// after the [fixes] were applied.
+  /// after the [fixes] were applied; [outdatedChecked] tells whether the
+  /// rules that need the registry ran, `null` when none is configured, and
+  /// [libyears] what the dependencies add up to when they did.
   const DepsResult({
     required this.pubspecs,
     required this.findings,
     this.fixes = const <String>[],
+    this.outdatedChecked,
+    this.libyears,
   });
 
   /// The checked pubspecs, relative to the working directory.
@@ -34,4 +38,24 @@ final class DepsResult {
 
   /// One description per applied fix, prefixed with its pubspec.
   final List<String> fixes;
+
+  /// Whether `max_major_behind` and `max_libyear` were checked against the
+  /// registry, or `null` when neither is configured.
+  final bool? outdatedChecked;
+
+  /// The libyears of the dependencies, added up over every checked
+  /// package, or `null` when they were not computed.
+  final double? libyears;
+
+  /// Copies this result with the [extra] findings added, such as those of
+  /// the workspace policy.
+  ///
+  /// Returns the copy.
+  DepsResult withFindings(List<Finding> extra) => DepsResult(
+    pubspecs: pubspecs,
+    findings: <Finding>[...findings, ...extra],
+    fixes: fixes,
+    outdatedChecked: outdatedChecked,
+    libyears: libyears,
+  );
 }

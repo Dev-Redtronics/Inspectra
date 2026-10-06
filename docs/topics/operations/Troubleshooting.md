@@ -8,6 +8,10 @@
 
 <card-summary>Configuration errors, Trivy failures, stale builds, missing findings and coverage puzzles.</card-summary>
 
+Start with `dart run %package% doctor`: it checks the configuration, the SDKs, Git, Trivy, the proxy, the CA bundle,
+the registry token, the network and the cache at once, and says what to do. `dart run %package% explain <RULE_ID>`
+explains any finding. See [Doctor](Doctor.md) and the [Rule reference](Rule-Reference.md).
+
 ## Configuration
 
 ### Invalid Inspectra configuration at "…": unknown option {collapsible="true"}

@@ -17,8 +17,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import '../support/fake_git.dart';
 import '../support/test_harness.dart';
 
 /// Runs `inspectra config` in-process.
@@ -172,6 +174,178 @@ void main() {
       expect(err, contains('network.ca_certificates: the file certs/ca.pem'));
       expect(err, contains('trivy.secret.config: the file secrets.yaml'));
       expect(err, contains('baseline.file: The baseline'));
+    });
+
+    test('checks every profile, not only the selected one', () async {
+      final TestHarness harness = project(<String, String>{
+        'inspectra.yaml':
+            'profiles:\n'
+            '  ci:\n    fail_on: low\n'
+            '  local:\n    fail_on: often\n',
+      });
+      expect(await harness.run(<String>['config', 'validate']), 65);
+      expect(harness.err, contains('1 problem(s)'));
+      expect(harness.err, contains('profile local:'));
+      expect(harness.err, contains('"profiles.local.fail_on"'));
+      final TestHarness valid = project(<String, String>{
+        'inspectra.yaml': 'profiles:\n  ci:\n    fail_on: low\n',
+      });
+      expect(
+        await valid.run(<String>['config', 'validate', '-f', 'json']),
+        0,
+        reason: valid.err,
+      );
+      final report = jsonDecode(valid.out) as Map<String, Object?>;
+      expect(report['profiles'], <String>['ci']);
+    });
+  });
+
+  group('init', () {
+    test('writes the detected preset and refuses to replace a file', () async {
+      final TestHarness harness = project(<String, String>{
+        'pubspec.yaml':
+            'name: demo\n'
+            'environment:\n  sdk: ^3.6.0\n  flutter: ">=3.27.0"\n',
+        'CHANGELOG.md': '# Changelog\n',
+      });
+      expect(
+        await harness.run(<String>['config', 'init']),
+        0,
+        reason: harness.err,
+      );
+      expect(harness.err, contains('with the library preset'));
+      final String written = File(
+        p.join(harness.workingDirectory, 'inspectra.yaml'),
+      ).readAsStringSync();
+      expect(written, contains('semver: true'));
+      expect(written, contains('runner: flutter'));
+      expect(await harness.run(<String>['config', 'validate']), 0);
+      expect(await harness.run(<String>['config', 'init']), 64);
+      expect(harness.err, contains('use --force'));
+      expect(
+        await harness.run(<String>[
+          'config',
+          'init',
+          '--force',
+          '--preset',
+          'app',
+        ]),
+        0,
+      );
+    });
+
+    test('prints the preset and warns about a pubspec section', () async {
+      final TestHarness harness = project(<String, String>{
+        'pubspec.yaml':
+            'name: demo\npublish_to: none\ninspectra:\n  fail_on: low\n',
+      });
+      expect(
+        await harness.run(<String>['config', 'init', '--stdout']),
+        0,
+        reason: harness.err,
+      );
+      expect(harness.out, contains('require_publish_to: true'));
+      expect(
+        File(p.join(harness.workingDirectory, 'inspectra.yaml')).existsSync(),
+        isFalse,
+      );
+      expect(await harness.run(<String>['config', 'init']), 0);
+      expect(harness.err, contains('inspectra.yaml now replaces'));
+      final TestHarness broken = project(<String, String>{
+        'pubspec.yaml': 'name: [demo\n',
+      });
+      expect(await broken.run(<String>['config', 'init']), 65);
+    });
+  });
+
+  group('migrate', () {
+    test('reports a file without old names and needs no file', () async {
+      final TestHarness harness = project(<String, String>{
+        'inspectra.yaml': 'fail_on: high\n',
+      });
+      expect(
+        await harness.run(<String>['config', 'migrate']),
+        0,
+        reason: harness.err,
+      );
+      expect(harness.out, contains('inspectra.yaml uses no old option names.'));
+      final TestHarness section = project(<String, String>{
+        'pubspec.yaml': 'name: demo\ninspectra:\n  fail_on: high\n',
+      });
+      expect(await section.run(<String>['config', 'migrate', '-f', 'json']), 0);
+      final report = jsonDecode(section.out) as Map<String, Object?>;
+      expect(report['file'], endsWith('pubspec.yaml'));
+      expect(report['renamed'], isEmpty);
+      final TestHarness empty = project(const <String, String>{});
+      expect(await empty.run(<String>['config', 'migrate']), 0);
+      expect(empty.out, contains('nothing to migrate'));
+      final TestHarness broken = project(<String, String>{
+        'inspectra.yaml': 'fail_on: [\n',
+      });
+      expect(await broken.run(<String>['config', 'migrate']), 65);
+    });
+  });
+
+  group('diff', () {
+    test('compares files with the effective configuration', () async {
+      final TestHarness harness = project(<String, String>{
+        'inspectra.yaml': 'fail_on: low\n',
+        'strict.yaml': 'fail_on: high\ncoverage:\n  min_line_coverage: 90\n',
+      });
+      expect(
+        await harness.run(<String>['config', 'diff', 'strict.yaml']),
+        0,
+        reason: harness.err,
+      );
+      expect(
+        harness.out,
+        contains('strict.yaml → the effective configuration'),
+      );
+      expect(harness.out, contains('fail_on: "high" → "low"'));
+      expect(
+        harness.out,
+        contains('coverage.min_line_coverage: 90.0 → unset (weaker)'),
+      );
+      final TestHarness json = project(<String, String>{
+        'inspectra.yaml': 'fail_on: low\n',
+        'strict.yaml': 'fail_on: high\ncoverage:\n  min_line_coverage: 90\n',
+      });
+      expect(
+        await json.run(<String>[
+          'config',
+          'diff',
+          'strict.yaml',
+          'pubspec.yaml',
+          '--fail-on-weaker',
+          '-f',
+          'json',
+        ]),
+        1,
+      );
+      final report = jsonDecode(json.out) as Map<String, Object?>;
+      expect(report['to'], 'pubspec.yaml');
+      expect(report['changes'], hasLength(2));
+      expect(await harness.run(<String>['config', 'diff']), 64);
+      expect(await harness.run(<String>['config', 'diff', 'missing.yaml']), 65);
+    });
+
+    test('reads a configuration at a Git revision', () async {
+      final git = FakeGit(
+        files: const <String, String>{
+          'main:inspectra.yaml': 'fail_on: critical\n',
+        },
+      );
+      final harness = TestHarness.withFiles(<String, String>{
+        'pubspec.yaml': 'name: demo\n',
+        'inspectra.yaml': 'fail_on: high\n',
+      }, processRunner: git.runner);
+      harnesses.add(harness);
+      expect(
+        await harness.run(<String>['config', 'diff', 'git:main']),
+        0,
+        reason: harness.err,
+      );
+      expect(harness.out, contains('fail_on: "critical" → "high"'));
     });
   });
 

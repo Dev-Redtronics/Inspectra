@@ -36,6 +36,7 @@ final class ConfigEntry {
     this.options,
     this.minimum,
     this.maximum,
+    this.template,
   });
 
   /// The dotted path of the option, such as `trivy.version`.
@@ -74,12 +75,23 @@ final class ConfigEntry {
   /// The largest allowed number, if any.
   final num? maximum;
 
-  /// Serializes the entry for the JSON report of `config show`.
+  /// The value as written in the file when it refers to environment
+  /// variables, such as `${env:PROXY}`, or `null` otherwise; reports show
+  /// it instead of the [value], which may hold a secret.
+  final Object? template;
+
+  /// The value to show to people: the [template] when there is one,
+  /// otherwise the [value].
+  Object? get shown => template ?? value;
+
+  /// Serializes the entry for the JSON report of `config show`, with the
+  /// [template] instead of a value it resolves to.
   ///
   /// Returns the JSON object.
   Map<String, Object?> toJson() => <String, Object?>{
     'key': key,
-    'value': value,
+    'value': shown,
+    if (template != null) 'interpolated': true,
     'default': defaultValue,
     'origin': origin.id,
     'variable': ?variable,

@@ -16,17 +16,21 @@
 
 import 'package:inspectra/src/config/config_layer.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
+import 'package:inspectra/src/model/severity.dart';
 import 'package:yaml/yaml.dart';
 
 /// The `policy:` section of a configuration file: options that the files
 /// extending it, `INSPECTRA_*` variables and the command line must not
-/// change, or may only make stricter.
+/// change, or may only make stricter, and the severities no ignore rule may
+/// hide.
 final class ConfigPolicy {
-  /// Creates the policy with the [locked] options and the [minimum] value
-  /// of each option that may only be tightened.
+  /// Creates the policy with the [locked] options, the [minimum] value of
+  /// each option that may only be tightened and the severities of findings
+  /// that no ignore rule may suppress, [forbidIgnoreOf].
   const ConfigPolicy({
     this.locked = const <String>[],
     this.minimum = const <String, Object?>{},
+    this.forbidIgnoreOf = const <Severity>[],
   });
 
   /// Reads the policy of [layer].
@@ -45,15 +49,15 @@ final class ConfigPolicy {
     if (raw is! Map) {
       throw InspectraConfigException(
         path,
-        'expected a mapping with locked and minimum.',
+        'expected a mapping with locked, minimum and forbid_ignore_of.',
         file: file,
       );
     }
     for (final Object? key in raw.keys) {
-      if (key != 'locked' && key != 'minimum') {
+      if (!_keys.contains(key)) {
         throw InspectraConfigException(
           '$path.$key',
-          'unknown option. Known options here: locked, minimum.',
+          'unknown option. Known options here: ${_keys.join(', ')}.',
           file: file,
         );
       }
@@ -78,6 +82,11 @@ final class ConfigPolicy {
       );
     }
     return ConfigPolicy(
+      forbidIgnoreOf: _severities(
+        _plain(raw['forbid_ignore_of']),
+        '$path.forbid_ignore_of',
+        file,
+      ),
       locked: <String>[
         if (locked is List)
           for (final Object? key in locked) '${_plain(key)}',
@@ -97,12 +106,60 @@ final class ConfigPolicy {
   /// The weakest allowed value of each option that may only be tightened.
   final Map<String, Object?> minimum;
 
+  /// The severities of findings that neither an ignore rule, an `--ignore`
+  /// flag nor the baseline may suppress.
+  final List<Severity> forbidIgnoreOf;
+
   /// Whether the policy restricts nothing.
-  bool get isEmpty => locked.isEmpty && minimum.isEmpty;
+  bool get isEmpty =>
+      locked.isEmpty && minimum.isEmpty && forbidIgnoreOf.isEmpty;
+
+  /// The keys a policy may have.
+  static const _keys = <String>['forbid_ignore_of', 'locked', 'minimum'];
 
   /// Returns the dotted path of [key] in [layer], for error messages.
   static String pathIn(ConfigLayer layer, String key) =>
       layer.yamlPath.isEmpty ? key : '${layer.yamlPath}.$key';
+
+  /// Reads the severity names of [value], the list at [path] of [file],
+  /// in any case.
+  ///
+  /// Returns the severities, none when [value] is `null`.
+  ///
+  /// Throws an [InspectraConfigException] when [value] is no list of
+  /// severity names.
+  static List<Severity> _severities(Object? value, String path, String? file) {
+    if (value == null) {
+      return const <Severity>[];
+    }
+    final names = <String>[
+      for (final severity in Severity.values) severity.name,
+    ];
+    if (value is! List) {
+      throw InspectraConfigException(
+        path,
+        'expected a list of severities: ${names.join(', ')}.',
+        file: file,
+      );
+    }
+    final severities = <Severity>[];
+    for (final Object? item in value) {
+      final String name = '${_plain(item)}'.toLowerCase();
+      final Iterable<Severity> matches = Severity.values.where(
+        (severity) => severity.name == name,
+      );
+      if (matches.isEmpty) {
+        throw InspectraConfigException(
+          path,
+          '"${_plain(item)}" is no severity; expected one of '
+          '${names.join(', ')}.',
+          file: file,
+        );
+      }
+      severities.add(matches.first);
+    }
+    return severities;
+  }
 
   /// Returns [value] without its YAML wrapper.
   static Object? _plain(Object? value) =>

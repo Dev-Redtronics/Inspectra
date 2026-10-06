@@ -131,7 +131,7 @@ void _writeEntry(
   required String? source,
 }) {
   final String comment = explain ? describeOrigin(entry, source: source) : '';
-  final Object? value = entry.value;
+  final Object? value = entry.shown;
   if (value == null) {
     lines.add(_withComment('$indent# $key:', comment));
     return;

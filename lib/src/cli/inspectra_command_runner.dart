@@ -25,7 +25,10 @@ import 'package:inspectra/src/cli/command/check_command.dart';
 import 'package:inspectra/src/cli/command/config_command.dart';
 import 'package:inspectra/src/cli/command/coverage_command.dart';
 import 'package:inspectra/src/cli/command/deps_command.dart';
+import 'package:inspectra/src/cli/command/doctor_command.dart';
+import 'package:inspectra/src/cli/command/explain_command.dart';
 import 'package:inspectra/src/cli/command/format_command.dart';
+import 'package:inspectra/src/cli/command/graph_command.dart';
 import 'package:inspectra/src/cli/command/hook_command.dart';
 import 'package:inspectra/src/cli/command/inspect_command.dart';
 import 'package:inspectra/src/cli/command/lint_command.dart';
@@ -35,6 +38,7 @@ import 'package:inspectra/src/cli/command/style_command.dart';
 import 'package:inspectra/src/cli/command/trivy_command.dart';
 import 'package:inspectra/src/cli/command/trust_command.dart';
 import 'package:inspectra/src/cli/command/typosquat_command.dart';
+import 'package:inspectra/src/cli/command/workspace_command.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/cli/exit_code.dart';
 import 'package:inspectra/src/version.dart';
@@ -48,7 +52,9 @@ import 'package:inspectra/src/version.dart';
 /// `changelog`
 /// generates, checks and prints the changelog; `baseline` records the
 /// accepted findings so that only new ones fail; `config` shows, validates
-/// and lints the configuration. The global `--directory`
+/// and lints the configuration; `graph` and `workspace` show the packages
+/// of a pub workspace and the ones a change affects. The global
+/// `--directory`
 /// option selects the package to work on. Usage errors exit with `64`;
 /// unexpected internal errors are caught, reported and exit with `70`
 /// instead of crashing with a stack trace (set `INSPECTRA_DEBUG=1` to print
@@ -91,6 +97,10 @@ final class InspectraCommandRunner extends CommandRunner<int> {
     addCommand(BaselineCommand(context));
     addCommand(ConfigCommand(context));
     addCommand(ReportCommand(context));
+    addCommand(GraphCommand(context));
+    addCommand(WorkspaceCommand(context));
+    addCommand(ExplainCommand(context));
+    addCommand(DoctorCommand(context));
   }
 
   /// The outside world.

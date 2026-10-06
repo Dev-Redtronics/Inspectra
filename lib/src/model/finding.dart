@@ -203,6 +203,25 @@ final class Finding {
     };
   }
 
+  /// Copies this finding with the [extra] attributes added to its own.
+  ///
+  /// Returns the copy.
+  Finding withAttributes(Map<String, Object?> extra) => Finding(
+    ruleId: ruleId,
+    source: source,
+    severity: severity,
+    title: title,
+    description: description,
+    location: location,
+    packageName: packageName,
+    packageVersion: packageVersion,
+    fixedVersion: fixedVersion,
+    aliases: aliases,
+    url: url,
+    snippet: snippet,
+    attributes: <String, Object?>{...attributes, ...extra},
+  );
+
   /// Returns [value] when it is a text, otherwise `null`.
   static String? _text(Object? value) => value is String ? value : null;
 }

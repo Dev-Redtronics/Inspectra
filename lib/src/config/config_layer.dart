@@ -16,8 +16,8 @@
 
 import 'package:inspectra/src/config/config_layer_kind.dart';
 
-/// One file of a layered configuration: the project's own configuration or
-/// one of the bases it extends.
+/// One file of a layered configuration: the project's own configuration,
+/// one of the bases it extends, or a selected profile of either.
 ///
 /// Layers are ordered from the lowest to the highest precedence; a value of
 /// a higher layer replaces the value of a lower one.
@@ -59,7 +59,8 @@ final class ConfigLayer {
   /// [label].
   final String? location;
 
-  /// Whether the layer is a base rather than the project's configuration.
+  /// Whether the layer is a base or a profile rather than the project's own
+  /// configuration; its values name it as their file.
   bool get isBase => kind != ConfigLayerKind.project;
 
   /// Serializes the layer for the JSON report of `config show`.

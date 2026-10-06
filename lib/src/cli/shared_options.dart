@@ -16,6 +16,7 @@
 
 import 'package:args/args.dart';
 
+import 'package:inspectra/src/config/config_profiles.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/model/severity.dart';
 import 'package:inspectra/src/report/output_format.dart';
@@ -41,6 +42,13 @@ final class SharedOptions {
         'config',
         help: 'Configuration file (default: inspectra.yaml if present).',
         valueHelp: 'path',
+      )
+      ..addOption(
+        'profile',
+        help:
+            'Apply the configuration profile of this name, e.g. ci '
+            '(default: INSPECTRA_PROFILE).',
+        valueHelp: 'name',
       )
       ..addMultiOption(
         'set',
@@ -156,6 +164,7 @@ final class SharedOptions {
       overrides[key] = assignment.substring(separator + 1).trim();
     }
     final mapping = <String, String>{
+      'profile': profileOption,
       'fail-on': 'fail_on',
       'min-severity': 'min_severity',
       'trivy-mode': 'trivy.mode',

@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/allowed_override.dart';
+import 'package:inspectra/src/config/constraint_style.dart';
 import 'package:inspectra/src/config/denied_package.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
+import 'package:inspectra/src/config/libyear_scope.dart';
+import 'package:inspectra/src/config/lockfile_policy.dart';
 import 'package:inspectra/src/config/yaml_reader.dart';
 import 'package:pub_semver/pub_semver.dart';
 
@@ -43,6 +47,13 @@ final class DependencyPolicyConfig {
     this.lockfileChecksums = false,
     this.checkImports = false,
     this.unusedAllow = defaultUnusedAllow,
+    this.constraintStyle = ConstraintStyle.any,
+    this.overridesRequireReason = false,
+    this.allowedOverrides = const <AllowedOverride>[],
+    this.lockfilePolicy = LockfilePolicy.any,
+    this.maxMajorBehind,
+    this.maxLibyear,
+    this.libyearScope = LibyearScope.direct,
   });
 
   /// Reads the settings from the `dependency_policy:` section in [yaml].
@@ -52,6 +63,7 @@ final class DependencyPolicyConfig {
   /// Throws an [InspectraConfigException] for unknown keys or invalid
   /// values, such as a minimum SDK that is no version.
   factory DependencyPolicyConfig.fromYaml(YamlReader yaml) {
+    final YamlReader overrides = yaml.section('overrides');
     final config = DependencyPolicyConfig(
       enabled: yaml.boolean('enabled', fallback: false),
       denied: DeniedPackage.listFromYaml(yaml),
@@ -88,7 +100,38 @@ final class DependencyPolicyConfig {
       lockfileChecksums: yaml.boolean('lockfile_checksums', fallback: false),
       checkImports: yaml.boolean('check_imports', fallback: false),
       unusedAllow: yaml.strings('unused_allow', fallback: defaultUnusedAllow),
+      constraintStyle:
+          yaml.choice<ConstraintStyle?>(
+            'constraint_style',
+            <String, ConstraintStyle?>{
+              for (final style in ConstraintStyle.values) style.id: style,
+            },
+            fallback: ConstraintStyle.any,
+          ) ??
+          ConstraintStyle.any,
+      overridesRequireReason: overrides.boolean(
+        'require_reason',
+        fallback: false,
+      ),
+      allowedOverrides: AllowedOverride.listFromYaml(overrides),
+      lockfilePolicy:
+          yaml.choice<LockfilePolicy?>(
+            'lockfile_policy',
+            <String, LockfilePolicy?>{
+              for (final policy in LockfilePolicy.values) policy.id: policy,
+            },
+            fallback: LockfilePolicy.any,
+          ) ??
+          LockfilePolicy.any,
+      maxMajorBehind: yaml.optionalInt('max_major_behind', min: 0, max: 100),
+      maxLibyear: yaml.optionalNumber('max_libyear', min: 0, max: 1000),
+      libyearScope:
+          yaml.choice<LibyearScope?>('libyear_scope', <String, LibyearScope?>{
+            for (final scope in LibyearScope.values) scope.id: scope,
+          }, fallback: LibyearScope.direct) ??
+          LibyearScope.direct,
     );
+    overrides.ensureFullyRead();
     yaml.ensureFullyRead();
     return config;
   }
@@ -157,6 +200,33 @@ final class DependencyPolicyConfig {
 
   /// Packages never reported as unused.
   final List<String> unusedAllow;
+
+  /// How hosted constraints must be written.
+  final ConstraintStyle constraintStyle;
+
+  /// Whether every entry of `dependency_overrides` needs a justification
+  /// in [allowedOverrides].
+  final bool overridesRequireReason;
+
+  /// The justified dependency overrides, collected from every layer.
+  final List<AllowedOverride> allowedOverrides;
+
+  /// Whether `pubspec.lock` must be committed.
+  final LockfilePolicy lockfilePolicy;
+
+  /// The most breaking releases a direct dependency may be behind its
+  /// latest version, or `null` for no limit; checking it needs the network.
+  final int? maxMajorBehind;
+
+  /// The most libyears the dependencies may add up to, or `null` for no
+  /// limit; checking it needs the network.
+  final double? maxLibyear;
+
+  /// Which packages count towards [maxLibyear].
+  final LibyearScope libyearScope;
+
+  /// Whether a rule that needs the package registry is configured.
+  bool get hasOutdatedRules => maxMajorBehind != null || maxLibyear != null;
 
   /// Reads the version at [key] of [yaml].
   ///

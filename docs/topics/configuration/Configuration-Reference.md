@@ -496,31 +496,37 @@ Changelog generation and validation. See [Changelog](Changelog-Overview.md).
 
 Details: [Changelog configuration](Changelog-Configuration.md).
 
-## extends and policy {id="extends"}
+## extends, profiles and policy {id="extends"}
 
-`extends` names the configurations this one builds on, and `policy` locks options or sets minimum values for the files
-that build on it. See [Inheritance and central policies](Configuration-Inheritance.md).
+`extends` names the configurations this one builds on, `profiles` holds named partial configurations that `--profile`
+applies, and `policy` locks options, sets minimum values and forbids ignoring severities for the files that build on it.
+See [Inheritance and central policies](Configuration-Inheritance.md).
 
 ```yaml
 extends:
   - package:acme_policy/inspectra.yaml
   - url: https://policy.acme.corp/inspectra.yaml
     sha256: 9f2c6e0d…
+profiles:
+  ci:
+    fail_on: low
 policy:
   locked: [trivy.secret.enabled]
   minimum:
     coverage.min_line_coverage: 70
+  forbid_ignore_of: [critical]
 ```
 
-## Lists replace, they do not merge
+## Lists replace, unless the key ends with +
 
-Every list option replaces its default when you set it. To add a glob to the secret scan, repeat the defaults:
+Every list option replaces its default when you set it. To add to the default, or to the list of the bases, write the
+key with a `+`:
 
 ```yaml
 inspectra:
   trivy:
     secret:
-      include: ['**.dart', '**.yaml', '**.yml', '**.json', '**.env', '**.properties', '**.toml']
+      include+: ['**.ini']             # the default globs plus **.ini
 ```
 
 The mappings with user defined keys, `changelog.types` and `style.rules`, are the exception: the keys you list

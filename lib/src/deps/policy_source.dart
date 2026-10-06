@@ -31,7 +31,8 @@ final class PolicySource {
   /// [pubspec] and its [locator]; [lockfile] is the `pubspec.lock` that
   /// resolves it, located by [lockLocator], and [ownsLockfile] tells
   /// whether the lockfile lies next to the pubspec rather than at a
-  /// workspace root.
+  /// workspace root; [lockfileTracked] tells whether Git tracks the
+  /// package's own `pubspec.lock`, `null` when that is unknown.
   PolicySource({
     required this.pubspec,
     required this.locator,
@@ -39,6 +40,7 @@ final class PolicySource {
     this.lockfile,
     PubspecLocator? lockLocator,
     this.ownsLockfile = false,
+    this.lockfileTracked,
   }) : lockLocator =
            lockLocator ?? PubspecLocator.parse('', lockfile?.path ?? '');
 
@@ -47,7 +49,9 @@ final class PolicySource {
   /// [workingDirectory].
   ///
   /// The lockfile is the `pubspec.lock` next to the pubspec, or for a
-  /// member of a pub workspace the one of the workspace root.
+  /// member of a pub workspace the one of the workspace root. With the
+  /// absolute paths of the files Git tracks, [trackedFiles], the source
+  /// knows whether the package's own lockfile is committed.
   ///
   /// Returns the source.
   ///
@@ -57,9 +61,13 @@ final class PolicySource {
     required String content,
     required Pubspec pubspec,
     required String workingDirectory,
+    Set<String>? trackedFiles,
   }) {
     final String packageRoot = p.dirname(pubspecPath);
     final local = File(p.join(packageRoot, 'pubspec.lock'));
+    final bool? tracked = trackedFiles?.contains(
+      p.normalize(p.absolute(local.path)),
+    );
     final File? lock = local.existsSync()
         ? local
         : pubspec.isWorkspaceMember
@@ -74,6 +82,7 @@ final class PolicySource {
         pubspec: pubspec,
         locator: locator,
         packageRoot: packageRoot,
+        lockfileTracked: tracked,
       );
     }
     final String lockContent = lock.readAsStringSync();
@@ -85,6 +94,7 @@ final class PolicySource {
       lockfile: const LockfileParser().parse(lockContent, path: lockDisplay),
       lockLocator: PubspecLocator.parse(lockContent, lockDisplay),
       ownsLockfile: p.equals(p.dirname(lock.path), packageRoot),
+      lockfileTracked: tracked,
     );
   }
 
@@ -106,4 +116,8 @@ final class PolicySource {
   /// Whether [lockfile] belongs to this package rather than to the
   /// workspace it is a member of.
   final bool ownsLockfile;
+
+  /// Whether Git tracks the package's own `pubspec.lock`, or `null` when
+  /// that is unknown, for example outside of a Git repository.
+  final bool? lockfileTracked;
 }

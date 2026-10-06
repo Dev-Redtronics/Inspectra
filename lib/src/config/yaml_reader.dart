@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/config_deprecation.dart';
 import 'package:inspectra/src/config/config_entry.dart';
+import 'package:inspectra/src/config/config_interpolation.dart';
 import 'package:inspectra/src/config/config_kind.dart';
 import 'package:inspectra/src/config/config_layer.dart';
 import 'package:inspectra/src/config/config_origin.dart';
@@ -22,6 +24,7 @@ import 'package:inspectra/src/config/config_override.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/config_recorder.dart';
 import 'package:inspectra/src/config/config_suggestion.dart';
+import 'package:inspectra/src/config/deprecated_option.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
@@ -57,6 +60,7 @@ final class YamlReader {
     ConfigOverrides? overrides,
     String? keyPath,
     ConfigRecorder? recorder,
+    List<ConfigDeprecation> deprecations = configDeprecations,
   }) : this._(
          <(ConfigLayer?, Map<Object?, Object?>, YamlMap?, String)>[
            (
@@ -69,6 +73,8 @@ final class YamlReader {
          keyPath: keyPath ?? path,
          overrides: overrides ?? ConfigOverrides.none(),
          recorder: recorder,
+         deprecations: deprecations,
+         deprecatedOptions: <DeprecatedOption>[],
        );
 
   /// Wraps the root mappings of [layers], ordered from the lowest to the
@@ -80,6 +86,7 @@ final class YamlReader {
     List<ConfigLayer> layers, {
     ConfigOverrides? overrides,
     ConfigRecorder? recorder,
+    List<ConfigDeprecation> deprecations = configDeprecations,
   }) => YamlReader._(
     <(ConfigLayer?, Map<Object?, Object?>, YamlMap?, String)>[
       for (final ConfigLayer layer in layers)
@@ -93,15 +100,30 @@ final class YamlReader {
     keyPath: '',
     overrides: overrides ?? ConfigOverrides.none(),
     recorder: recorder,
+    deprecations: deprecations,
+    deprecatedOptions: <DeprecatedOption>[],
   );
 
-  /// Wraps the mappings of [_views], from the lowest to the highest layer.
+  /// Wraps the mappings of [views], from the lowest to the highest layer,
+  /// with the old names of the [deprecations] of this section read under
+  /// their new names; each use is added to [deprecatedOptions], which
+  /// every reader of one configuration shares.
+  ///
+  /// Throws an [InspectraConfigException] when a mapping uses the old and
+  /// the new name of an option.
   YamlReader._(
-    this._views, {
+    List<(ConfigLayer?, Map<Object?, Object?>, YamlMap?, String)> views, {
     required this.keyPath,
     required this.overrides,
+    required this.deprecations,
+    required this.deprecatedOptions,
     this.recorder,
-  }) : path = _views.isEmpty ? keyPath : _views.last.$4;
+  }) : path = views.isEmpty ? keyPath : views.last.$4,
+       _views = <(ConfigLayer?, Map<Object?, Object?>, YamlMap?, String)>[] {
+    for (final view in views) {
+      _views.add(_renamed(view));
+    }
+  }
 
   /// The dotted path of this mapping in the highest layer, empty for the
   /// root.
@@ -116,6 +138,17 @@ final class YamlReader {
   /// Records every value read, or `null` when nothing is recorded.
   final ConfigRecorder? recorder;
 
+  /// The renamed options whose old names are still read.
+  final List<ConfigDeprecation> deprecations;
+
+  /// The uses of old names of renamed options found so far, shared by
+  /// every reader of one configuration: all of them once every section
+  /// has been read.
+  final List<DeprecatedOption> deprecatedOptions;
+
+  /// The old name of each key of this mapping that a file wrote under it.
+  final _aliases = <String, String>{};
+
   /// The wrapped mapping of each layer, from the lowest to the highest: the
   /// layer (`null` for a plain mapping), the mapping, the mapping as parsed
   /// YAML, which knows the line of each key, and its dotted path.
@@ -126,6 +159,14 @@ final class YamlReader {
 
   /// The keys that have been read.
   final _read = <String>{};
+
+  /// The value as written in the file of each key whose value referred to
+  /// environment variables.
+  final _templates = <String, Object>{};
+
+  /// The suffix of a list option's key that adds to the list of the lower
+  /// layers instead of replacing it, as in `skip_dirs+: [gen]`.
+  static const appendSuffix = '+';
 
   /// The words an override may use for `true`.
   static const _truthy = <String>{'true', 'yes', '1', 'on'};
@@ -154,6 +195,67 @@ final class YamlReader {
       'expected a mapping, got ${_describe(node)}.',
       file: _baseOf(layer),
     );
+  }
+
+  /// Renames the old names of the [deprecations] of this section in
+  /// [view] to their new names, remembering each use.
+  ///
+  /// Returns the view, a copy when a key was renamed.
+  ///
+  /// Throws an [InspectraConfigException] when the mapping uses the old and
+  /// the new name of an option.
+  (ConfigLayer?, Map<Object?, Object?>, YamlMap?, String) _renamed(
+    (ConfigLayer?, Map<Object?, Object?>, YamlMap?, String) view,
+  ) {
+    final (
+      ConfigLayer? layer,
+      Map<Object?, Object?> map,
+      YamlMap? yaml,
+      String layerPath,
+    ) = view;
+    Map<Object?, Object?>? renamed;
+    for (final ConfigDeprecation deprecation in deprecations) {
+      final bool applies =
+          deprecation.section == keyPath && map.containsKey(deprecation.oldKey);
+      if (!applies) {
+        continue;
+      }
+      final String oldPath = layerPath.isEmpty
+          ? deprecation.oldKey
+          : '$layerPath.${deprecation.oldKey}';
+      if (map.containsKey(deprecation.newKey)) {
+        throw InspectraConfigException(
+          oldPath,
+          'is the old name of ${deprecation.newKey}, which is set as well; '
+          'remove one of them.',
+          file: _baseOf(layer),
+        );
+      }
+      final Map<Object?, Object?> copy =
+          renamed ?? Map<Object?, Object?>.of(map);
+      copy[deprecation.newKey] = copy.remove(deprecation.oldKey);
+      renamed = copy;
+      _aliases[deprecation.newKey] = deprecation.oldKey;
+      deprecatedOptions.add(
+        DeprecatedOption(
+          deprecation: deprecation,
+          path: oldPath,
+          file: _baseOf(layer),
+          line: _lineOf(yaml, deprecation.oldKey),
+        ),
+      );
+    }
+    return renamed == null ? view : (layer, renamed, yaml, layerPath);
+  }
+
+  /// Returns the line of [key] in [yaml], or `null` when it is not known.
+  static int? _lineOf(YamlMap? yaml, String key) {
+    for (final Object? node in yaml?.nodes.keys ?? const <Object?>[]) {
+      if (node is YamlNode && node.value == key) {
+        return node.span.start.line + 1;
+      }
+    }
+    return null;
   }
 
   /// Returns the label of [layer] when it is a base, for error messages.
@@ -190,6 +292,7 @@ final class YamlReader {
   ConfigOverride? _override(String key) {
     _read.add(key);
     _from.remove(key);
+    _templates.remove(key);
     return overrides.resolve(_childKey(key));
   }
 
@@ -199,16 +302,46 @@ final class YamlReader {
   /// Returns the value, or `null` when absent.
   Object? _fileValue(String key) {
     _read.add(key);
+    _templates.remove(key);
     for (int index = _views.length - 1; index >= 0; index--) {
       if (_views[index].$2.containsKey(key)) {
         _from[key] = index;
         final Object? value = _views[index].$2[key];
-        return value is YamlNode ? value.value : value;
+        final Object? plain = value is YamlNode ? value.value : value;
+        if (plain is! String || !isInterpolated(plain)) {
+          return plain;
+        }
+        _templates[key] = plain;
+        return _interpolate(plain, index, key);
       }
     }
     _from.remove(key);
     return null;
   }
+
+  /// Resolves the environment variables that [item], an element of the
+  /// list at [key] of the layer at [index], refers to.
+  ///
+  /// Returns the resolved element, [item] itself when it refers to none.
+  ///
+  /// Throws an [InspectraConfigException] for an unset variable or a
+  /// malformed reference.
+  String _resolveItem(String item, int index, String key) =>
+      isInterpolated(item) ? _interpolate(item, index, key) : item;
+
+  /// Resolves the environment variables that [text], the value at [key] of
+  /// the layer at [index], refers to.
+  ///
+  /// Returns the resolved text.
+  ///
+  /// Throws an [InspectraConfigException] for an unset variable or a
+  /// malformed reference.
+  String _interpolate(String text, int index, String key) => interpolate(
+    text,
+    overrides.environment,
+    path: _childIn(index, key),
+    file: _baseOf(_views[index].$1),
+  );
 
   /// Returns the base [key] was read from, or `null` for the project's own
   /// configuration and values not read from a file.
@@ -226,7 +359,12 @@ final class YamlReader {
       return null;
     }
     for (final Object? node in yaml.nodes.keys) {
-      if (node is YamlNode && node.value == key) {
+      final bool matches =
+          node is YamlNode &&
+          (node.value == key ||
+              node.value == '$key$appendSuffix' ||
+              node.value == _aliases[key]);
+      if (matches) {
         return node.span.start.line + 1;
       }
     }
@@ -263,6 +401,7 @@ final class YamlReader {
         options: options,
         minimum: minimum,
         maximum: maximum,
+        template: origin == ConfigOrigin.file ? _templates[key] : null,
       ),
     );
   }
@@ -306,6 +445,7 @@ final class YamlReader {
         options: options ?? entry.options,
         minimum: minimum ?? entry.minimum,
         maximum: entry.maximum,
+        template: unset ? null : entry.template,
       ),
     );
   }
@@ -365,6 +505,8 @@ final class YamlReader {
       keyPath: _childKey(key),
       overrides: overrides,
       recorder: recorder,
+      deprecations: deprecations,
+      deprecatedOptions: deprecatedOptions,
     );
   }
 
@@ -746,12 +888,14 @@ final class YamlReader {
     return parsed;
   }
 
-  /// Returns the list of strings at [key], or [fallback] when absent. An
-  /// override is a comma separated list.
+  /// Returns the list of strings at [key], or [fallback] when absent. A
+  /// layer's `key+` adds to the list of the lower layers; an override is a
+  /// comma separated list and replaces it.
   ///
   /// Throws an [InspectraConfigException] for anything but a list of
   /// non-empty strings.
   List<String> strings(String key, {required List<String> fallback}) {
+    _read.add('$key$appendSuffix');
     final ConfigOverride? override = _override(key);
     if (override != null) {
       final items = List<String>.unmodifiable(
@@ -769,26 +913,10 @@ final class YamlReader {
       );
       return items;
     }
-    final Object? value = _fileValue(key);
-    if (value == null) {
+    final List<String>? result = _layeredStrings(key, fallback);
+    if (result == null) {
       _note(key, ConfigKind.strings, value: fallback, fallback: fallback);
       return List<String>.unmodifiable(fallback);
-    }
-    if (value is! List) {
-      throw _invalid(key, 'a list', value);
-    }
-    final result = <String>[];
-    for (var index = 0; index < value.length; index++) {
-      final Object? element = value[index];
-      final bool isScalar = element is String || element is num;
-      if (!isScalar || '$element'.isEmpty) {
-        throw InspectraConfigException(
-          '${_pathOf(key)}[$index]',
-          'expected a non-empty string, got ${_describe(element)}.',
-          file: _fileOf(key),
-        );
-      }
-      result.add('$element');
     }
     _note(
       key,
@@ -798,6 +926,90 @@ final class YamlReader {
       fromFile: true,
     );
     return List<String>.unmodifiable(result);
+  }
+
+  /// Merges the list at [key] through the layers, from the lowest up: a
+  /// layer's `key` replaces the list so far, its `key+` appends to it, the
+  /// first append to [fallback]. Marks both keys read and remembers the
+  /// highest layer that contributed.
+  ///
+  /// Returns the list, or `null` when no layer has either key.
+  ///
+  /// Throws an [InspectraConfigException] when a layer has both keys or a
+  /// value is no list of non-empty strings.
+  List<String>? _layeredStrings(String key, List<String> fallback) {
+    final appendKey = '$key$appendSuffix';
+    _read
+      ..add(key)
+      ..add(appendKey);
+    _from.remove(key);
+    _templates.remove(key);
+    List<String>? result;
+    List<String>? written;
+    var interpolated = false;
+    for (var index = 0; index < _views.length; index++) {
+      final (ConfigLayer? layer, Map<Object?, Object?> map, _, _) =
+          _views[index];
+      final bool replaces = map.containsKey(key);
+      final bool appends = map.containsKey(appendKey);
+      if (replaces && appends) {
+        throw InspectraConfigException(
+          _childIn(index, appendKey),
+          'set either $key to replace the list or $appendKey to add to it, '
+          'not both.',
+          file: _baseOf(layer),
+        );
+      }
+      if (!replaces && !appends) {
+        continue;
+      }
+      final layerKey = replaces ? key : appendKey;
+      final List<String> raw = _stringList(index, layerKey);
+      final items = <String>[
+        for (final String item in raw) _resolveItem(item, index, layerKey),
+      ];
+      interpolated = interpolated || raw.any(isInterpolated);
+      _from[key] = index;
+      result = replaces ? items : <String>[...result ?? fallback, ...items];
+      written = replaces ? raw : <String>[...written ?? fallback, ...raw];
+    }
+    if (interpolated && written != null) {
+      _templates[key] = written;
+    }
+    return result;
+  }
+
+  /// Reads the list of non-empty strings at [key] of the layer at [index].
+  ///
+  /// Returns the strings.
+  ///
+  /// Throws an [InspectraConfigException] for anything else.
+  List<String> _stringList(int index, String key) {
+    final (ConfigLayer? layer, Map<Object?, Object?> map, _, _) = _views[index];
+    final Object? node = map[key];
+    final Object? value = node is YamlNode ? node.value : node;
+    final String path = _childIn(index, key);
+    if (value is! List) {
+      throw InspectraConfigException(
+        path,
+        'expected a list, got ${_describe(value)}.',
+        file: _baseOf(layer),
+      );
+    }
+    final result = <String>[];
+    for (var item = 0; item < value.length; item++) {
+      final Object? element = value[item];
+      final bool isScalar = element is String || element is num;
+      if (!isScalar || '$element'.isEmpty) {
+        throw InspectraConfigException(
+          '$path[$item]',
+          'expected a non-empty string, got ${_describe(element)}.',
+          file: _baseOf(layer),
+        );
+      }
+      result.add('$element');
+    }
+    return result;
   }
 
   /// Returns the non-empty list at [key] with each element mapped through
@@ -817,7 +1029,9 @@ final class YamlReader {
   }) {
     final minItems = allowEmpty ? 0 : 1;
     final bool present =
-        _peek(key) != null || overrides.resolve(_childKey(key)) != null;
+        _peek(key) != null ||
+        _peek('$key$appendSuffix') != null ||
+        overrides.resolve(_childKey(key)) != null;
     final List<String> raw = strings(key, fallback: const <String>[]);
     final List<String> defaults = fallback.map(name).toList();
     if (!present) {
@@ -905,7 +1119,9 @@ final class YamlReader {
         if (key is String && _read.contains(key)) {
           continue;
         }
-        final List<String> known = _read.toList()..sort();
+        final List<String> known =
+            _read.where((name) => !name.endsWith(appendSuffix)).toList()
+              ..sort();
         throw InspectraConfigException(
           _childIn(index, '$key'),
           'unknown option.${didYouMean('$key', known)} Known options here: '

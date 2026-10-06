@@ -19,10 +19,11 @@ import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/cli/inspectra_command.dart';
 import 'package:inspectra/src/hook/git_hook_manager.dart';
 import 'package:inspectra/src/hook/hook_report.dart';
+import 'package:inspectra/src/hook/hook_runner.dart';
 import 'package:inspectra/src/report/command_report.dart';
 
-/// `inspectra hook [install|remove]`: installs or removes the Git
-/// pre-commit hook that audits staged dependency changes.
+/// `inspectra hook [install|remove|run]`: installs or removes the Git
+/// pre-commit hook, or runs its checks on the staged files.
 final class HookCommand extends InspectraCommand {
   /// Creates the command.
   HookCommand(super.context) {
@@ -39,20 +40,25 @@ final class HookCommand extends InspectraCommand {
 
   /// The one line description.
   @override
-  String get description => 'Install or remove the Git pre-commit hook.';
+  String get description =>
+      'Install or remove the Git pre-commit hook, or run its checks on the '
+      'staged files.';
 
   /// The positional arguments.
   @override
-  String get invocation => 'inspectra hook [install|remove] [options]';
+  String get invocation => 'inspectra hook [install|remove|run] [options]';
 
-  /// Installs or removes the hook.
+  /// Installs or removes the hook, or runs its checks.
   ///
-  /// Returns the hook report.
+  /// Returns the hook report, or the report of the checks.
   @override
   Future<CommandReport> execute(
     CommandSession session,
     ArgResults results,
   ) async {
+    if (results.rest.firstOrNull == 'run') {
+      return HookRunner(session).run();
+    }
     final manager = GitHookManager(
       processRunner: session.context.processRunner,
       workingDirectory: session.workingDirectory,
@@ -78,8 +84,8 @@ final class HookCommand extends InspectraCommand {
       changed: true,
       message: existed
           ? 'Pre-commit hook at $path updated.'
-          : 'Pre-commit hook installed at $path. Staged pubspec.yaml and '
-                'pubspec.lock changes are now checked on every commit.',
+          : 'Pre-commit hook installed at $path. Every commit now runs '
+                'the checks of hook.checks on the staged files.',
     );
   }
 }

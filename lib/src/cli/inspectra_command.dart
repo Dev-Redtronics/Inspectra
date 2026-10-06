@@ -125,6 +125,9 @@ abstract class InspectraCommand extends Command<int> {
       );
       session = active;
       _warnAboutExpiredRules(active);
+      for (final DeprecatedOption option in config.deprecatedOptions) {
+        console.warning(option.describe());
+      }
       final CommandReport report = await execute(active, results);
       return _finish(report, results, active);
     } on InspectraException catch (error) {

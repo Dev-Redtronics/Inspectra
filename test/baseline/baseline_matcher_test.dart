@@ -97,6 +97,20 @@ void main() {
     expect(unknown.stale, 0);
   });
 
+  test('never covers findings of severities a policy protects', () {
+    final protected = BaselineMatcher(
+      baseline: matcher().baseline,
+      config: const BaselineConfig(),
+      unignorable: const <Severity>{Severity.low},
+    );
+    final BaselineMatch<StyleViolation> match = protected.partition(
+      <StyleViolation>[violation('lib/a.dart', 1)],
+      styleCandidate,
+    );
+    expect(match.kept, hasLength(1));
+    expect(match.baselined, isEmpty);
+  });
+
   test('counts fixed findings as stale only for checked entries', () {
     final BaselineMatcher three = matcher(count: 3);
     final current = <StyleViolation>[violation('lib/a.dart', 1)];

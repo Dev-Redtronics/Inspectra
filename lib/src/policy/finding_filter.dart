@@ -28,7 +28,9 @@ import 'package:inspectra/src/policy/filter_outcome.dart';
 /// active ignore rule matches it. Ignore rules come from the configuration
 /// file (with reason and expiry) and from repeated `--ignore` flags, which
 /// match an id or alias for every package. A finding that remains and is
-/// recorded in the [baseline] is not reported either.
+/// recorded in the [baseline] is not reported either. Findings of the
+/// [unignorable] severities stay reported whatever ignores them; those an
+/// ignore matched carry the attribute `ignoreForbidden`.
 final class FindingFilter {
   /// Creates a filter evaluated at time [now].
   const FindingFilter({
@@ -37,6 +39,7 @@ final class FindingFilter {
     required this.cliIgnores,
     required this.now,
     this.baseline,
+    this.unignorable = const <Severity>{},
   });
 
   /// Findings below this severity are dropped.
@@ -54,6 +57,9 @@ final class FindingFilter {
   /// The baseline of accepted findings, or `null` to report every finding.
   final BaselineMatcher? baseline;
 
+  /// The severities a policy forbids to ignore or to baseline.
+  final Set<Severity> unignorable;
+
   /// Filters [findings].
   ///
   /// Returns the kept, suppressed and baselined findings plus expired
@@ -66,6 +72,7 @@ final class FindingFilter {
         .where((rule) => rule.isExpired(now))
         .toList();
     final kept = <Finding>[];
+    final protected = <Finding>[];
     final suppressed = <Finding>[];
     for (final finding in findings) {
       if (!finding.severity.isAtLeast(minSeverity)) {
@@ -73,7 +80,18 @@ final class FindingFilter {
       }
       final bool ignoredByFlag = cliIgnores.any(finding.identifiers.contains);
       final bool ignoredByRule = active.any((rule) => rule.matches(finding));
-      if (ignoredByFlag || ignoredByRule) {
+      final bool ignored = ignoredByFlag || ignoredByRule;
+      if (unignorable.contains(finding.severity)) {
+        protected.add(
+          ignored
+              ? finding.withAttributes(const <String, Object?>{
+                  'ignoreForbidden': true,
+                })
+              : finding,
+        );
+        continue;
+      }
+      if (ignored) {
         suppressed.add(finding);
         continue;
       }
@@ -84,7 +102,7 @@ final class FindingFilter {
       findingCandidate,
     );
     return FilterOutcome(
-      kept: match?.kept ?? kept,
+      kept: <Finding>[...match?.kept ?? kept, ...protected],
       suppressed: suppressed,
       expiredRules: expired,
       baselined: match?.baselined ?? const <Finding>[],

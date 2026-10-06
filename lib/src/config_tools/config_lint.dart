@@ -87,6 +87,15 @@ List<Finding> lintConfig({
       );
     }
   }
+  for (final DeprecatedOption option in config.deprecatedOptions) {
+    lint.add(
+      option.deprecation.newPath,
+      'CONFIG_DEPRECATED_OPTION',
+      Severity.low,
+      '${option.path} is deprecated',
+      option.describe(),
+    );
+  }
   _unknownVariables(lint, environment, knownPaths);
   _trivy(lint, config.trivy);
   _ignoreRules(lint, config.ignore, now);

@@ -51,6 +51,7 @@ import 'package:inspectra/src/trivy/finding.dart' as trivy;
 import 'package:inspectra/src/trivy/trivy_command.dart';
 import 'package:inspectra/src/trivy/trivy_provision.dart';
 import 'package:inspectra/src/util/files.dart';
+import 'package:inspectra/src/workspace/workspace_check.dart';
 
 /// Runs every evaluation of a project for `inspectra report` and collects
 /// the outcome of each as a section.
@@ -131,7 +132,7 @@ final class ReportRunner {
   Future<List<ReportSection>> _run(ReportStep step) async => switch (step) {
     ReportStep.codebase => <ReportSection>[_codebase()],
     ReportStep.scan => <ReportSection>[await _scan()],
-    ReportStep.deps => <ReportSection>[_deps()],
+    ReportStep.deps => <ReportSection>[await _deps()],
     ReportStep.config => <ReportSection>[_withId(step, configLint())],
     ReportStep.format => await _ifEnabled(
       step,
@@ -250,14 +251,26 @@ final class ReportRunner {
   }
 
   /// Checks the pubspec against the pubspec rules and the dependency
-  /// policy.
+  /// policy, with the rules that need the registry unless offline, and a
+  /// workspace root against the workspace policy.
   ///
   /// Returns the section.
-  ReportSection _deps() {
-    final DepsResult result = DepsService(
-      workingDirectory: _root,
-      policy: session.dependencyPolicy(),
-    ).run(_root, recursive: false);
+  ///
+  /// Throws an `UnavailableException` when the registry cannot be queried.
+  Future<ReportSection> _deps() async {
+    final DepsResult checked =
+        await DepsService(
+          workingDirectory: _root,
+          policy: session.dependencyPolicy(),
+        ).runOnline(
+          _root,
+          recursive: false,
+          trackedFiles: await session.lockfileTracking(_root),
+          outdated: session.outdatedPolicy(),
+        );
+    final DepsResult result = checked.withFindings(
+      checkWorkspace(_config.workspacePolicy, _root, workingDirectory: _root),
+    );
     final FilterOutcome outcome = session.filter().apply(result.findings);
     return _withId(
       ReportStep.deps,

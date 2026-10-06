@@ -177,4 +177,33 @@ style:
     );
     expect(harness.out, contains('CONFIG_PUBSPEC_SECTION_IGNORED'));
   });
+
+  test('--profile selects a profile for every command', () async {
+    final TestHarness harness = project(
+      '${extendsAcme}profiles:\n  ci:\n    min_severity: medium\n',
+    );
+    expect(
+      await harness.run(<String>[
+        'config',
+        'show',
+        '--profile',
+        'ci',
+        '--explain',
+        '--only-changed',
+      ]),
+      0,
+      reason: harness.err,
+    );
+    expect(
+      harness.out,
+      matches(RegExp(r'min_severity: medium +# profile ci of inspectra\.yaml')),
+    );
+    expect(harness.out, contains('profile: ci'));
+    expect(
+      await harness.run(<String>['config', 'show', '--profile', 'cd']),
+      65,
+    );
+    expect(harness.err, contains('Did you mean "ci"?'));
+    expect(await harness.run(<String>['format', '--profile', 'cd']), 65);
+  });
 }

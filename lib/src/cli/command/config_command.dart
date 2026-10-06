@@ -15,24 +15,30 @@
  */
 
 import 'package:args/command_runner.dart';
+import 'package:inspectra/src/cli/command/config_diff_command.dart';
 import 'package:inspectra/src/cli/command/config_fetch_command.dart';
+import 'package:inspectra/src/cli/command/config_init_command.dart';
 import 'package:inspectra/src/cli/command/config_lint_command.dart';
+import 'package:inspectra/src/cli/command/config_migrate_command.dart';
 import 'package:inspectra/src/cli/command/config_schema_command.dart';
 import 'package:inspectra/src/cli/command/config_show_command.dart';
 import 'package:inspectra/src/cli/command/config_validate_command.dart';
 import 'package:inspectra/src/cli/command_context.dart';
 
-/// `inspectra config`: shows, validates and checks the configuration and
-/// prints its JSON Schema.
+/// `inspectra config`: shows, validates, checks, creates, migrates and
+/// compares the configuration and prints its JSON Schema.
 final class ConfigCommand extends Command<int> {
-  /// Creates the command with its `show`, `validate`, `lint` and `schema`
-  /// subcommands.
+  /// Creates the command with its `show`, `validate`, `lint`, `schema`,
+  /// `fetch`, `init`, `migrate` and `diff` subcommands.
   ConfigCommand(this.context) {
     addSubcommand(ConfigShowCommand(context));
     addSubcommand(ConfigValidateCommand(context));
     addSubcommand(ConfigLintCommand(context));
     addSubcommand(ConfigSchemaCommand(context));
     addSubcommand(ConfigFetchCommand(context));
+    addSubcommand(ConfigInitCommand(context));
+    addSubcommand(ConfigMigrateCommand(context));
+    addSubcommand(ConfigDiffCommand(context));
   }
 
   /// The outside world.
@@ -46,7 +52,8 @@ final class ConfigCommand extends Command<int> {
   @override
   String get description =>
       'Show where each configuration value comes from, validate and lint '
-      'the configuration, print its JSON Schema, fetch its remote bases.';
+      'the configuration, print its JSON Schema, fetch its remote bases, '
+      'create, migrate and compare configurations.';
 
   /// Prints the usage to standard output of the [context].
   @override

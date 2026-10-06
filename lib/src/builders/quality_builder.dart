@@ -215,7 +215,11 @@ final class _LintBuilder extends QualityBuilder {
     }
     final LintResult result = baselineLint(
       await runLint(config: config.lint, packageRoot: packageRoot),
-      BaselineMatcher.load(config.baseline, packageRoot),
+      BaselineMatcher.load(
+        config.baseline,
+        packageRoot,
+        unignorable: config.forbiddenIgnoreSeverities,
+      ),
     );
     return QualityOutcome(
       report: result.toJson(),
@@ -296,7 +300,11 @@ final class _StyleBuilder extends QualityBuilder {
     );
     final StyleResult result = baselineStyle(
       checked,
-      BaselineMatcher.load(config.baseline, packageRoot),
+      BaselineMatcher.load(
+        config.baseline,
+        packageRoot,
+        unignorable: config.forbiddenIgnoreSeverities,
+      ),
     );
     return QualityOutcome(
       report: result.toJson(),

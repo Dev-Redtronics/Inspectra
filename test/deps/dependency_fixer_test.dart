@@ -113,4 +113,48 @@ dev_dependencies:
       'name: app\r\npublish_to: none\r\nversion: 1.0.0\r\n',
     );
   });
+
+  test('rewrites constraints in the configured style after bounding', () {
+    const content = '''
+name: app
+dependencies:
+  http: ^1.2.0 # networking
+  path: ">=1.8.0"
+  meta: 1.15.0
+  odd: ">=1.0.0 <1.5.0"
+  hosted:
+    hosted: https://pub.corp
+    version: ^2.0.0
+''';
+    final PubspecFix range = fix(
+      const DependencyPolicyConfig(
+        requireUpperBound: true,
+        constraintStyle: ConstraintStyle.range,
+      ),
+      content,
+    );
+    expect(range.content, '''
+name: app
+dependencies:
+  http: ">=1.2.0 <2.0.0" # networking
+  path: ">=1.8.0 <2.0.0"
+  meta: ">=1.15.0 <2.0.0"
+  odd: ">=1.0.0 <1.5.0"
+  hosted:
+    hosted: https://pub.corp
+    version: ">=2.0.0 <3.0.0"
+''');
+    expect(range.applied, contains('meta: 1.15.0 -> >=1.15.0 <2.0.0'));
+    final PubspecFix caret = fix(
+      const DependencyPolicyConfig(constraintStyle: ConstraintStyle.caret),
+      range.content,
+    );
+    expect(caret.content, contains('http: ^1.2.0 # networking'));
+    expect(caret.content, contains('odd: ">=1.0.0 <1.5.0"'));
+    final PubspecFix pinned = fix(
+      const DependencyPolicyConfig(constraintStyle: ConstraintStyle.pinned),
+      content,
+    );
+    expect(pinned.changed, isFalse);
+  });
 }

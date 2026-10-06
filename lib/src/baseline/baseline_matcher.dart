@@ -27,27 +27,42 @@ import 'package:path/path.dart' as p;
 ///
 /// The findings of one key are covered up to the recorded count, in the
 /// order of their lines; the rest are new. Findings more severe than
-/// `baseline.max_severity` are never covered.
+/// `baseline.max_severity` and findings of the [unignorable] severities are
+/// never covered.
 final class BaselineMatcher {
-  /// Creates a matcher of [baseline] with the settings [config].
-  const BaselineMatcher({required this.baseline, required this.config});
+  /// Creates a matcher of [baseline] with the settings [config] that never
+  /// covers findings of the [unignorable] severities.
+  const BaselineMatcher({
+    required this.baseline,
+    required this.config,
+    this.unignorable = const <Severity>{},
+  });
 
   /// Loads the baseline of the package in [packageRoot] as [config] names
-  /// it.
+  /// it; findings of the [unignorable] severities are never covered.
   ///
   /// Returns a matcher, which covers nothing when the baseline is disabled
   /// or its file does not exist.
   ///
   /// Throws an `InvalidInputException` when the baseline file is malformed.
-  factory BaselineMatcher.load(BaselineConfig config, String packageRoot) {
+  factory BaselineMatcher.load(
+    BaselineConfig config,
+    String packageRoot, {
+    Set<Severity> unignorable = const <Severity>{},
+  }) {
     if (!config.enabled) {
       return BaselineMatcher(
         baseline: Baseline(const <BaselineEntry>[]),
         config: config,
+        unignorable: unignorable,
       );
     }
     final String path = p.normalize(p.join(packageRoot, config.file));
-    return BaselineMatcher(baseline: Baseline.load(path), config: config);
+    return BaselineMatcher(
+      baseline: Baseline.load(path),
+      config: config,
+      unignorable: unignorable,
+    );
   }
 
   /// The recorded findings.
@@ -55,6 +70,9 @@ final class BaselineMatcher {
 
   /// The baseline settings.
   final BaselineConfig config;
+
+  /// The severities a policy forbids to baseline.
+  final Set<Severity> unignorable;
 
   /// Whether the matcher covers nothing.
   bool get isEmpty => baseline.isEmpty;
@@ -129,6 +147,7 @@ final class BaselineMatcher {
   /// Returns whether a finding of [severity] may be covered at all.
   bool _coverable(Severity severity) {
     final Severity? limit = config.maxSeverity;
-    return limit == null || severity.rank >= limit.rank;
+    final bool withinLimit = limit == null || severity.rank >= limit.rank;
+    return withinLimit && !unignorable.contains(severity);
   }
 }

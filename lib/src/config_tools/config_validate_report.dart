@@ -21,18 +21,26 @@ import 'package:inspectra/src/report/command_report.dart';
 
 /// The report of a successful `config validate`.
 ///
-/// The JSON body has `source`, the configuration file or `null`, `valid`
-/// and `files`, the files the configuration refers to that were checked.
+/// The JSON body has `source`, the configuration file or `null`, `valid`,
+/// `files`, the files the configuration refers to that were checked, and
+/// `profiles`, the profiles that were checked.
 final class ConfigValidateReport implements CommandReport {
   /// Creates the report of the configuration read from [source], whose
-  /// referenced [files] exist.
-  const ConfigValidateReport({required this.source, required this.files});
+  /// referenced [files] exist and whose [profiles] are valid.
+  const ConfigValidateReport({
+    required this.source,
+    required this.files,
+    this.profiles = const <String>[],
+  });
 
   /// The configuration file, or `null` without one.
   final String? source;
 
   /// The files the configuration refers to, all of which exist.
   final List<String> files;
+
+  /// The profiles the configuration defines, all of which are valid.
+  final List<String> profiles;
 
   /// The name of the command.
   @override
@@ -56,6 +64,7 @@ final class ConfigValidateReport implements CommandReport {
     'source': source,
     'valid': true,
     'files': files,
+    'profiles': profiles,
   };
 
   /// Writes the human readable report.
@@ -65,10 +74,13 @@ final class ConfigValidateReport implements CommandReport {
     final referenced = files.isEmpty
         ? ''
         : ' ${files.length} referenced file(s) exist.';
+    final checked = profiles.isEmpty
+        ? ''
+        : ' Profiles checked: ${profiles.join(', ')}.';
     out.writeln(
       style.green(
         '✔ The configuration of $where is valid.'
-        '$referenced',
+        '$referenced$checked',
       ),
     );
   }

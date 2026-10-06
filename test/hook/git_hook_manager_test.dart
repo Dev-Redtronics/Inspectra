@@ -82,9 +82,10 @@ void main() {
     );
   });
 
-  test('the script contains no else and checks nested packages', () {
+  test('the script contains no else and hands over to hook run', () {
     expect(PreCommitScript.content, isNot(contains('else')));
-    expect(PreCommitScript.content, contains(r'(^|/)pubspec\.(yaml|lock)$'));
+    expect(PreCommitScript.content, contains(r'exec $INSPECTRA hook run'));
     expect(PreCommitScript.content, contains('dart run inspectra'));
+    expect(PreCommitScript.content, startsWith('#!/bin/sh\n'));
   });
 }

@@ -19,6 +19,15 @@ Builder vulnerabilityScanBuilder(BuilderOptions options);
 
 library package:inspectra/inspectra.dart
 
+final class AllowedOverride {
+  final DateTime? expires;
+  final String name;
+  final String reason;
+  const AllowedOverride({required String name, required String reason, DateTime? expires});
+  bool isExpired(DateTime now);
+  static List<AllowedOverride> listFromYaml(YamlReader yaml);
+}
+
 final class ApiChange {
   final String? after;
   final String? before;
@@ -170,6 +179,17 @@ sealed class ConfigBaseReference {
   static List<ConfigBaseReference> listOf(Object? node, String path, {String? file});
 }
 
+final class ConfigDeprecation {
+  final String newPath;
+  final String note;
+  final String oldPath;
+  final String since;
+  const ConfigDeprecation({required String oldPath, required String newPath, required String since, String note = ''});
+  String get newKey;
+  String get oldKey;
+  String get section;
+}
+
 final class ConfigEntry {
   final Object? defaultValue;
   final String? file;
@@ -180,9 +200,11 @@ final class ConfigEntry {
   final num? minimum;
   final List<String>? options;
   final ConfigOrigin origin;
+  final Object? template;
   final Object? value;
   final String? variable;
-  const ConfigEntry({required String key, required ConfigKind kind, required Object? value, required Object? defaultValue, required ConfigOrigin origin, String? variable, int? line, String? file, List<String>? options, num? minimum, num? maximum});
+  const ConfigEntry({required String key, required ConfigKind kind, required Object? value, required Object? defaultValue, required ConfigOrigin origin, String? variable, int? line, String? file, List<String>? options, num? minimum, num? maximum, Object? template});
+  Object? get shown;
   static String formatDuration(Duration duration);
   static Object? jsonOf(Object? value);
   Map<String, Object?> toJson();
@@ -205,7 +227,7 @@ final class ConfigLayer {
 }
 
 enum ConfigLayerKind {
-  project, file, package, remote;
+  project, file, package, remote, profile;
   final String id;
 }
 
@@ -245,9 +267,10 @@ final class ConfigOverrides {
 }
 
 final class ConfigPolicy {
+  final List<Severity> forbidIgnoreOf;
   final List<String> locked;
   final Map<String, Object?> minimum;
-  const ConfigPolicy({List<String> locked = const <String>[], Map<String, Object?> minimum = const <String, Object?>{}});
+  const ConfigPolicy({List<String> locked = const <String>[], Map<String, Object?> minimum = const <String, Object?>{}, List<Severity> forbidIgnoreOf = const <Severity>[]});
   factory ConfigPolicy.of(ConfigLayer layer);
   bool get isEmpty;
   static String pathIn(ConfigLayer layer, String key);
@@ -263,9 +286,14 @@ final class ConfigRecorder {
 }
 
 enum ConfigStrictness {
-  higherNumber, enabledFlag, severityThreshold, lintLevel, trivyMode;
+  higherNumber, lowerNumber, enabledFlag, severityThreshold, lintLevel, trivyMode;
   static ConfigStrictness? of(String key);
   double? rankOf(Object? value);
+}
+
+enum ConstraintStyle {
+  any, caret, range, pinned;
+  final String id;
 }
 
 final class ConventionalCommit {
@@ -336,21 +364,38 @@ final class DependencyPolicyConfig {
   final List<String> allowed;
   final List<String> allowedGitHosts;
   final List<String> allowedHosts;
+  final List<AllowedOverride> allowedOverrides;
   final bool checkImports;
+  final ConstraintStyle constraintStyle;
   final List<DeniedPackage> denied;
   final List<String> devOnly;
   final bool enabled;
+  final LibyearScope libyearScope;
   final bool lockfileChecksums;
   final bool lockfileInSync;
+  final LockfilePolicy lockfilePolicy;
+  final double? maxLibyear;
+  final int? maxMajorBehind;
   final Version? minFlutter;
   final Version? minSdk;
+  final bool overridesRequireReason;
   final List<String> publishedPackages;
   final bool requirePublishTo;
   final bool requireUpperBound;
   final List<String> requiredMetadata;
   final List<String> unusedAllow;
-  const DependencyPolicyConfig({bool enabled = false, List<DeniedPackage> denied = const <DeniedPackage>[], List<String> allowed = const <String>[], List<String> allowedHosts = const <String>[], List<String> allowedGitHosts = const <String>[], bool requireUpperBound = false, Version? minSdk, Version? minFlutter, List<String> devOnly = const <String>[], bool requirePublishTo = false, List<String> publishedPackages = const <String>[], List<String> requiredMetadata = const <String>[], bool lockfileInSync = false, bool lockfileChecksums = false, bool checkImports = false, List<String> unusedAllow = defaultUnusedAllow});
+  const DependencyPolicyConfig({bool enabled = false, List<DeniedPackage> denied = const <DeniedPackage>[], List<String> allowed = const <String>[], List<String> allowedHosts = const <String>[], List<String> allowedGitHosts = const <String>[], bool requireUpperBound = false, Version? minSdk, Version? minFlutter, List<String> devOnly = const <String>[], bool requirePublishTo = false, List<String> publishedPackages = const <String>[], List<String> requiredMetadata = const <String>[], bool lockfileInSync = false, bool lockfileChecksums = false, bool checkImports = false, List<String> unusedAllow = defaultUnusedAllow, ConstraintStyle constraintStyle = ConstraintStyle.any, bool overridesRequireReason = false, List<AllowedOverride> allowedOverrides = const <AllowedOverride>[], LockfilePolicy lockfilePolicy = LockfilePolicy.any, int? maxMajorBehind, double? maxLibyear, LibyearScope libyearScope = LibyearScope.direct});
   factory DependencyPolicyConfig.fromYaml(YamlReader yaml);
+  bool get hasOutdatedRules;
+}
+
+final class DeprecatedOption {
+  final ConfigDeprecation deprecation;
+  final String? file;
+  final int? line;
+  final String path;
+  const DeprecatedOption({required ConfigDeprecation deprecation, required String path, String? file, int? line});
+  String describe();
 }
 
 final class Environment {
@@ -407,10 +452,11 @@ final class Finding {
   String get fingerprint;
   Set<String> get identifiers;
   Map<String, Object?> toJson();
+  Finding withAttributes(Map<String, Object?> extra);
 }
 
 enum FindingSource {
-  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion, style, config, quality;
+  osv, trivy, regex, entropy, unicode, archive, pubspec, trust, typosquat, confusion, style, config, quality, workspace;
   final String id;
   static FindingSource? tryParse(String id);
 }
@@ -451,11 +497,26 @@ final class GitHistory {
   final ProcessRunner processRunner;
   final String workingDirectory;
   const GitHistory({required ProcessRunner processRunner, required String workingDirectory});
+  Future<List<String>> changedFiles(String revision);
   Future<List<GitCommit>> commits({required String to, String? from});
   Future<bool> hasCommits();
   Future<bool> isShallow();
   Future<ReleaseTag?> latestTag({required String to, required String prefix});
   Future<String?> show(String revision, String path);
+  Future<String> stagedContent(String path);
+  Future<List<String>> stagedFiles({bool unstaged = false});
+}
+
+enum HookCheck {
+  audit, typosquat, deps, format, style;
+  final String id;
+}
+
+final class HookConfig {
+  static const List<HookCheck> defaultChecks = <HookCheck>[HookCheck.audit, HookCheck.typosquat];
+  final List<HookCheck> checks;
+  const HookConfig({List<HookCheck> checks = defaultChecks});
+  factory HookConfig.fromYaml(YamlReader yaml);
 }
 
 final class HostPlatform {
@@ -507,8 +568,11 @@ final class InspectraConfig {
   final ChangelogConfig changelog;
   final CoverageConfig coverage;
   final DependencyPolicyConfig dependencyPolicy;
+  final List<DeprecatedOption> deprecatedOptions;
   final Severity? failOn;
+  final Set<Severity> forbiddenIgnoreSeverities;
   final FormatConfig format;
+  final HookConfig hook;
   final List<IgnoreRule> ignore;
   final InspectConfig inspect;
   final LintConfig lint;
@@ -519,9 +583,10 @@ final class InspectraConfig {
   final TrivyConfig trivy;
   final TrustThresholds trust;
   final TyposquatConfig typosquat;
-  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig(), BaselineConfig baseline = const BaselineConfig(), DependencyPolicyConfig dependencyPolicy = const DependencyPolicyConfig()});
+  final WorkspacePolicyConfig workspacePolicy;
+  const InspectraConfig({required String packageName, required FormatConfig format, required LintConfig lint, required TrivyConfig trivy, required ApiConfig api, required CoverageConfig coverage, ChangelogConfig changelog = const ChangelogConfig(), StyleConfig style = const StyleConfig(), Severity? failOn, Severity minSeverity = Severity.unknown, List<IgnoreRule> ignore = const <IgnoreRule>[], NetworkConfig network = const NetworkConfig(), InspectConfig inspect = const InspectConfig(), TrustThresholds trust = const TrustThresholds(), TyposquatConfig typosquat = const TyposquatConfig(), BaselineConfig baseline = const BaselineConfig(), DependencyPolicyConfig dependencyPolicy = const DependencyPolicyConfig(), Set<Severity> forbiddenIgnoreSeverities = const <Severity>{}, List<DeprecatedOption> deprecatedOptions = const <DeprecatedOption>[], WorkspacePolicyConfig workspacePolicy = const WorkspacePolicyConfig(), HookConfig hook = const HookConfig()});
   factory InspectraConfig.defaults(String packageName);
-  factory InspectraConfig.fromLayers(ConfigLayerStack stack, {required String packageName, ConfigOverrides? overrides, ConfigRecorder? recorder});
+  factory InspectraConfig.fromLayers(ConfigLayerStack layers, {required String packageName, ConfigOverrides? overrides, ConfigRecorder? recorder});
   factory InspectraConfig.fromSources({required String? pubspec, String? configFile, String configFileLabel = configFileName, ConfigOverrides? overrides, ConfigRecorder? recorder, String? packageRoot, String? cacheRoot, String? configDirectory});
   factory InspectraConfig.parse(Object? node, {required String packageName, String path = '', ConfigOverrides? overrides, ConfigRecorder? recorder});
 }
@@ -546,6 +611,11 @@ final class InvalidInputException extends InspectraException {
 
 final class InvalidUsageException extends InspectraException {
   const InvalidUsageException(String message);
+}
+
+enum LibyearScope {
+  direct, all;
+  final String id;
 }
 
 final class LicenseScanConfig extends BuildScanConfig {
@@ -600,6 +670,11 @@ class LockedPackage {
   final String version;
   const LockedPackage({required String name, required String version, required String source, required Map<String, Object?> json});
   bool get isExternal;
+}
+
+enum LockfilePolicy {
+  any, committed, ignored, auto;
+  final String id;
 }
 
 final class NetworkConfig {
@@ -903,6 +978,11 @@ final class UnavailableException extends InspectraException {
   const UnavailableException(String message);
 }
 
+enum VersionAlignment {
+  off, compatible, exact;
+  final String id;
+}
+
 enum VersionBump {
   patch, minor, major;
   final String id;
@@ -917,6 +997,29 @@ final class VulnerabilityScanConfig extends BuildScanConfig {
   final bool includeDevDependencies;
   const VulnerabilityScanConfig({required bool enabled, required bool runOnBuild, required bool failOnFindings, required List<Severity> severity, required bool includeDevDependencies, required bool ignoreUnfixed, required List<String> ignoredVulnerabilities});
   factory VulnerabilityScanConfig.fromYaml(YamlReader yaml);
+}
+
+final class WorkspaceLayer {
+  final List<String> forbiddenDependencies;
+  final bool isolated;
+  final List<String>? mayDependOn;
+  final String name;
+  final List<String> packages;
+  const WorkspaceLayer({required String name, required List<String> packages, List<String>? mayDependOn, bool isolated = false, List<String> forbiddenDependencies = const <String>[]});
+  bool contains(String directory);
+  static List<WorkspaceLayer> listFromYaml(YamlReader yaml);
+}
+
+final class WorkspacePolicyConfig {
+  final VersionAlignment alignVersions;
+  final bool enabled;
+  final bool forbidCycles;
+  final bool includeDevDependencies;
+  final List<WorkspaceLayer> layers;
+  final bool requireMembership;
+  final bool sameSdk;
+  const WorkspacePolicyConfig({bool enabled = false, VersionAlignment alignVersions = VersionAlignment.compatible, bool requireMembership = true, bool sameSdk = false, bool forbidCycles = true, bool includeDevDependencies = false, List<WorkspaceLayer> layers = const <WorkspaceLayer>[]});
+  factory WorkspacePolicyConfig.fromYaml(YamlReader yaml);
 }
 
 const String apiDumpHeader = '// Public API of this package, generated by Inspectra. Do not edit by hand.\n' '// Regenerate it with "dart run build_runner build" or "dart run inspectra api dump".\n';
@@ -934,6 +1037,8 @@ Future<StyleResult> checkStyle({required StyleConfig config, required String pac
 List<ApiChange> classifyApiChanges(ApiSurface before, ApiSurface after);
 
 Map<String, List<int>> collectFiles(String root, List<String> include, List<String> exclude);
+
+const List<ConfigDeprecation> configDeprecations = <ConfigDeprecation>[];
 
 const String configEnvironmentVariable = 'INSPECTRA_CONFIG';
 

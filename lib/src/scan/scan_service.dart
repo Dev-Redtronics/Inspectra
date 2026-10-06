@@ -37,6 +37,9 @@ import 'package:inspectra/src/trivy/trivy_service.dart';
 import 'package:inspectra/src/typosquat/confusion_detector.dart';
 import 'package:inspectra/src/typosquat/typosquat_detector.dart';
 import 'package:inspectra/src/util/display_path.dart';
+import 'package:inspectra/src/workspace/workspace.dart';
+import 'package:inspectra/src/workspace/workspace_member.dart';
+import 'package:inspectra/src/workspace/workspace_reference.dart';
 import 'package:path/path.dart' as p;
 
 /// Runs every project level check in one pass: the OSV.dev audit, the
@@ -78,7 +81,9 @@ final class ScanService {
   final String workingDirectory;
 
   /// Scans the project in [root], including nested packages when
-  /// [recursive] is set; [onStatus] receives progress messages.
+  /// [recursive] is set, and then also the pubspecs of the members of a
+  /// pub workspace that share its root lockfile; [onStatus] receives
+  /// progress messages.
   ///
   /// Returns the raw outcome.
   ///
@@ -111,6 +116,17 @@ final class ScanService {
       if (File(pubspecPath).existsSync()) {
         pubspecs.add(displayPath(pubspecPath, workingDirectory));
         projectFindings.addAll(await _checkPubspec(pubspecPath, onStatus));
+      }
+    }
+    final Workspace? workspace = recursive ? Workspace.load(root) : null;
+    for (final WorkspaceMember member
+        in workspace?.members ?? const <WorkspaceMember>[]) {
+      final String display = displayPath(member.pubspecPath, workingDirectory);
+      if (!pubspecs.contains(display)) {
+        pubspecs.add(display);
+        projectFindings.addAll(
+          await _checkPubspec(member.pubspecPath, onStatus),
+        );
       }
     }
     final TrivyOutcome trivy = await trivyService.scan(
@@ -148,12 +164,18 @@ final class ScanService {
     final String content = File(pubspecPath).readAsStringSync();
     final Pubspec pubspec = const PubspecParser().parse(content, path: display);
     final List<String> lines = content.split('\n');
+    final Set<String> siblings = Workspace.packagesAround(
+      p.dirname(pubspecPath),
+      pubspec,
+    );
     final findings = <Finding>[
-      ...const PubspecScanner().scan(
-        pubspec,
-        content: content,
-        displayPath: display,
-      ),
+      ...const PubspecScanner()
+          .scan(pubspec, content: content, displayPath: display)
+          .where(
+            (finding) =>
+                !(dependencyPolicy?.justifies(finding) ?? false) &&
+                !isWorkspaceReference(finding, siblings),
+          ),
       ...typosquatDetector.analyze(
         pubspec.declaredNames,
         locate: (name) => locatePubspecKey(lines, name, display),

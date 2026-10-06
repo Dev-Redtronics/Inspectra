@@ -27,7 +27,11 @@ enum ConfigLayerKind {
   package('package'),
 
   /// A base downloaded from an `https` URL and verified by its SHA-256.
-  remote('remote');
+  remote('remote'),
+
+  /// A profile selected with `--profile` or `INSPECTRA_PROFILE`, taken from
+  /// the `profiles` section of the project or a base.
+  profile('profile');
 
   /// Creates the kind spelled [id] in reports.
   const ConfigLayerKind(this.id);

@@ -40,8 +40,8 @@ abstract class ConfigToolCommand extends InspectraCommand {
   ConfigToolCommand(super.context) : super(withTrivyOptions: true);
 
   /// Reads the configuration of the project with the same configuration
-  /// file and overrides as the command line [results] give, recording every
-  /// value in [recorder].
+  /// file and overrides as the command line [results] give, and the values
+  /// [cli] on top, recording every value in [recorder].
   ///
   /// Returns the configuration and the overrides, which know every option
   /// that can be overridden.
@@ -49,10 +49,11 @@ abstract class ConfigToolCommand extends InspectraCommand {
   /// Throws an `InspectraConfigException` for an invalid configuration.
   (InspectraConfig, ConfigOverrides) recordConfig(
     ArgResults results,
-    ConfigRecorder recorder,
-  ) {
+    ConfigRecorder recorder, {
+    Map<String, String> cli = const <String, String>{},
+  }) {
     final overrides = ConfigOverrides(
-      cli: SharedOptions.overrides(results),
+      cli: <String, String>{...SharedOptions.overrides(results), ...cli},
       environment: context.environment,
     );
     final InspectraConfig config = loadConfig(

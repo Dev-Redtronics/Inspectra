@@ -31,6 +31,7 @@ import 'package:inspectra/src/cli/config_bases.dart';
 import 'package:inspectra/src/cli/exit_code.dart';
 import 'package:inspectra/src/config/config_loader.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
+import 'package:inspectra/src/config/config_profiles.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/coverage/coverage_gate.dart';
@@ -38,12 +39,17 @@ import 'package:inspectra/src/deps/dependency_policy.dart';
 import 'package:inspectra/src/deps/deps_report.dart';
 import 'package:inspectra/src/deps/deps_result.dart';
 import 'package:inspectra/src/deps/deps_service.dart';
+import 'package:inspectra/src/deps/outdated_policy.dart';
+import 'package:inspectra/src/deps/tracked_files.dart';
 import 'package:inspectra/src/io/ansi_styler.dart';
 import 'package:inspectra/src/io/console.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/model/severity.dart';
+import 'package:inspectra/src/net/http_transport.dart';
 import 'package:inspectra/src/policy/filter_outcome.dart';
 import 'package:inspectra/src/policy/finding_filter.dart';
+import 'package:inspectra/src/pub/pub_package_cache.dart';
+import 'package:inspectra/src/pub/registry_listings.dart';
 import 'package:inspectra/src/quality/format_check.dart';
 import 'package:inspectra/src/quality/lint.dart';
 import 'package:inspectra/src/quality/quality_command.dart';
@@ -53,6 +59,9 @@ import 'package:inspectra/src/trivy/trivy.dart';
 import 'package:inspectra/src/trivy/trivy_command.dart';
 import 'package:inspectra/src/trivy/trivy_provision.dart';
 import 'package:inspectra/src/util/dart_tool.dart';
+import 'package:inspectra/src/workspace/workspace.dart';
+import 'package:inspectra/src/workspace/workspace_member.dart';
+import 'package:inspectra/src/workspace/workspace_policy.dart';
 import 'package:path/path.dart' as p;
 
 /// The base of the package quality commands: `check`, `format`, `lint`,
@@ -64,8 +73,17 @@ import 'package:path/path.dart' as p;
 /// configuration or of an external tool map to the shared exit codes:
 /// `65` for invalid configuration and `69` for unavailable tools.
 abstract class PackageCheckCommand extends Command<int> {
-  /// Creates a command running in [context].
-  PackageCheckCommand(this.context);
+  /// Creates a command running in [context], with the `--profile` option
+  /// every check shares.
+  PackageCheckCommand(this.context) {
+    argParser.addOption(
+      'profile',
+      help:
+          'Apply the configuration profile of this name, e.g. ci '
+          '(default: INSPECTRA_PROFILE).',
+      valueHelp: 'name',
+    );
+  }
 
   /// The outside world.
   final CommandContext context;
@@ -119,9 +137,9 @@ abstract class PackageCheckCommand extends Command<int> {
     }
   }
 
-  /// Reads the configuration of the package, with `INSPECTRA_*`
-  /// environment variables and the command line values [cli] layered on
-  /// top.
+  /// Reads the configuration of the package, with the profile of
+  /// `--profile`, `INSPECTRA_*` environment variables and the command line
+  /// values [cli] layered on top, and warns about old option names.
   ///
   /// Returns the configuration.
   ///
@@ -129,11 +147,21 @@ abstract class PackageCheckCommand extends Command<int> {
   /// [InspectraConfigException] for invalid configuration.
   InspectraConfig loadPackageConfig({
     Map<String, String> cli = const <String, String>{},
-  }) => loadConfig(
-    packageRoot,
-    overrides: ConfigOverrides(cli: cli, environment: context.environment),
-    cacheRoot: cacheRootOf(context),
-  );
+  }) {
+    final profile = argResults?['profile'] as String?;
+    final InspectraConfig config = loadConfig(
+      packageRoot,
+      overrides: ConfigOverrides(
+        cli: <String, String>{...cli, profileOption: ?profile},
+        environment: context.environment,
+      ),
+      cacheRoot: cacheRootOf(context),
+    );
+    for (final DeprecatedOption option in config.deprecatedOptions) {
+      context.err.writeln('warning: ${option.describe()}');
+    }
+    return config;
+  }
 
   /// Loads the baseline of the package as [config] names it.
   ///
@@ -142,7 +170,11 @@ abstract class PackageCheckCommand extends Command<int> {
   ///
   /// Throws an `InvalidInputException` when the baseline file is malformed.
   BaselineMatcher baselineMatcher(InspectraConfig config) =>
-      BaselineMatcher.load(config.baseline, packageRoot);
+      BaselineMatcher.load(
+        config.baseline,
+        packageRoot,
+        unignorable: config.forbiddenIgnoreSeverities,
+      );
 
   /// Runs the style check and prints the outcome.
   ///
@@ -165,21 +197,97 @@ abstract class PackageCheckCommand extends Command<int> {
   ///
   /// Returns whether no finding reached `fail_on`.
   ///
-  /// Throws an `InvalidInputException` for a malformed pubspec or lockfile.
+  /// Throws an `InvalidInputException` for a malformed pubspec or lockfile
+  /// and an `UnavailableException` when the registry cannot be queried.
   Future<bool> runDependencyPolicy(InspectraConfig config) async {
-    final DepsResult result = DepsService(
-      workingDirectory: packageRoot,
-      policy: DependencyPolicy(
-        config: config.dependencyPolicy,
-        defaultRegistry: config.network.pubHostedUrl,
-      ),
-    ).run(packageRoot, recursive: false);
+    final DependencyPolicyConfig policy = config.dependencyPolicy;
+    final bool online = policy.hasOutdatedRules && !config.network.offline;
+    final HttpTransport? transport = online
+        ? HttpTransport(
+            config: config.network.withResolvedPaths(
+              (path) => p.normalize(p.join(packageRoot, path)),
+            ),
+            environment: context.environment,
+            sleep: context.sleep,
+          )
+        : null;
+    try {
+      final DepsResult result =
+          await DepsService(
+            workingDirectory: packageRoot,
+            policy: DependencyPolicy(
+              config: policy,
+              defaultRegistry: config.network.pubHostedUrl,
+              now: context.clock.now(),
+            ),
+          ).runOnline(
+            packageRoot,
+            recursive: false,
+            trackedFiles: policy.lockfilePolicy == LockfilePolicy.any
+                ? null
+                : await trackedFiles(context.processRunner, packageRoot),
+            outdated: transport == null
+                ? null
+                : OutdatedPolicy(
+                    config: policy,
+                    lookup: RegistryListings(
+                      transport: transport,
+                      cache: PubPackageCache(
+                        p.join(cacheRootOf(context), 'pub'),
+                      ),
+                      clock: context.clock,
+                    ).lookup,
+                    defaultRegistry: config.network.pubHostedUrl,
+                    concurrency: config.network.concurrency,
+                  ),
+          );
+      return _reportDependencies(config, result, 'Dependency policy');
+    } finally {
+      transport?.close();
+    }
+  }
+
+  /// Checks the pub workspace whose root is the package against the
+  /// workspace policy, with the ignore rules and the baseline applied, and
+  /// prints the outcome; a package that is no workspace root passes.
+  ///
+  /// Returns whether no finding reached `fail_on`.
+  ///
+  /// Throws an `InvalidInputException` for a malformed pubspec.
+  bool runWorkspacePolicy(InspectraConfig config) {
+    final Workspace? workspace = Workspace.load(packageRoot);
+    if (workspace == null) {
+      out.writeln(
+        'Workspace policy: skipped, the package is no pub workspace root.',
+      );
+      return true;
+    }
+    final result = DepsResult(
+      pubspecs: <String>[
+        for (final WorkspaceMember member in workspace.members)
+          p.posix.join(member.path, 'pubspec.yaml'),
+      ],
+      findings: WorkspacePolicy(config.workspacePolicy).check(workspace),
+    );
+    return _reportDependencies(config, result, 'Workspace policy');
+  }
+
+  /// Applies the ignore rules and the baseline of [config] to [result] and
+  /// prints the outcome after the [label] of the step.
+  ///
+  /// Returns whether no finding reached `fail_on`.
+  bool _reportDependencies(
+    InspectraConfig config,
+    DepsResult result,
+    String label,
+  ) {
     final FilterOutcome outcome = FindingFilter(
       minSeverity: config.minSeverity,
       rules: config.ignore,
       cliIgnores: const <String>[],
       now: context.clock.now(),
       baseline: baselineMatcher(config),
+      unignorable: config.forbiddenIgnoreSeverities,
     ).apply(result.findings);
     final report = DepsReport(
       result: result,
@@ -189,7 +297,7 @@ abstract class PackageCheckCommand extends Command<int> {
     );
     final text = StringBuffer();
     report.writeText(text, const AnsiStyler(enabled: false));
-    out.write('Dependency policy: $text');
+    out.write('$label: $text');
     return !report.isFailing(config.failOn ?? Severity.unknown);
   }
 

@@ -33,6 +33,21 @@ All notable changes to this project are documented in this file. The format foll
   access, for every package of a workspace with `-r`; `--fix` bounds constraints with a caret, moves
   development packages to `dev_dependencies` and adds `publish_to: none`, keeping comments and
   formatting.
+- `constraint_style: caret|range|pinned` reports `CONSTRAINT_STYLE` (low) for hosted constraints written
+  otherwise; `--fix` rewrites caret and range constraints into each other and exact versions into
+  either.
+- `overrides.require_reason` with `overrides.allowed` (`name`, `reason`, `expires`, collected across
+  layers) reports `UNJUSTIFIED_OVERRIDE` (medium) for overrides without a valid justification; a
+  justified override no longer reports `DEPENDENCY_OVERRIDE`.
+- `lockfile_policy: committed|ignored|auto` reports `LOCKFILE_POLICY` (medium) when Git tracks
+  `pubspec.lock` against the policy; `auto` asks applications to commit it and publishable packages
+  not to. `deps` and `check` apply it.
+- `max_major_behind` and `max_libyear` with `libyear_scope: direct|all` report `OUTDATED_MAJOR` and
+  `LIBYEAR_EXCEEDED` (medium) from the version listings of the registry, cached for a day:
+  `deps --online`, `check` and `report` check them unless offline. JSON of `deps`: `outdatedChecked`
+  and `libyears`. A policy's `minimum` may only lower both limits.
+- Library: `ConstraintStyle`, `LockfilePolicy`, `LibyearScope`, `AllowedOverride` and the matching
+  fields of `DependencyPolicyConfig`, `ConfigStrictness.lowerNumber`.
 - `scan` applies the policy to its pubspecs, and `check` runs it as the step "Dependency policy"
   while `dependency_policy.enabled` is set.
 - New runtime dependency: `yaml_edit`, for the fixes.
@@ -55,9 +70,19 @@ All notable changes to this project are documented in this file. The format foll
   `yaml-language-server` modeline.
 - Unknown keys in the configuration file, in `ignore` entries and on the command line name the closest
   valid option: `Did you mean "secret"?`.
+- Renamed options keep working under their old names until the next major version: every command
+  warns, `config lint` reports `CONFIG_DEPRECATED_OPTION`, and the old and the new name side by side
+  are an error. Library: `ConfigDeprecation`, `configDeprecations`, `DeprecatedOption` and
+  `InspectraConfig.deprecatedOptions`.
 - Library: `ConfigRecorder`, `ConfigEntry`, `ConfigKind`, `ConfigOrigin`, `ConfigOverride`,
   `ConfigOverrides.resolve` and `knownPaths`, a `recorder` parameter of `loadConfig`,
   `InspectraConfig.parse` and `InspectraConfig.fromSources`, and `FindingSource.config`.
+- `inspectra config init [--preset app|library|plugin|enterprise] [--stdout] [--force]` writes a
+  starting `inspectra.yaml` for the kind of package, detected from `pubspec.yaml`.
+- `inspectra config migrate [--dry-run]` replaces the old names of renamed options in the
+  configuration file and its profiles, keeping values, comments and order.
+- `inspectra config diff <a> [<b>] [--fail-on-weaker]` compares two configurations, files or
+  `git:<revision>`, with the effective configuration by default, and marks values that got weaker.
 - `trivy.filesystem.scanners` accepts scanner names in any case, like the severities.
 
 ### Reports and dashboards
@@ -93,9 +118,26 @@ All notable changes to this project are documented in this file. The format foll
   are verified and cached. Bases nest; mappings merge key by key, scalars and lists of the higher
   layer win, `key: ~` resets a value, and `ignore` and `dependency_policy.denied` collect the entries
   of every layer. License headers, secret rules and CA bundles named in a base resolve relative to it.
+- A list option written as `key+:` adds to the list of the lower layers, or to the default, instead
+  of replacing it: `dependency_policy.dev_only+: [golden_toolkit]`. The JSON Schema describes the
+  `+` variant of every list option.
 - `policy:` with `locked` options and `minimum` values binds every layer above its file, including
   `INSPECTRA_*` variables and the command line (`--set`, `--fail-on`, `coverage --min`); a violation is
   a configuration error naming the option, its origin and the policy.
+- `profiles:` holds named partial configurations that `--profile <name>` or `INSPECTRA_PROFILE`
+  applies above the project's own configuration and below environment variables and the command line;
+  profiles of the bases and the project merge, policies bind them, and they cannot set `extends`,
+  `policy` or `profiles`. `config validate` checks every profile and lists them as `profiles` in its
+  JSON, `config show` records the selected one as `profile`. `check`, `format`, `lint`, `coverage`,
+  `api check|dump` and `changelog check` take `--profile` as well.
+- Text values and list elements can refer to environment variables: `${env:NAME}`,
+  `${env:NAME:-default}`, and `$${` for a literal `${`. An unset variable without a default is a
+  configuration error. `config show` prints the reference instead of the resolved value and marks it
+  with `"interpolated": true`; policies check the resolved value. Library: `ConfigEntry.template` and
+  `ConfigEntry.shown`.
+- `policy.forbid_ignore_of: [critical]` keeps findings of these severities reported whatever ignores
+  them: `ignore` rules of any layer, `--ignore` and the baseline. A finding an ignore matched carries
+  the attribute `ignoreForbidden`.
 - `inspectra config fetch` downloads and verifies remote bases for offline runs and `build_runner`;
   every command fetches missing bases first. `config show --explain` names the base and line of each
   value, `config show -f json` adds `layers` and `file`, and `config lint` reports
@@ -103,7 +145,9 @@ All notable changes to this project are documented in this file. The format foll
 - Library: `ConfigLayer`, `ConfigLayerKind`, `ConfigLayerStack`, `ConfigBaseReference`,
   `ConfigPolicy`, `ConfigStrictness`, `InspectraConfig.fromLayers`, `ConfigEntry.file`,
   `ConfigRecorder.layers`, `InspectraConfigException.file`, `NetworkConfig.withResolvedPaths`, and
-  `cacheRoot`/`packageRoot` parameters of `loadConfig` and `InspectraConfig.fromSources`.
+  `cacheRoot`/`packageRoot` parameters of `loadConfig` and `InspectraConfig.fromSources`,
+  `ConfigPolicy.forbidIgnoreOf`, `InspectraConfig.forbiddenIgnoreSeverities`,
+  `Finding.withAttributes` and `ConfigLayerKind.profile`.
 
 ### Semantic versioning from the API dump
 
@@ -122,6 +166,49 @@ All notable changes to this project are documented in this file. The format foll
 - Library: `checkSemver`, `evaluateSemver`, `SemverResult`, `classifyApiChanges`, `ApiChange`,
   `ApiChangeKind`, `ApiSurface`, `ApiDeclaration`, `ApiConfig.semver`, and the Git types `GitHistory`
   (with `show` and `hasCommits`), `GitCommit`, `ReleaseTag`, `ConventionalCommit` and `VersionBump`.
+
+### Workspace policy
+
+- The `workspace_policy:` section states the rules of a pub workspace at its root: `align_versions`
+  (`off`, `compatible`, `exact`), `require_membership`, `same_sdk`, `forbid_cycles`,
+  `include_dev_dependencies` and architecture `layers` with `packages` globs, `may_depend_on`,
+  `isolated` and `forbidden_dependencies`, collected across configuration layers.
+- Findings of the new source `workspace`: `WORKSPACE_MEMBER_MISSING`, `WORKSPACE_RESOLUTION_MISSING`,
+  `WORKSPACE_VERSION_MISMATCH`, `WORKSPACE_SDK_MISMATCH`, `DEPENDENCY_CYCLE`, `LAYER_VIOLATION`,
+  `FORBIDDEN_DEPENDENCY` and `LAYER_UNASSIGNED`. `deps -r` applies them at a workspace root, `check`
+  as the step "Workspace policy", `report` in its dependencies section.
+- `inspectra graph [directory] [-f text|dot|mermaid|json] [--include-dev] [--external]` draws the
+  dependencies between the packages of a workspace, grouped by layer.
+- `inspectra workspace affected --since <revision> [-f text|json]` lists the packages the changes
+  since a Git revision affect, with every package depending on them; `deps -r --changed-since
+  <revision>` checks only those.
+- Library: `WorkspacePolicyConfig`, `WorkspaceLayer`, `VersionAlignment`,
+  `InspectraConfig.workspacePolicy`, `FindingSource.workspace` and `GitHistory.changedFiles`.
+
+### Developer experience
+
+- `inspectra explain [RULE_ID] [-f text|markdown|json]` explains a rule offline - source, default
+  severity, what it reports, why it matters and how to resolve it - from a catalog of every fixed rule
+  id, or lists them all; advisory ids point to OSV.dev, a misspelled id gets the closest rule. The new
+  Rule reference in the documentation lists every rule.
+- `inspectra doctor [--offline] [-f json]` checks the configuration, the Dart and Flutter SDKs against
+  the pubspec and `.fvmrc`, Git, Trivy, proxy, CA bundle, the reachability of OSV.dev, the registry
+  and the Trivy releases, the token of a private registry and the cache, and exits with `1` when a
+  check failed.
+- `inspectra hook run` runs the checks of the new `hook.checks` (`audit`, `typosquat`, `deps`,
+  `format`, `style`; default `[audit, typosquat]`) on the files staged for the commit, the dependency
+  and style checks on the staged content. The pre-commit hook now calls it; `inspectra hook install`
+  updates an installed hook.
+- Library: `HookConfig`, `HookCheck`, `InspectraConfig.hook`, and `GitHistory.stagedFiles` and
+  `stagedContent`.
+
+### Changed
+
+- `deps -r` at the root of a pub workspace checks the packages its `workspace:` list names instead of
+  every `pubspec.yaml` below it, so a standalone `example/` package is no longer included. `scan -r`
+  now also checks the pubspecs of workspace members, which share the root lockfile.
+- `ANY_VERSION` and `WILDCARD_VERSION` no longer report dependencies on packages of the same pub
+  workspace, which pub resolves to the workspace's own copy.
 
 ### Fixed
 

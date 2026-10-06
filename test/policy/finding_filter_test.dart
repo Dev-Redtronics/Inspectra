@@ -104,4 +104,41 @@ void main() {
     expect(outcome.baselined.map((f) => f.ruleId), <String>['a']);
     expect(outcome.suppressed.map((f) => f.ruleId), <String>['b']);
   });
+
+  test('keeps findings of unignorable severities whatever ignores them', () {
+    final filter = FindingFilter(
+      minSeverity: Severity.unknown,
+      rules: <IgnoreRule>[const IgnoreRule(id: 'a', reason: 'r')],
+      cliIgnores: const <String>['b'],
+      now: DateTime.utc(2026),
+      unignorable: const <Severity>{Severity.critical},
+      baseline: BaselineMatcher(
+        baseline: Baseline(const <BaselineEntry>[
+          BaselineEntry(
+            scope: BaselineScope.scan,
+            source: 'osv',
+            rule: 'c',
+            count: 1,
+            severity: Severity.critical,
+            title: 'c',
+          ),
+        ]),
+        config: const BaselineConfig(),
+      ),
+    );
+    final FilterOutcome outcome = filter.apply(<Finding>[
+      finding('a', Severity.critical),
+      finding('a', Severity.high),
+      finding('b', Severity.critical),
+      finding('c', Severity.critical),
+    ]);
+    expect(outcome.kept.map((f) => f.ruleId), <String>['a', 'b', 'c']);
+    expect(outcome.kept.map((f) => f.attributes['ignoreForbidden']), <Object?>[
+      true,
+      true,
+      null,
+    ]);
+    expect(outcome.suppressed.single.severity, Severity.high);
+    expect(outcome.baselined, isEmpty);
+  });
 }

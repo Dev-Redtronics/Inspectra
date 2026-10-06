@@ -25,6 +25,10 @@ enum ConfigStrictness {
   /// is the weakest.
   higherNumber,
 
+  /// A number where less is stricter, such as a limit of libyears; unset,
+  /// no limit, is the weakest.
+  lowerNumber,
+
   /// A switch where `true` is stricter, such as an enabled check.
   enabledFlag,
 
@@ -58,6 +62,11 @@ enum ConfigStrictness {
     'dependency_policy.lockfile_in_sync',
     'dependency_policy.lockfile_checksums',
     'dependency_policy.check_imports',
+    'dependency_policy.overrides.require_reason',
+    'workspace_policy.require_membership',
+    'workspace_policy.same_sdk',
+    'workspace_policy.forbid_cycles',
+    'workspace_policy.include_dev_dependencies',
   };
 
   /// Finds the order of the option [key].
@@ -69,6 +78,10 @@ enum ConfigStrictness {
     }
     if (key == 'coverage.min_line_coverage') {
       return higherNumber;
+    }
+    if (key == 'dependency_policy.max_major_behind' ||
+        key == 'dependency_policy.max_libyear') {
+      return lowerNumber;
     }
     if (key == 'fail_on' ||
         key == 'min_severity' ||
@@ -102,6 +115,7 @@ enum ConfigStrictness {
     final String text = '$value'.trim().toLowerCase();
     return switch (this) {
       higherNumber => value is num ? value.toDouble() : double.tryParse(text),
+      lowerNumber => _negated(value is num ? value.toDouble() : null, text),
       enabledFlag => value is bool ? (value ? 1 : 0) : null,
       severityThreshold =>
         Severity.values
@@ -126,5 +140,14 @@ enum ConfigStrictness {
         null => null,
       },
     };
+  }
+
+  /// Negates the number [value], or the number written as [text], so that
+  /// a lower limit ranks higher.
+  ///
+  /// Returns the negated number, or `null` when there is none.
+  static double? _negated(double? value, String text) {
+    final double? number = value ?? double.tryParse(text);
+    return number == null ? null : -number;
   }
 }

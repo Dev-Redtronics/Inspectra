@@ -43,11 +43,15 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra inspect <pkg> <version>` | Downloads, verifies and statically analyses a package's published source |
 | `inspectra trust <pkg> [version]` | Trust assessment from pub.dev: age, release freshness, publisher, popularity |
 | `inspectra typosquat` | Typosquatting and dependency confusion analysis of `pubspec.yaml` |
-| `inspectra deps [--fix] [-r]` | Pubspec rules and the dependency policy, offline; `--fix` bounds constraints, moves dev packages and adds `publish_to: none` |
+| `inspectra deps [--fix] [-r] [--online]` | Pubspec rules and the dependency policy, offline unless `--online` checks outdated dependencies; `--fix` bounds and restyles constraints, moves dev packages and adds `publish_to: none` |
+| `inspectra graph [-f text\|dot\|mermaid\|json]` | Dependency graph of a pub workspace, grouped by the layers of `workspace_policy` |
+| `inspectra workspace affected --since <rev>` | The workspace packages a change affects, with their dependents, for a CI matrix; `deps -r --changed-since <rev>` checks only those |
 | `inspectra add <pkg> [version]` | Audits a package and adds **exactly** the audited version (`--dev`, `--dry-run`, `--force`) |
-| `inspectra hook [install\|remove]` | Git pre-commit hook for staged `pubspec.yaml` / `pubspec.lock` changes |
+| `inspectra hook [install\|remove\|run]` | Git pre-commit hook: `hook.checks` (audit, typosquat, deps, format, style) on the staged files |
+| `inspectra explain [RULE_ID]` | What a rule reports, why, and how to resolve it - offline; without an id, every rule |
+| `inspectra doctor` | Configuration, SDKs, Git, Trivy, proxy, CA bundle, registry token, network and cache in one check |
 | `inspectra trivy [secret\|license\|vulnerability\|filesystem…]` | The configured Trivy scans, or a `trivy fs` scan; `--install`, `--where` |
-| `inspectra check` | Every enabled package check: format, lint, style, API, API semver, changelog, Trivy scans, coverage |
+| `inspectra check` | Every enabled package check: format, lint, style, API, API semver, changelog, Trivy scans, dependency and workspace policy, coverage |
 | `inspectra format [--fix]` / `lint [--fix]` | `dart format` / `dart analyze` gates |
 | `inspectra style` | Built-in and custom style rules: license header, one type per file, documentation, no `else`, … (SARIF-capable) |
 | `inspectra api dump\|check` | Record or verify the public API dump |
@@ -56,7 +60,7 @@ It is the Dart counterpart of the static analysis, security and API features of
 | `inspectra changelog generate [--write]` | The changelog section of the next release from Conventional Commits, with a suggested version (`--from`, `--to`, `--release`, `--date`) |
 | `inspectra changelog check` | Fail when `CHANGELOG.md` is malformed or misses the version of `pubspec.yaml` |
 | `inspectra changelog notes [version]` | Print the section of a release, for example as GitHub release notes |
-| `inspectra config show\|validate\|lint\|schema\|fetch` | Effective configuration with the origin of each value (`--explain`), validation of referenced files, risky settings, JSON Schema, remote bases for offline use |
+| `inspectra config show\|validate\|lint\|schema\|fetch\|init\|migrate\|diff` | Effective configuration with the origin of each value (`--explain`), validation of referenced files and profiles, risky settings, JSON Schema, remote bases for offline use, starting presets, migration of renamed options, comparison of configurations |
 | `inspectra baseline create\|prune` | Record today's findings so that only new ones fail (`--only scan,lint,style,trivy`), or remove the fixed ones |
 | `inspectra report` | Every evaluation at once - lines of code with and without comments, supply chain, dependencies, configuration, format, lint, style, API, semantic versioning, changelog, Trivy, coverage - for example as one self-contained HTML dashboard (`--skip`, `--also junit=…`, `--merge`) |
 
@@ -143,8 +147,13 @@ precedence first:
 1. `--set trivy.version=latest` and dedicated flags such as `--trivy-version`;
 2. `INSPECTRA_<PATH>` environment variables, e.g. `INSPECTRA_TRIVY_VERSION`,
    `INSPECTRA_NETWORK_PROXY`, `INSPECTRA_TRIVY_FILESYSTEM_SCANNERS=vuln,secret`;
-3. the configuration file;
-4. built-in defaults.
+3. the profile selected with `--profile ci` or `INSPECTRA_PROFILE` from the `profiles:` section;
+4. the configuration file;
+5. the bases it `extends`, whose `policy:` can lock options, set minimums and forbid ignoring severities;
+6. built-in defaults.
+
+Values can refer to environment variables - `proxy: http://${env:PROXY_USER}@proxy.corp:3128` - and a list
+option written as `key+:` adds to the list of the bases instead of replacing it.
 
 Unknown keys and wrong types are errors that name the offending key and the closest valid one, for example
 `Invalid Inspectra configuration at "inspectra.trivy.secrets": unknown option. Did you mean "secret"?`.
@@ -157,6 +166,9 @@ dart run inspectra config show --explain    # every effective value and where it
 dart run inspectra config validate          # the configuration and every file it refers to
 dart run inspectra config lint              # risky settings, misspelled INSPECTRA_* variables
 dart run inspectra config schema            # JSON Schema for completion in the editor
+dart run inspectra config init              # a starting inspectra.yaml for an app, library or plugin
+dart run inspectra config migrate           # replace the old names of renamed options
+dart run inspectra config diff git:main     # what a change of the configuration weakens
 ```
 
 `config show --explain` comments each value with its origin - `inspectra.yaml:12`, `environment variable
@@ -200,9 +212,10 @@ inspectra:
 Organisation rules for dependencies, checked by `inspectra deps` (offline, `-r` for workspaces), `scan` and `check`:
 denied packages (also transitive), allowed packages, registries and Git hosts, upper bounds, SDK minimums,
 development packages in `dependencies`, a missing `publish_to` that would let `dart pub publish` upload an internal
-package to pub.dev, required metadata, a `pubspec.lock` out of sync or without checksums, and unused or misplaced
-dependencies found from the imports. `inspectra deps --fix` applies the fixable rules while keeping comments and
-formatting. Every rule is opt-in.
+package to pub.dev, required metadata, a `pubspec.lock` out of sync, without checksums or committed against the
+`lockfile_policy`, the constraint style, overrides without a documented reason, unused or misplaced dependencies found
+from the imports, and - with `--online` - dependencies too many breaking releases or libyears behind.
+`inspectra deps --fix` applies the fixable rules while keeping comments and formatting. Every rule is opt-in.
 
 ### Baseline for existing code
 

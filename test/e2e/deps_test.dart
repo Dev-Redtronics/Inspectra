@@ -17,9 +17,11 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:inspectra/inspectra.dart';
 import 'package:test/test.dart';
 
 import '../support/fake_http_server.dart';
+import '../support/fake_process_runner.dart';
 import '../support/fake_response.dart';
 import '../support/test_harness.dart';
 
@@ -248,5 +250,158 @@ packages:
     expect(await run(harness, <String>['check']), 1);
     expect(harness.out, contains('Dependency policy: '));
     expect(harness.out, contains('(MISSING_PUBLISH_TO)'));
+  });
+
+  test('--online checks how far the dependencies are behind', () async {
+    server.on(
+      'GET',
+      '/api/packages/http',
+      FakeResponse.json(<String, Object?>{
+        'name': 'http',
+        'latest': <String, Object?>{'version': '3.0.0'},
+        'versions': <Object?>[
+          <String, Object?>{
+            'version': '1.2.0',
+            'published': '2023-10-01T00:00:00Z',
+          },
+          <String, Object?>{
+            'version': '2.0.0',
+            'published': '2024-10-01T00:00:00Z',
+          },
+          <String, Object?>{
+            'version': '3.0.0',
+            'published': '2025-10-01T00:00:00Z',
+          },
+        ],
+      }),
+    );
+    final TestHarness harness = project(<String, String>{
+      'pubspec.yaml':
+          'name: app\npublish_to: none\ndependencies:\n  http: ^1.2.0\n'
+          'inspectra:\n  dependency_policy:\n    enabled: true\n'
+          '    max_major_behind: 1\n    max_libyear: 1\n',
+      'pubspec.lock': '''
+packages:
+  http:
+    dependency: "direct main"
+    description: {name: http, sha256: aa, url: "https://pub.dev"}
+    source: hosted
+    version: "1.2.0"
+''',
+    });
+    expect(await run(harness, <String>['deps', '-f', 'json']), 0);
+    final offline = jsonDecode(harness.out) as Map<String, Object?>;
+    expect(offline['outdatedChecked'], isFalse);
+    expect(await run(harness, <String>['deps']), 0);
+    expect(harness.out, contains('run "inspectra deps --online"'));
+    expect(
+      await run(harness, <String>['deps', '--online', '-f', 'json']),
+      1,
+      reason: harness.err,
+    );
+    expect(rules(harness), <Object?>['OUTDATED_MAJOR', 'LIBYEAR_EXCEEDED']);
+    final online = jsonDecode(harness.out) as Map<String, Object?>;
+    expect(online['outdatedChecked'], isTrue);
+    expect(online['libyears'], closeTo(2.0, 0.01));
+    expect(server.requests, hasLength(1));
+    expect(await run(harness, <String>['deps', '--online']), 1);
+    expect(server.requests, hasLength(1), reason: 'served from the cache');
+    expect(harness.out, contains('2.0 libyears'));
+    expect(await run(harness, <String>['check']), 1);
+    expect(harness.out, contains('(OUTDATED_MAJOR)'));
+    expect(await run(harness, <String>['deps', '--online', '--offline']), 0);
+    expect(harness.err, contains('--online has no effect'));
+  });
+
+  test('justified overrides and the lockfile policy', () async {
+    final git = FakeProcessRunner(
+      (executable, arguments) => ProcessOutcome(
+        exitCode: 0,
+        stdout: arguments.contains('ls-files') ? 'pubspec.yaml\u0000' : '',
+        stderr: '',
+      ),
+    );
+    final harness = TestHarness.withFiles(
+      <String, String>{
+        'pubspec.yaml': '''
+name: app
+publish_to: none
+dependency_overrides:
+  intl: 0.19.0
+  meta: 1.15.0
+inspectra:
+  dependency_policy:
+    enabled: true
+    lockfile_policy: auto
+    overrides:
+      require_reason: true
+      allowed:
+        - name: intl
+          reason: Flutter pins an older intl.
+''',
+      },
+      environment: <String, String>{
+        'INSPECTRA_NETWORK_OSV_URL': server.baseUrl,
+        'INSPECTRA_NETWORK_PUB_HOSTED_URL': server.baseUrl,
+      },
+      processRunner: git,
+    );
+    harnesses.add(harness);
+    expect(await run(harness, <String>['deps', '-f', 'json']), 1);
+    expect(rules(harness), <Object?>[
+      'DEPENDENCY_OVERRIDE',
+      'UNJUSTIFIED_OVERRIDE',
+      'LOCKFILE_POLICY',
+    ]);
+    expect(git.calls.single, startsWith('git ls-files'));
+  });
+
+  test('scan -r checks workspace members against the root lockfile', () async {
+    server.on(
+      'POST',
+      '/v1/querybatch',
+      FakeResponse.json(<String, Object?>{
+        'results': <Object?>[<String, Object?>{}],
+      }),
+    );
+    final TestHarness harness = project(<String, String>{
+      'pubspec.yaml': 'name: root\nworkspace: [pkgs/app, pkgs/core]\n',
+      'pubspec.lock': '''
+packages:
+  http:
+    dependency: "direct main"
+    description: {name: http, sha256: aa, url: "https://pub.dev"}
+    source: hosted
+    version: "1.2.0"
+''',
+      'pkgs/app/pubspec.yaml':
+          'name: app\nresolution: workspace\n'
+          'dependencies:\n  core: any\n  http: any\n',
+      'pkgs/core/pubspec.yaml': 'name: core\nresolution: workspace\n',
+    });
+    expect(
+      await run(harness, <String>[
+        'scan',
+        '-r',
+        '--trivy-mode',
+        'disabled',
+        '-f',
+        'json',
+      ]),
+      1,
+      reason: harness.err,
+    );
+    final report = jsonDecode(harness.out) as Map<String, Object?>;
+    expect(report['pubspecs'], <String>[
+      'pubspec.yaml',
+      'pkgs/app/pubspec.yaml',
+      'pkgs/core/pubspec.yaml',
+    ]);
+    final List<Map<String, Object?>> findings =
+        (report['findings']! as List<Object?>).cast<Map<String, Object?>>();
+    expect(
+      findings.map((finding) => '${finding['ruleId']} ${finding['package']}'),
+      <String>['ANY_VERSION http'],
+    );
   });
 }

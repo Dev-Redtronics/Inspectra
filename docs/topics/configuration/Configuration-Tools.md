@@ -6,14 +6,16 @@
 
 <show-structure for="chapter" depth="2"/>
 
-<link-summary>See where every configuration value comes from, validate the configuration and its files, lint it for risky settings, and get completion in the editor.</link-summary>
+<link-summary>See where every configuration value comes from, validate the configuration and its files, lint it for risky settings, start, migrate and compare configurations, and get completion in the editor.</link-summary>
 
-<card-summary>config show --explain, config validate, config lint and a JSON Schema for completion and validation in the editor.</card-summary>
+<card-summary>config show --explain, validate, lint, init, migrate, diff and a JSON Schema for completion and validation in the editor.</card-summary>
 
 <tldr>
 <p><b>Where does a value come from?</b> <code>dart run %package% config show --explain</code></p>
 <p><b>Is the configuration complete?</b> <code>dart run %package% config validate</code></p>
 <p><b>Is it risky?</b> <code>dart run %package% config lint</code></p>
+<p><b>New project?</b> <code>dart run %package% config init</code></p>
+<p><b>What does this change weaken?</b> <code>dart run %package% config diff git:main --fail-on-weaker</code></p>
 <p><b>Editor</b>: <code># yaml-language-server: $schema=…/inspectra.schema.json</code> in <code>%config_file%</code></p>
 </tldr>
 
@@ -59,7 +61,8 @@ dart run %package% config validate
 Loads the configuration - an unknown key or a wrong type fails with exit code `65`, naming the key and the closest
 valid option - and checks that every file it refers to exists: `style.license_header`, `style.custom_rules`,
 `trivy.secret.config`, `network.ca_certificates` and, with `changelog.enabled`, `changelog.file`. A baseline file must
-be well-formed. All problems are listed at once:
+be well-formed, and every [profile](Configuration-Inheritance.md#profiles) the configuration or its bases define must
+be valid on its own, not only the selected one. All problems are listed at once:
 
 ```text
 error: The configuration has 2 problem(s):
@@ -90,6 +93,7 @@ configuration file. The shared options apply: `--fail-on`, `-f json|sarif|markdo
 | `CONFIG_IGNORE_WITHOUT_EXPIRY` | low | An ignore rule has no `expires` date |
 | `CONFIG_GATE_NOT_FAILING` | low | An enabled check has `fail_on_findings: false`, or `lint.fail_on: none` |
 | `CONFIG_MIN_SEVERITY` | low | `min_severity` hides findings from every report |
+| `CONFIG_DEPRECATED_OPTION` | low | The file uses the old name of a renamed option |
 | `CONFIG_NO_COVERAGE_THRESHOLD` | low | `coverage.enabled` without `min_line_coverage` |
 | `CONFIG_BASELINE_UNBOUNDED` | low | A [baseline](Baseline.md) file exists and `baseline.max_severity` is unset |
 | `CONFIG_PUBSPEC_SECTION_IGNORED` | medium | `pubspec.yaml` has an `inspectra:` section, but a configuration file replaces it, with its `extends` and `policy` |
@@ -122,6 +126,70 @@ command does this before reading the configuration; `config fetch` only lists th
 `config show --explain` comments values from a base with that base and its line, such as
 `# package:acme_policy/inspectra.yaml:4`, and `config show -f json` adds `layers` and a `file` per value.
 
+## config init {id="init"}
+
+```bash
+dart run %package% config init
+dart run %package% config init --preset enterprise --stdout
+```
+
+Writes a starting `%config_file%` for the kind of package, detected from `pubspec.yaml` unless `--preset` names it:
+
+| Preset | Detected when | What it enables |
+|:--|:--|:--|
+| `app` | `publish_to: none` | format, lint (`fail_on: warning`), style, coverage from 70 %, Trivy, a dependency policy with upper bounds, `require_publish_to` and a lockfile in sync |
+| `library` | The package can be published | The `app` checks with `lint.fail_on: info`, coverage from 80 %, the API dump with `semver`, the changelog and `required_metadata` instead of `require_publish_to` |
+| `plugin` | `flutter: plugin:` in `pubspec.yaml` | The `library` checks with the Flutter test runner |
+| `enterprise` | Never; name it | The `app` or `library` checks with `trivy.mode: required`, `fail_on: medium`, checksums and imports checked, a baseline that never covers HIGH or CRITICAL, and `local` and `ci` [profiles](Configuration-Inheritance.md#profiles) |
+
+A Flutter package gets `coverage.runner: flutter`. The file starts with the schema modeline, so the editor completes the
+rest. `config init` refuses to replace an existing `%config_file%` without `--force` (exit code `64`), prints the file
+instead with `--stdout`, and warns when `pubspec.yaml` has an `%pubspec_key%:` section that the new file replaces. It
+reads no configuration, so it works in a project whose configuration is broken.
+
+## config migrate {id="migrate"}
+
+```bash
+dart run %package% config migrate --dry-run
+dart run %package% config migrate
+```
+
+When an option is renamed, the old name keeps working until the next major version, with a warning and the finding
+`CONFIG_DEPRECATED_OPTION`. `config migrate` replaces the old names in the project's configuration file - `%config_file%`,
+the file named by `--config` or `INSPECTRA_CONFIG`, or the `%pubspec_key%:` section of `pubspec.yaml` - and in each of
+its profiles. Only the keys change; values, comments and order stay. `--dry-run` lists the renames without writing,
+`-f json` writes `file`, `dryRun` and `renamed` with `from`, `to` and `line`. Bases are migrated by their owners.
+
+Exit code `0`, also when nothing needs to change; `65` when the file is malformed or names an option twice, under the
+old and the new name; `69` when the file cannot be written.
+
+## config diff {id="diff"}
+
+```bash
+dart run %package% config diff git:main
+dart run %package% config diff git:v1.4.0 git:main
+dart run %package% config diff ci/strict.yaml inspectra.yaml --fail-on-weaker
+```
+
+Compares two configurations option by option and lists every option whose value differs. A configuration is a file -
+`%config_file%`, any other file of the same format, or `pubspec.yaml` for its section - or `git:<revision>`, the
+project's configuration file at that revision. Without a second one, `config diff` compares with the effective
+configuration. Both are read with the same profile, environment variables and command line, so only the files differ;
+bases are always the current ones.
+
+```text
+inspectra.yaml at main → the effective configuration:
+  fail_on: "high" → "low"
+  trivy.mode: "required" → "auto" (weaker)
+2 option(s) differ, 1 weaker.
+```
+
+A change is **weaker** when the option has an order from weak to strict - the same order as a policy's
+[`minimum`](Configuration-Inheritance.md#policy) - and the new value checks less. With `--fail-on-weaker` the command
+exits with `1` when any option got weaker, which makes it a gate for pull requests that touch the configuration or a
+policy update. References to environment variables are compared as written. `-f json` writes `from`, `to` and
+`changes` with `key`, `from`, `to` and `weaker`.
+
 ## Editor support with the JSON Schema {id="schema"}
 
 ```bash
@@ -151,7 +219,7 @@ file. The `inspectra:` section of `pubspec.yaml` is not covered, because a schem
         <a href="Baseline.md">Baseline</a>
     </category>
     <category ref="reference">
-        <a href="CLI-Reference.md#config-show">config show, validate, lint and schema</a>
+        <a href="CLI-Reference.md#config-show">config show, validate, lint, schema, init, migrate and diff</a>
     </category>
     <category ref="external">
         <a href="https://json-schema.org/">JSON Schema</a>

@@ -22,7 +22,8 @@ import 'package:inspectra/src/io/process_outcome.dart';
 import 'package:inspectra/src/io/process_runner.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
 
-/// Reads commits and release tags with the `git` command line.
+/// Reads commits, release tags and changed files with the `git` command
+/// line.
 ///
 /// Every call disables the settings that would change the output Inspectra
 /// parses: signature verification in `git log`, colours, the log encoding
@@ -148,6 +149,63 @@ final class GitHistory {
       rethrow;
     }
   }
+
+  /// Lists the files changed since [revision], committed or not, below the
+  /// working directory.
+  ///
+  /// Returns their paths relative to the working directory, with `/`
+  /// separators.
+  ///
+  /// Throws an [InvalidUsageException] outside of a Git repository or for
+  /// a revision Git cannot resolve, and an [UnavailableException] when Git
+  /// is not installed or fails otherwise.
+  Future<List<String>> changedFiles(String revision) async {
+    final String output = await _git(<String>[
+      'diff',
+      '--name-only',
+      '--relative',
+      '-z',
+      _revision(revision),
+      '--',
+    ]);
+    return List<String>.unmodifiable(
+      output.split('\u0000').where((path) => path.isNotEmpty),
+    );
+  }
+
+  /// Lists the files that are staged for the next commit - added, copied,
+  /// modified or renamed - below the working directory; with [unstaged],
+  /// the files with changes that are not staged instead.
+  ///
+  /// Returns their paths relative to the working directory, with `/`
+  /// separators.
+  ///
+  /// Throws an [InvalidUsageException] outside of a Git repository and an
+  /// [UnavailableException] when Git is not installed or fails otherwise.
+  Future<List<String>> stagedFiles({bool unstaged = false}) async {
+    final String output = await _git(<String>[
+      'diff',
+      if (!unstaged) '--cached',
+      '--name-only',
+      '--relative',
+      '--diff-filter=ACMR',
+      '-z',
+      '--',
+    ]);
+    return List<String>.unmodifiable(
+      output.split('\u0000').where((path) => path.isNotEmpty),
+    );
+  }
+
+  /// Reads the staged content of the file at [path], relative to the
+  /// working directory.
+  ///
+  /// Returns the content of the file in the index.
+  ///
+  /// Throws an [InvalidUsageException] outside of a Git repository and an
+  /// [UnavailableException] when the file is not staged or Git fails.
+  Future<String> stagedContent(String path) =>
+      _git(<String>['show', ':./${path.replaceAll(r'\', '/')}']);
 
   /// Whether `HEAD` points to a commit; it does not in a repository
   /// without any commit yet.

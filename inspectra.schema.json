@@ -72,11 +72,36 @@
         }
       ]
     },
+    "profiles": {
+      "type": "object",
+      "description": "Named partial configurations that --profile or INSPECTRA_PROFILE applies on top of this file; they cannot set extends, policy or profiles.",
+      "additionalProperties": {
+        "$ref": "#"
+      }
+    },
     "policy": {
       "type": "object",
-      "description": "Options that the files extending this one, environment variables and the command line must not change, or may only tighten.",
+      "description": "Options that the files extending this one, environment variables and the command line must not change, or may only tighten, and the severities no ignore may hide.",
       "additionalProperties": false,
       "properties": {
+        "forbid_ignore_of": {
+          "type": "array",
+          "description": "Severities of findings that no ignore rule, --ignore flag or baseline may suppress.",
+          "items": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "unknown",
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "UNKNOWN"
+            ]
+          }
+        },
         "locked": {
           "type": "array",
           "description": "Dotted options that must keep their value.",
@@ -125,6 +150,16 @@
             "**.dart"
           ]
         },
+        "include+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "exclude": {
           "type": "array",
           "items": {
@@ -140,6 +175,16 @@
             "**.freezed.dart",
             "**.mocks.dart"
           ]
+        },
+        "exclude+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         },
         "page_width": {
           "type": "integer",
@@ -188,6 +233,16 @@
             ]
           },
           "default": []
+        },
+        "custom_rules+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         },
         "license_header": {
           "type": [
@@ -268,6 +323,16 @@
             "**.dart"
           ]
         },
+        "include+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "exclude": {
           "type": "array",
           "items": {
@@ -283,6 +348,16 @@
             "**.freezed.dart",
             "**.mocks.dart"
           ]
+        },
+        "exclude+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         }
       }
     },
@@ -395,6 +470,16 @@
           },
           "default": []
         },
+        "extra_args+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "secret": {
           "type": "object",
           "additionalProperties": false,
@@ -435,6 +520,25 @@
                 "LOW"
               ]
             },
+            "severity+": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "CRITICAL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                  "UNKNOWN",
+                  "critical",
+                  "high",
+                  "medium",
+                  "low",
+                  "unknown"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
+            },
             "config": {
               "type": [
                 "string",
@@ -458,6 +562,16 @@
                 "**.properties"
               ]
             },
+            "include+": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
+            },
             "exclude": {
               "type": "array",
               "items": {
@@ -471,6 +585,16 @@
                 "**/build/**",
                 "**/.git/**"
               ]
+            },
+            "exclude+": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
             }
           }
         },
@@ -513,6 +637,25 @@
                 "UNKNOWN"
               ]
             },
+            "severity+": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "CRITICAL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                  "UNKNOWN",
+                  "critical",
+                  "high",
+                  "medium",
+                  "low",
+                  "unknown"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
+            },
             "ignored_licenses": {
               "type": "array",
               "items": {
@@ -523,6 +666,16 @@
               },
               "default": []
             },
+            "ignored_licenses+": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
+            },
             "ignored_packages": {
               "type": "array",
               "items": {
@@ -532,6 +685,16 @@
                 ]
               },
               "default": []
+            },
+            "ignored_packages+": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
             },
             "include_dev_dependencies": {
               "type": "boolean",
@@ -579,6 +742,25 @@
                 "LOW"
               ]
             },
+            "severity+": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "CRITICAL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                  "UNKNOWN",
+                  "critical",
+                  "high",
+                  "medium",
+                  "low",
+                  "unknown"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
+            },
             "include_dev_dependencies": {
               "type": "boolean",
               "default": true
@@ -596,6 +778,16 @@
                 ]
               },
               "default": []
+            },
+            "ignored_vulnerabilities+": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
             }
           }
         },
@@ -635,6 +827,25 @@
                 "LOW"
               ]
             },
+            "severity+": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "CRITICAL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                  "UNKNOWN",
+                  "critical",
+                  "high",
+                  "medium",
+                  "low",
+                  "unknown"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
+            },
             "scanners": {
               "type": "array",
               "minItems": 1,
@@ -656,6 +867,23 @@
                 "misconfig"
               ]
             },
+            "scanners+": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "vuln",
+                  "secret",
+                  "misconfig",
+                  "license",
+                  "VULN",
+                  "SECRET",
+                  "MISCONFIG",
+                  "LICENSE"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
+            },
             "skip_dirs": {
               "type": "array",
               "items": {
@@ -669,6 +897,16 @@
                 "build",
                 ".git"
               ]
+            },
+            "skip_dirs+": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "description": "Adds to the list of the lower layers instead of replacing it."
             }
           }
         }
@@ -699,6 +937,16 @@
           },
           "default": []
         },
+        "ignored_libraries+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "non_public_annotations": {
           "type": "array",
           "items": {
@@ -711,6 +959,16 @@
             "internal",
             "visibleForTesting"
           ]
+        },
+        "non_public_annotations+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         },
         "semver": {
           "type": "boolean",
@@ -754,6 +1012,16 @@
             "lib"
           ]
         },
+        "report_on+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "exclude": {
           "type": "array",
           "items": {
@@ -767,6 +1035,16 @@
             "**.freezed.dart",
             "**.mocks.dart"
           ]
+        },
+        "exclude+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         },
         "min_line_coverage": {
           "type": "number",
@@ -782,6 +1060,16 @@
             ]
           },
           "default": []
+        },
+        "test_arguments+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         }
       }
     },
@@ -1305,6 +1593,16 @@
             ".gr.dart"
           ]
         },
+        "entropy_excludes+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "exclude_directories": {
           "type": "array",
           "items": {
@@ -1324,6 +1622,16 @@
             "extension"
           ]
         },
+        "exclude_directories+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "trusted_hosts": {
           "type": "array",
           "items": {
@@ -1333,6 +1641,16 @@
             ]
           },
           "default": []
+        },
+        "trusted_hosts+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         }
       }
     },
@@ -1392,6 +1710,16 @@
           },
           "default": []
         },
+        "allow+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "popular": {
           "type": "array",
           "items": {
@@ -1401,6 +1729,16 @@
             ]
           },
           "default": []
+        },
+        "popular+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         }
       }
     },
@@ -1483,6 +1821,16 @@
           },
           "default": []
         },
+        "allowed+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "allowed_hosts": {
           "type": "array",
           "items": {
@@ -1493,6 +1841,16 @@
           },
           "default": []
         },
+        "allowed_hosts+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "allowed_git_hosts": {
           "type": "array",
           "items": {
@@ -1502,6 +1860,16 @@
             ]
           },
           "default": []
+        },
+        "allowed_git_hosts+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         },
         "require_upper_bound": {
           "type": "boolean",
@@ -1529,6 +1897,16 @@
           },
           "default": []
         },
+        "dev_only+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
         "require_publish_to": {
           "type": "boolean",
           "default": false
@@ -1542,6 +1920,16 @@
             ]
           },
           "default": []
+        },
+        "published_packages+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         },
         "required_metadata": {
           "type": "array",
@@ -1563,6 +1951,27 @@
             ]
           },
           "default": []
+        },
+        "required_metadata+": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "enum": [
+              "description",
+              "repository",
+              "homepage",
+              "issue_tracker",
+              "documentation",
+              "topics",
+              "DESCRIPTION",
+              "REPOSITORY",
+              "HOMEPAGE",
+              "ISSUE_TRACKER",
+              "DOCUMENTATION",
+              "TOPICS"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         },
         "lockfile_in_sync": {
           "type": "boolean",
@@ -1587,6 +1996,225 @@
           "default": [
             "cupertino_icons"
           ]
+        },
+        "unused_allow+": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
+        },
+        "constraint_style": {
+          "enum": [
+            "any",
+            "caret",
+            "range",
+            "pinned",
+            "ANY",
+            "CARET",
+            "RANGE",
+            "PINNED"
+          ],
+          "default": "any"
+        },
+        "overrides": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "require_reason": {
+              "type": "boolean",
+              "default": false
+            },
+            "allowed": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "reason"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The overridden package."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the override is needed."
+                  },
+                  "expires": {
+                    "type": "string",
+                    "description": "The last day the justification holds, YYYY-MM-DD.",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+                  }
+                }
+              },
+              "default": []
+            }
+          }
+        },
+        "lockfile_policy": {
+          "enum": [
+            "any",
+            "committed",
+            "ignored",
+            "auto",
+            "ANY",
+            "COMMITTED",
+            "IGNORED",
+            "AUTO"
+          ],
+          "default": "any"
+        },
+        "max_major_behind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max_libyear": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1000.0
+        },
+        "libyear_scope": {
+          "enum": [
+            "direct",
+            "all",
+            "DIRECT",
+            "ALL"
+          ],
+          "default": "direct"
+        }
+      }
+    },
+    "workspace_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "align_versions": {
+          "enum": [
+            "off",
+            "compatible",
+            "exact",
+            "OFF",
+            "COMPATIBLE",
+            "EXACT"
+          ],
+          "default": "compatible"
+        },
+        "require_membership": {
+          "type": "boolean",
+          "default": true
+        },
+        "same_sdk": {
+          "type": "boolean",
+          "default": false
+        },
+        "forbid_cycles": {
+          "type": "boolean",
+          "default": true
+        },
+        "include_dev_dependencies": {
+          "type": "boolean",
+          "default": false
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "packages"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The name other layers refer to."
+              },
+              "packages": {
+                "type": "array",
+                "description": "Globs of the package directories, relative to the workspace root.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "may_depend_on": {
+                "type": "array",
+                "description": "The other layers its packages may depend on; every layer when absent.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "isolated": {
+                "type": "boolean",
+                "description": "Whether its packages may not depend on each other."
+              },
+              "forbidden_dependencies": {
+                "type": "array",
+                "description": "Packages none of its packages may depend on.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": []
+        }
+      }
+    },
+    "hook": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "enum": [
+              "audit",
+              "typosquat",
+              "deps",
+              "format",
+              "style",
+              "AUDIT",
+              "TYPOSQUAT",
+              "DEPS",
+              "FORMAT",
+              "STYLE"
+            ]
+          },
+          "default": [
+            "audit",
+            "typosquat"
+          ]
+        },
+        "checks+": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "enum": [
+              "audit",
+              "typosquat",
+              "deps",
+              "format",
+              "style",
+              "AUDIT",
+              "TYPOSQUAT",
+              "DEPS",
+              "FORMAT",
+              "STYLE"
+            ]
+          },
+          "description": "Adds to the list of the lower layers instead of replacing it."
         }
       }
     }
