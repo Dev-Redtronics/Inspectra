@@ -29,7 +29,7 @@ import '../support/fixtures.dart';
 void main() {
   /// Checks the [pubspec] with [lock] against [config]; [root] holds the
   /// sources for the import rules, and [owns] tells whether the lockfile
-  /// belongs to the package.
+  /// belongs to the package, and [tracked] whether Git tracks it.
   ///
   /// Returns the findings.
   List<Finding> check(
@@ -39,6 +39,7 @@ void main() {
     String? root,
     bool owns = true,
     String registry = 'https://pub.dev',
+    bool? tracked,
   }) {
     final source = PolicySource(
       pubspec: const PubspecParser().parse(pubspec, path: 'pubspec.yaml'),
@@ -51,10 +52,12 @@ void main() {
           ? null
           : PubspecLocator.parse(lock, 'pubspec.lock'),
       ownsLockfile: owns,
+      lockfileTracked: tracked,
     );
     return DependencyPolicy(
       config: config,
       defaultRegistry: registry,
+      now: DateTime.utc(2026, 10),
     ).check(source);
   }
 
@@ -326,5 +329,150 @@ dev_dependencies:
       'DEV_DEPENDENCY_IN_LIB mockito 8',
     ]);
     expect(findings[1].description, contains('move it to dev_dependencies'));
+  });
+
+  test('constraints must be written in the configured style', () {
+    const pubspec = '''
+name: app
+dependencies:
+  http: ^1.2.0
+  path: ">=1.8.0 <2.0.0"
+  meta: 1.15.0
+  odd: ">=1.0.0 <1.5.0"
+  local:
+    path: ../local
+''';
+    final lock =
+        'packages:\n${entry('http', '1.2.2')}${entry('path', '1.9.0')}'
+        '${entry('meta', '1.15.0')}${entry('odd', '1.4.0')}';
+    final List<Finding> caret = check(
+      const DependencyPolicyConfig(constraintStyle: ConstraintStyle.caret),
+      pubspec,
+      lock: lock,
+    );
+    expect(describe(caret), <String>[
+      'CONSTRAINT_STYLE path 4',
+      'CONSTRAINT_STYLE meta 5',
+      'CONSTRAINT_STYLE odd 6',
+    ]);
+    expect(caret.first.attributes['fix'], '^1.8.0');
+    expect(caret.first.severity, Severity.low);
+    expect(caret.last.attributes['fix'], isNull);
+    expect(caret.last.description, contains('Rewrite it as caret'));
+    final List<Finding> pinned = check(
+      const DependencyPolicyConfig(constraintStyle: ConstraintStyle.pinned),
+      pubspec,
+      lock: lock,
+    );
+    expect(pinned.map((finding) => finding.attributes['fix']), <Object?>[
+      '1.2.2',
+      '1.9.0',
+      '1.4.0',
+    ]);
+    expect(
+      check(
+        const DependencyPolicyConfig(constraintStyle: ConstraintStyle.range),
+        pubspec,
+      ).map((finding) => finding.attributes['fix']),
+      <Object?>['>=1.2.0 <2.0.0', '>=1.15.0 <2.0.0'],
+    );
+  });
+
+  test('overrides need a justification that has not expired', () {
+    const pubspec = '''
+name: app
+dependency_overrides:
+  intl: 0.19.0
+  meta: 1.15.0
+  path: 1.9.0
+''';
+    final config = DependencyPolicyConfig(
+      overridesRequireReason: true,
+      allowedOverrides: <AllowedOverride>[
+        const AllowedOverride(name: 'intl', reason: 'Flutter pins it.'),
+        AllowedOverride(
+          name: 'meta',
+          reason: 'Until the fix.',
+          expires: DateTime.utc(2026, 9, 30),
+        ),
+      ],
+    );
+    final List<Finding> findings = check(config, pubspec);
+    expect(describe(findings), <String>[
+      'UNJUSTIFIED_OVERRIDE meta 4',
+      'UNJUSTIFIED_OVERRIDE path 5',
+    ]);
+    expect(findings.first.title, contains('expired on 2026-09-30'));
+    expect(findings.last.title, 'The override of path has no reason');
+    final policy = DependencyPolicy(
+      config: config,
+      defaultRegistry: 'https://pub.dev',
+      now: DateTime.utc(2026, 10),
+    );
+
+    /// Returns a `DEPENDENCY_OVERRIDE` of [name].
+    Finding override(String name) => Finding(
+      ruleId: 'DEPENDENCY_OVERRIDE',
+      source: FindingSource.pubspec,
+      severity: Severity.medium,
+      title: name,
+      packageName: name,
+    );
+    expect(policy.justifies(override('intl')), isTrue);
+    expect(policy.justifies(override('meta')), isFalse);
+    expect(policy.justifies(override('path')), isFalse);
+    expect(
+      check(
+        const DependencyPolicyConfig(),
+        pubspec,
+      ).where((finding) => finding.ruleId == 'UNJUSTIFIED_OVERRIDE'),
+      isEmpty,
+    );
+  });
+
+  test('applications commit their lockfile, libraries do not', () {
+    const application = 'name: app\npublish_to: none\n';
+    const library = 'name: lib\n';
+    const member = 'name: member\npublish_to: none\nresolution: workspace\n';
+
+    /// Returns the rules [pubspec] breaks under [policy] when Git
+    /// [tracked] its lockfile.
+    List<String> rules(
+      String pubspec,
+      LockfilePolicy policy, {
+      required bool? tracked,
+    }) => describe(
+      check(
+        DependencyPolicyConfig(lockfilePolicy: policy),
+        pubspec,
+        tracked: tracked,
+      ),
+    );
+    expect(rules(application, LockfilePolicy.auto, tracked: false), <String>[
+      'LOCKFILE_POLICY app 1',
+    ]);
+    expect(rules(application, LockfilePolicy.auto, tracked: true), isEmpty);
+    expect(rules(library, LockfilePolicy.auto, tracked: true), <String>[
+      'LOCKFILE_POLICY lib 1',
+    ]);
+    expect(rules(library, LockfilePolicy.auto, tracked: false), isEmpty);
+    expect(
+      rules(library, LockfilePolicy.committed, tracked: false),
+      hasLength(1),
+    );
+    expect(
+      rules(application, LockfilePolicy.ignored, tracked: true),
+      hasLength(1),
+    );
+    expect(rules(application, LockfilePolicy.any, tracked: false), isEmpty);
+    expect(rules(application, LockfilePolicy.auto, tracked: null), isEmpty);
+    expect(rules(member, LockfilePolicy.committed, tracked: false), isEmpty);
+    final Finding committed = check(
+      const DependencyPolicyConfig(lockfilePolicy: LockfilePolicy.auto),
+      library,
+      tracked: true,
+    ).single;
+    expect(committed.title, 'The pubspec.lock of lib is committed');
+    expect(committed.severity, Severity.medium);
   });
 }

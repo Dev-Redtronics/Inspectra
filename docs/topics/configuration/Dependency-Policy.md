@@ -1,19 +1,18 @@
 # Dependency policy
 
 <primary-label ref="cli"/>
-<secondary-label ref="no-network"/>
 <secondary-label ref="opt-in"/>
 <secondary-label ref="since-1-1"/>
 
 <show-structure for="chapter" depth="2"/>
 
-<link-summary>Organisation-wide rules for the dependencies of every package: denied and allowed packages, registries, upper bounds, SDK minimums, publishing, lockfile hygiene and unused dependencies, with automatic fixes.</link-summary>
+<link-summary>Organisation-wide rules for the dependencies of every package: denied and allowed packages, registries, upper bounds, constraint style, SDK minimums, publishing, justified overrides, lockfile hygiene, unused and outdated dependencies, with automatic fixes.</link-summary>
 
-<card-summary>Denied packages, approved registries, upper bounds, SDK minimums, publish_to, lockfile hygiene and unused dependencies - checked by deps, scan and check, fixed by deps --fix.</card-summary>
+<card-summary>Denied packages, approved registries, upper bounds, constraint style, SDK minimums, publish_to, justified overrides, lockfile hygiene, unused and outdated dependencies - checked by deps, scan and check, fixed by deps --fix.</card-summary>
 
 <tldr>
 <p><b>Enable</b>: <code>dependency_policy: { enabled: true, … }</code>, then configure the rules you want</p>
-<p><b>Check</b>: <code>dart run %package% deps</code> - offline, fast; <code>-r</code> for every package of a workspace</p>
+<p><b>Check</b>: <code>dart run %package% deps</code> - offline, fast; <code>-r</code> for every package of a workspace; <code>--online</code> for outdated dependencies</p>
 <p><b>Fix</b>: <code>dart run %package% deps --fix</code> keeps comments and formatting</p>
 <p><b>Also in</b>: <code>scan</code> and <code>check</code></p>
 </tldr>
@@ -63,6 +62,11 @@ rules with a reason, the [baseline](Baseline.md) (scope `scan`), `--fail-on`, an
 | `MISSING_CHECKSUM` | medium | `lockfile_checksums` | A hosted package of `pubspec.lock` has no `sha256` | - |
 | `UNUSED_DEPENDENCY` | low | `check_imports` | No file of `lib/` or `bin/` imports a dependency; the finding says when only tests use it | - |
 | `DEV_DEPENDENCY_IN_LIB` | high | `check_imports` | `lib/` or `bin/` imports a development dependency, which the package's users do not get | - |
+| `CONSTRAINT_STYLE` | low | `constraint_style` | A hosted constraint is not written as a caret (`^1.2.0`), a range (`>=1.2.0 <2.0.0`) or an exact version (`1.2.3`), as configured | caret and range, when the versions stay the same |
+| `UNJUSTIFIED_OVERRIDE` | medium | `overrides.require_reason` | A `dependency_overrides` entry has no entry in `overrides.allowed`, or its `expires` date has passed | - |
+| `LOCKFILE_POLICY` | medium | `lockfile_policy` | `pubspec.lock` is committed against the policy, or not committed although it should be | - |
+| `OUTDATED_MAJOR` | medium | `max_major_behind` | A direct dependency is more breaking releases behind its latest release than allowed; needs the registry | - |
+| `LIBYEAR_EXCEEDED` | medium | `max_libyear` | The dependencies add up to more libyears than allowed; needs the registry | - |
 
 Hosted dependencies without a `hosted:` URL come from `network.pub_hosted_url`, which defaults to `PUB_HOSTED_URL`.
 `https://pub.dev` and `https://pub.dartlang.org` count as the same registry. The lockfile rules run for the package
@@ -72,17 +76,65 @@ The import rules parse the Dart files without resolving them, so no `dart pub ge
 conditional imports count; nested packages such as an `example/` package with a `pubspec.yaml` of its own are left
 out. Packages that are used without an import, such as `cupertino_icons` through its font, go into `unused_allow`.
 
+### Overrides with a reason {id="overrides"}
+
+```yaml
+dependency_policy:
+  enabled: true
+  overrides:
+    require_reason: true
+    allowed:
+      - name: intl
+        reason: Flutter 3.27 pins intl 0.19; remove with Flutter 3.29.
+        expires: 2027-01-31
+```
+
+An override replaces the version every package agreed on, so it should be rare, explained and temporary. With
+`require_reason`, every entry of `dependency_overrides` needs an entry in `overrides.allowed` with a `reason`, and an
+optional `expires` date after which it is reported again. A justified override also drops the built-in
+`DEPENDENCY_OVERRIDE` finding for that package, with or without `require_reason`. Like `denied`, the list collects the
+entries of every [configuration layer](Configuration-Inheritance.md).
+
+### Committed lockfiles {id="lockfile-policy"}
+
+`lockfile_policy: auto` asks applications - packages with `publish_to: none` - to commit `pubspec.lock`, so that every
+build resolves the versions that were tested, and packages that can be published not to, because their users resolve
+them with their own lockfile. `committed` and `ignored` ask the same of every package. The rule asks Git which files it
+tracks, `deps` and `check` apply it, and outside a Git repository it is skipped. Workspace members share the root's
+lockfile and are not checked.
+
+### Outdated dependencies {id="outdated"}
+
+```yaml
+dependency_policy:
+  enabled: true
+  max_major_behind: 1      # at most one breaking release behind
+  max_libyear: 10          # at most ten years behind, added up
+  libyear_scope: direct    # or all, to count transitive packages
+```
+
+`max_major_behind` counts the breaking releases between the version in `pubspec.lock` and the latest stable release:
+majors from 1.0.0 on, minors before it, as caret constraints do; retracted versions and pre-releases do not count.
+`max_libyear` adds up, for every counted package, the time between the release of the locked version and the latest
+one - the libyear metric. Both need the version listings of the registry, so `deps` checks them only with `--online`;
+`check` and `report` check them unless the network is off. Packages from pub.dev are looked up in
+`network.pub_hosted_url`, others in their own registry, and the listings are cached for a day. Without the network, `deps`
+says that the rules were not checked and reports `outdatedChecked: false` in its JSON; a registry that cannot be queried
+fails the command with `69`.
+
 ## Checking {id="deps"}
 
 ```bash
 dart run %package% deps            # the package in the current directory
 dart run %package% deps -r         # every package below it, workspace members included
 dart run %package% deps -f sarif -o deps.sarif
+dart run %package% deps --online   # also max_major_behind and max_libyear
 ```
 
 `deps` runs the built-in pubspec rules - unconstrained versions, Git branches, plain HTTP sources, overrides, old SDK
-constraints - and the policy, without any network access. It is fast enough for a pre-commit hook. `scan` applies the
-policy to the packages it scans, and `check` runs it as the step "Dependency policy" while `enabled` is set.
+constraints - and the policy, without any network access unless `--online` asks for the rules that need the registry.
+It is fast enough for a pre-commit hook. `scan` applies the policy to the packages it scans, but not
+`lockfile_policy` and the outdated rules, and `check` runs it as the step "Dependency policy" while `enabled` is set.
 
 ## Fixing {id="fix"}
 
@@ -90,8 +142,10 @@ policy to the packages it scans, and `check` runs it as the step "Dependency pol
 dart run %package% deps --fix
 ```
 
-`--fix` applies the three rules a tool can decide: it bounds constraints with a caret (`>=1.2.0` becomes `^1.2.0`),
-moves the packages of `dev_only` to `dev_dependencies`, and adds `publish_to: none` below the package name. The file is
+`--fix` applies the rules a tool can decide: it bounds constraints with a caret (`>=1.2.0` becomes `^1.2.0`), rewrites
+constraints in the `constraint_style` when that keeps the versions they allow (`^1.2.0` and `>=1.2.0 <2.0.0` into
+each other, an exact version into either), moves the packages of `dev_only` to `dev_dependencies`, and adds
+`publish_to: none` below the package name. The file is
 edited, not rewritten: comments, order, quoting and the layout of every other key stay as they are. Each change is
 listed, and the remaining findings are reported as without `--fix`. Running it again changes nothing.
 
@@ -124,9 +178,16 @@ Denied packages, registries, SDK minimums and lockfiles need a decision or `dart
 | `lockfile_checksums` | bool | `false` | Every hosted package of `pubspec.lock` needs a `sha256` |
 | `check_imports` | bool | `false` | Report unused dependencies and development dependencies used by `lib/` |
 | `unused_allow` | list | `[cupertino_icons]` | Packages never reported as unused |
+| `constraint_style` | choice | `any` | `caret`, `range` or `pinned`: how hosted constraints are written |
+| `overrides.require_reason` | bool | `false` | Every dependency override needs an entry in `overrides.allowed` |
+| `overrides.allowed` | list | `[]` | Entries with `name`, `reason` (required) and `expires` |
+| `lockfile_policy` | choice | `any` | `committed`, `ignored`, or `auto`: applications commit `pubspec.lock`, publishable packages do not |
+| `max_major_behind` | number | unset | The most breaking releases a direct dependency may be behind |
+| `max_libyear` | number | unset | The most libyears the dependencies may add up to |
+| `libyear_scope` | choice | `direct` | `all` to count transitive packages towards `max_libyear` |
 
-Shared across an organisation, the section is the same in every repository; until central policies arrive, keep it in
-a template repository and check it with `inspectra config lint` and the [JSON Schema](Configuration-Tools.md#schema).
+Shared across an organisation, the section lives in a [base configuration](Configuration-Inheritance.md) that every
+repository extends; a policy can lock its switches, and `max_major_behind` and `max_libyear` may only be lowered.
 
 <seealso>
     <category ref="config">

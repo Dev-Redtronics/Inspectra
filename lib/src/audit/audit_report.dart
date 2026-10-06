@@ -24,7 +24,7 @@ import 'package:inspectra/src/report/severity_breakdown.dart';
 
 /// The report of the `audit` command.
 ///
-/// Its JSON body keeps the `dart_audit` fields `scanned`,
+/// Its JSON body has the stable fields `scanned`,
 /// `vulnerablePackages`, `totalVulnerabilities` and `results`, and adds
 /// `lockfile`, `skipped`, `suppressed` and `baselined`.
 final class AuditReport implements CommandReport {
@@ -79,7 +79,7 @@ final class AuditReport implements CommandReport {
   bool isFailing(Severity threshold) =>
       findings.any((finding) => finding.severity.isAtLeast(threshold));
 
-  /// Builds the `dart_audit` compatible JSON body.
+  /// Builds the JSON body.
   ///
   /// Returns the JSON body.
   @override
@@ -109,7 +109,7 @@ final class AuditReport implements CommandReport {
     ],
   };
 
-  /// Serialises one advisory finding in the `dart_audit` layout.
+  /// Serialises one advisory finding in the layout of the `results`.
   ///
   /// Returns the JSON object.
   Map<String, Object?> _vulnerability(Finding finding) => <String, Object?>{

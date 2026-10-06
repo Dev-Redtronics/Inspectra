@@ -23,6 +23,8 @@ import 'package:inspectra/src/cli/command_context.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
 import 'package:inspectra/src/deps/dependency_fixer.dart';
 import 'package:inspectra/src/deps/dependency_policy.dart';
+import 'package:inspectra/src/deps/outdated_policy.dart';
+import 'package:inspectra/src/deps/tracked_files.dart';
 import 'package:inspectra/src/host/cache_directory.dart';
 import 'package:inspectra/src/inspect/package_inspector.dart';
 import 'package:inspectra/src/io/console.dart';
@@ -33,9 +35,11 @@ import 'package:inspectra/src/osv/osv_cache.dart';
 import 'package:inspectra/src/osv/osv_client.dart';
 import 'package:inspectra/src/policy/finding_filter.dart';
 import 'package:inspectra/src/pub/package_archive_downloader.dart';
+import 'package:inspectra/src/pub/pub_package_cache.dart';
 import 'package:inspectra/src/pub/pub_repository_client.dart';
 import 'package:inspectra/src/pub/pubspec.dart';
 import 'package:inspectra/src/pub/pubspec_parser.dart';
+import 'package:inspectra/src/pub/registry_listings.dart';
 import 'package:inspectra/src/trivy/trivy_installer.dart';
 import 'package:inspectra/src/trivy/trivy_locator.dart';
 import 'package:inspectra/src/trivy/trivy_provisioner.dart';
@@ -135,6 +139,7 @@ final class CommandSession {
     cliIgnores: cliIgnores,
     now: context.clock.now(),
     baseline: baseline ? baselineMatcher() : null,
+    unignorable: config.forbiddenIgnoreSeverities,
   );
 
   /// Loads the baseline of the package in the working directory.
@@ -143,8 +148,11 @@ final class CommandSession {
   /// disabled or its file does not exist.
   ///
   /// Throws an `InvalidInputException` when the baseline file is malformed.
-  BaselineMatcher baselineMatcher() =>
-      BaselineMatcher.load(config.baseline, workingDirectory);
+  BaselineMatcher baselineMatcher() => BaselineMatcher.load(
+    config.baseline,
+    workingDirectory,
+    unignorable: config.forbiddenIgnoreSeverities,
+  );
 
   /// Creates the dependency policy of the configuration.
   ///
@@ -158,7 +166,48 @@ final class CommandSession {
     return DependencyPolicy(
       config: policy,
       defaultRegistry: config.network.pubHostedUrl,
+      now: context.clock.now(),
     );
+  }
+
+  /// Creates the check of how far the dependencies are behind the
+  /// registry, which needs the network.
+  ///
+  /// Returns the check, or `null` while the dependency policy is disabled,
+  /// configures neither `max_major_behind` nor `max_libyear`, or the
+  /// network is off.
+  OutdatedPolicy? outdatedPolicy() {
+    final DependencyPolicyConfig policy = config.dependencyPolicy;
+    final bool online =
+        policy.enabled && policy.hasOutdatedRules && !config.network.offline;
+    if (!online) {
+      return null;
+    }
+    final listings = RegistryListings(
+      transport: transport,
+      cache: PubPackageCache(p.join(cacheRoot, 'pub')),
+      clock: context.clock,
+    );
+    return OutdatedPolicy(
+      config: policy,
+      lookup: listings.lookup,
+      defaultRegistry: config.network.pubHostedUrl,
+      concurrency: config.network.concurrency,
+    );
+  }
+
+  /// Lists the files Git tracks in [root], when the dependency policy
+  /// checks whether lockfiles are committed.
+  ///
+  /// Returns their absolute paths, or `null` when the rule is off or
+  /// [root] is not in a Git repository.
+  Future<Set<String>?> lockfileTracking(String root) {
+    final DependencyPolicyConfig policy = config.dependencyPolicy;
+    final bool needed =
+        policy.enabled && policy.lockfilePolicy != LockfilePolicy.any;
+    return needed
+        ? trackedFiles(context.processRunner, root)
+        : Future<Set<String>?>.value();
   }
 
   /// Creates the fixer of the dependency policy.

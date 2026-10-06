@@ -17,6 +17,7 @@
 import 'dart:convert';
 
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/config/yaml_reader.dart';
 
 /// Where the published schema lives, its `$id`.
 const configSchemaUrl =
@@ -82,6 +83,63 @@ const _deniedEntry = <String, Object?>{
   },
 };
 
+/// The schema of one entry of `dependency_policy.overrides.allowed`.
+const _overrideEntry = <String, Object?>{
+  'type': 'object',
+  'required': <String>['name', 'reason'],
+  'additionalProperties': false,
+  'properties': <String, Object?>{
+    'name': <String, Object?>{
+      'type': 'string',
+      'description': 'The overridden package.',
+    },
+    'reason': <String, Object?>{
+      'type': 'string',
+      'description': 'Why the override is needed.',
+    },
+    'expires': <String, Object?>{
+      'type': 'string',
+      'description': 'The last day the justification holds, YYYY-MM-DD.',
+      'pattern': r'^\d{4}-\d{2}-\d{2}',
+    },
+  },
+};
+
+/// The schema of one entry of `workspace_policy.layers`.
+const _layerEntry = <String, Object?>{
+  'type': 'object',
+  'required': <String>['name', 'packages'],
+  'additionalProperties': false,
+  'properties': <String, Object?>{
+    'name': <String, Object?>{
+      'type': 'string',
+      'description': 'The name other layers refer to.',
+    },
+    'packages': <String, Object?>{
+      'type': 'array',
+      'description':
+          'Globs of the package directories, relative to the workspace root.',
+      'items': <String, Object?>{'type': 'string'},
+    },
+    'may_depend_on': <String, Object?>{
+      'type': 'array',
+      'description':
+          'The other layers its packages may depend on; every layer when '
+          'absent.',
+      'items': <String, Object?>{'type': 'string'},
+    },
+    'isolated': <String, Object?>{
+      'type': 'boolean',
+      'description': 'Whether its packages may not depend on each other.',
+    },
+    'forbidden_dependencies': <String, Object?>{
+      'type': 'array',
+      'description': 'Packages none of its packages may depend on.',
+      'items': <String, Object?>{'type': 'string'},
+    },
+  },
+};
+
 /// The schema of one base named by `extends`: a path relative to the file,
 /// a `package:` URI, or an `https` URL pinned by its SHA-256.
 const _baseEntry = <String, Object?>{
@@ -111,8 +169,8 @@ const _baseEntry = <String, Object?>{
   ],
 };
 
-/// The schema of `extends` and `policy`, which the configuration reads
-/// before it is parsed.
+/// The schema of `extends`, `profiles` and `policy`, which the
+/// configuration reads before it is parsed.
 const _layerProperties = <String, Object?>{
   'extends': <String, Object?>{
     'description':
@@ -123,13 +181,42 @@ const _layerProperties = <String, Object?>{
       <String, Object?>{'type': 'array', 'items': _baseEntry},
     ],
   },
+  'profiles': <String, Object?>{
+    'type': 'object',
+    'description':
+        'Named partial configurations that --profile or INSPECTRA_PROFILE '
+        'applies on top of this file; they cannot set extends, policy or '
+        'profiles.',
+    'additionalProperties': <String, Object?>{r'$ref': '#'},
+  },
   'policy': <String, Object?>{
     'type': 'object',
     'description':
         'Options that the files extending this one, environment variables '
-        'and the command line must not change, or may only tighten.',
+        'and the command line must not change, or may only tighten, and the '
+        'severities no ignore may hide.',
     'additionalProperties': false,
     'properties': <String, Object?>{
+      'forbid_ignore_of': <String, Object?>{
+        'type': 'array',
+        'description':
+            'Severities of findings that no ignore rule, --ignore flag or '
+            'baseline may suppress.',
+        'items': <String, Object?>{
+          'enum': <String>[
+            'critical',
+            'high',
+            'medium',
+            'low',
+            'unknown',
+            'CRITICAL',
+            'HIGH',
+            'MEDIUM',
+            'LOW',
+            'UNKNOWN',
+          ],
+        },
+      },
       'locked': <String, Object?>{
         'type': 'array',
         'description': 'Dotted options that must keep their value.',
@@ -150,6 +237,8 @@ const _layerProperties = <String, Object?>{
 const _structuredEntries = <String, Map<String, Object?>>{
   'ignore': _ignoreEntry,
   'dependency_policy.denied': _deniedEntry,
+  'dependency_policy.overrides.allowed': _overrideEntry,
+  'workspace_policy.layers': _layerEntry,
 };
 
 /// Builds the JSON Schema (draft-07) of `inspectra.yaml` from the options
@@ -182,7 +271,18 @@ Map<String, Object?> buildConfigSchema() {
       parts.take(parts.length - 1).toList(),
     );
     final properties = parent['properties']! as Map<String, Object?>;
-    properties[parts.last] = _schemaOf(entry);
+    final Map<String, Object?> schema = _schemaOf(entry);
+    properties[parts.last] = schema;
+    final bool isList =
+        entry.kind == ConfigKind.strings || entry.kind == ConfigKind.enumList;
+    if (isList) {
+      properties['${parts.last}${YamlReader.appendSuffix}'] = <String, Object?>{
+        for (final MapEntry<String, Object?> part in schema.entries)
+          if (part.key != 'default') part.key: part.value,
+        'description':
+            'Adds to the list of the lower layers instead of replacing it.',
+      };
+    }
   }
   return root;
 }

@@ -117,9 +117,10 @@ Every option can be set without editing the file. For each key, the first of the
    `--offline`, `--trivy-mode`, `--trivy-version`, `--trivy-executable`, `--[no-]trivy-download` and
    `--[no-]trivy-use-installed`. Only the commands with [shared options](CLI-Reference.md#shared-options) accept them.
 2. **The environment**: `INSPECTRA_` followed by the dotted path in upper case, with dots turned into underscores.
-3. **The configuration file**.
-4. **The bases it extends**, see [Inheritance and central policies](Configuration-Inheritance.md).
-5. **The built-in default**.
+3. **The selected [profile](Configuration-Inheritance.md#profiles)**, with `--profile` or `INSPECTRA_PROFILE`.
+4. **The configuration file**.
+5. **The bases it extends**, see [Inheritance and central policies](Configuration-Inheritance.md).
+6. **The built-in default**.
 
 A [policy](Configuration-Inheritance.md#policy) of a base can lock options or set minimums that the file, the
 environment and the command line must respect.
@@ -152,6 +153,28 @@ and line, an environment variable, the command line or the default. See [Configu
   `INSPECTRA_TRIVY_EXECUTABLE`, but not over `--trivy-executable` or `--set trivy.executable=…`.
 - `check`, `format`, `lint`, `api`, `coverage` and `changelog check` take no `--set`; the environment variables apply to
   them as well. `style` takes `--set` like the supply-chain commands.
+
+### Environment variables in values {id="interpolation"}
+
+A text value in the file, or an element of a list, can refer to an environment variable, so that credentials and
+host names stay out of the repository:
+
+```yaml
+network:
+  proxy: http://${env:PROXY_USER}:${env:PROXY_PASSWORD}@proxy.corp:3128
+dependency_policy:
+  allowed_hosts: [https://pub.dev, "https://${env:PUB_MIRROR:-pub.corp}"]
+```
+
+- `${env:NAME}` is replaced by the variable; an unset or empty variable is a configuration error (`65`) naming the
+  option.
+- `${env:NAME:-default}` uses `default` when the variable is unset or empty.
+- `$${` writes a literal `${`. Any other `${...}` is an error.
+- References work in every option that takes a text or a list of texts, in the project and in the bases, but not in
+  `extends`, `policy`, `ignore` or `dependency_policy.denied`. Numbers and booleans are written as they are; set them
+  with an `INSPECTRA_*` variable instead.
+- `config show` prints the reference as written, never the value it resolves to, and marks it with
+  `"interpolated": true` in its JSON. Policies check the resolved value.
 
 ## Defaults
 
@@ -198,6 +221,11 @@ Every key is checked when the configuration is loaded - in each build step and a
         With the line and column of the syntax error.
     </def>
 </deflist>
+
+An option that was renamed keeps working under its old name until the next major version: the value is read under the
+new name, every command prints a warning such as `"trivy.secrets" is deprecated since 1.1.0; use "secret" instead`,
+[`config lint`](Configuration-Tools.md#lint) reports `CONFIG_DEPRECATED_OPTION`, and the old and the new name side by
+side are an error.
 
 Each error names the key by its full path, starting at `%pubspec_key%` for the `pubspec.yaml` section and at the top
 level for `%config_file%`. List elements are addressed by index:

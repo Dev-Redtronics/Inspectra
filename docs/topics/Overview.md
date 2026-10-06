@@ -36,8 +36,8 @@ enable on its own, and a changelog generator.
         <code>inspectra scan</code>, the default command, audits <code>pubspec.lock</code> against OSV.dev, checks
         <code>pubspec.yaml</code> for risky sources, typosquatting and dependency confusion, and runs a Trivy filesystem
         scan. <code>audit</code>, <code>inspect</code>, <code>trust</code>, <code>typosquat</code>, <code>add</code> and
-        <code>hook</code> run each part on its own, vet a package before you add it, and guard commits. They keep the
-        commands, flags, rule ids, JSON fields and exit codes of <code>dart_audit</code>. See the
+        <code>hook</code> run each part on its own, vet a package before you add it, and guard commits. Their
+        commands, flags, rule ids, JSON fields and exit codes are stable. See the
         <a href="CLI-Reference.md#scan">command line reference</a>.
     </def>
     <def title="Format check" id="feature-format">
@@ -171,6 +171,6 @@ These decisions shape how every feature behaves. When something surprises you, i
         <a href="Compatibility.md">Compatibility</a>
     </category>
     <category ref="operations">
-        <a href="Migrating-From-Kreate.md">Coming from Kreate</a>
+        <a href="Doctor.md">Doctor</a>
     </category>
 </seealso>

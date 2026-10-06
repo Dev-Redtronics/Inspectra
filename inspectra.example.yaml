@@ -15,13 +15,25 @@
 #   - url: https://policy.acme.corp/inspectra.yaml
 #     sha256: <64 hexadecimal digits>
 
+# Named partial configurations, applied with --profile <name> or
+# INSPECTRA_PROFILE above this file and below INSPECTRA_* variables and the
+# command line. A profile cannot set extends, policy or profiles.
+# profiles:
+#   ci:
+#     fail_on: low
+#   local:
+#     network:
+#       offline: true
+
 # Options that files extending this one, INSPECTRA_* variables and the command
-# line must not change (locked), or may only make stricter (minimum).
+# line must not change (locked), or may only make stricter (minimum), and the
+# severities of findings no ignore rule, --ignore flag or baseline may hide.
 # policy:
 #   locked: [trivy.secret.enabled]
 #   minimum:
 #     coverage.min_line_coverage: 70
 #     fail_on: high
+#   forbid_ignore_of: [critical]
 
 # ---------------------------------------------------------------------------
 # Supply-chain commands: scan, audit, inspect, trust, typosquat, add, hook
@@ -70,6 +82,30 @@ dependency_policy:
   lockfile_checksums: false          # every hosted package has a sha256
   check_imports: false               # unused dependencies, dev dependencies used by lib/
   unused_allow: [cupertino_icons]
+  constraint_style: any              # any, caret (^1.2.0), range (>=1.2.0 <2.0.0) or pinned (1.2.3)
+  overrides:
+    require_reason: false            # every dependency override needs an entry in allowed
+    allowed: []                      # entries: name, reason, expires
+  lockfile_policy: any               # any, committed, ignored, or auto: apps commit, libraries do not
+  # max_major_behind: 1              # breaking releases a direct dependency may be behind (deps --online)
+  # max_libyear: 10                  # years all dependencies may be behind together (deps --online)
+  libyear_scope: direct              # direct, or all to count transitive packages
+
+# The pre-commit hook of `inspectra hook install`: the checks `hook run` applies
+# to the staged files. One of audit, typosquat, deps, format, style.
+hook:
+  checks: [audit, typosquat]
+
+# Rules for the packages of a pub workspace, checked by `deps -r` and `check`
+# at the workspace root.
+workspace_policy:
+  enabled: false
+  align_versions: compatible         # off, compatible (one common version) or exact (same text)
+  require_membership: true           # listed entries exist, members use resolution: workspace
+  same_sdk: false                    # every package has the root's environment.sdk
+  forbid_cycles: true                # packages must not depend on each other in a cycle
+  include_dev_dependencies: false    # dev_dependencies count for cycles and layers
+  layers: []                         # entries: name, packages (globs), may_depend_on, isolated, forbidden_dependencies
 
 network:
   offline: false                     # true: never open a connection

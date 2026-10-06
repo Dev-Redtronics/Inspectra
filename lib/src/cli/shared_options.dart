@@ -16,6 +16,7 @@
 
 import 'package:args/args.dart';
 
+import 'package:inspectra/src/config/config_profiles.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/model/severity.dart';
 import 'package:inspectra/src/report/output_format.dart';
@@ -24,7 +25,7 @@ import 'package:inspectra/src/report/output_format.dart';
 /// configuration overrides.
 ///
 /// They are declared on each command rather than globally so that they can
-/// follow the command name, exactly like `dart_audit audit --format json`.
+/// follow the command name, as in `inspectra audit --format json`.
 final class SharedOptions {
   /// Prevents instantiation; this type only offers static helpers.
   const SharedOptions._();
@@ -41,6 +42,13 @@ final class SharedOptions {
         'config',
         help: 'Configuration file (default: inspectra.yaml if present).',
         valueHelp: 'path',
+      )
+      ..addOption(
+        'profile',
+        help:
+            'Apply the configuration profile of this name, e.g. ci '
+            '(default: INSPECTRA_PROFILE).',
+        valueHelp: 'name',
       )
       ..addMultiOption(
         'set',
@@ -156,6 +164,7 @@ final class SharedOptions {
       overrides[key] = assignment.substring(separator + 1).trim();
     }
     final mapping = <String, String>{
+      'profile': profileOption,
       'fail-on': 'fail_on',
       'min-severity': 'min_severity',
       'trivy-mode': 'trivy.mode',

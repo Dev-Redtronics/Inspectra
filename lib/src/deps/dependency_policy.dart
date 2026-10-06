@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/allowed_override.dart';
+import 'package:inspectra/src/config/constraint_style.dart';
 import 'package:inspectra/src/config/denied_package.dart';
 import 'package:inspectra/src/config/dependency_policy_config.dart';
+import 'package:inspectra/src/config/lockfile_policy.dart';
 import 'package:inspectra/src/deps/import_collector.dart';
 import 'package:inspectra/src/deps/package_imports.dart';
 import 'package:inspectra/src/deps/policy_source.dart';
@@ -39,12 +42,13 @@ import 'package:pub_semver/pub_semver.dart';
 /// lockfile belongs to, so that the members of a pub workspace do not
 /// report the shared lockfile once each.
 final class DependencyPolicy {
-  /// Creates the policy of [config]; [defaultRegistry] is where hosted
-  /// dependencies without a `hosted:` URL come from, and [imports] collects
-  /// the imports of a package.
+  /// Creates the policy of [config], evaluated at [now]; [defaultRegistry]
+  /// is where hosted dependencies without a `hosted:` URL come from, and
+  /// [imports] collects the imports of a package.
   const DependencyPolicy({
     required this.config,
     required this.defaultRegistry,
+    required this.now,
     this.imports = const ImportCollector(),
   });
 
@@ -57,6 +61,9 @@ final class DependencyPolicy {
 
   /// Collects the imports for the import rules.
   final ImportCollector imports;
+
+  /// The time against which the expiry of justified overrides is judged.
+  final DateTime now;
 
   /// The dependency sections a package declares itself.
   static const _sections = <String>['dependencies', 'dev_dependencies'];
@@ -74,6 +81,9 @@ final class DependencyPolicy {
       ..._sdk(source),
       ..._devOnly(source),
       ..._publishing(source),
+      ..._constraintStyle(source),
+      ..._overrides(source),
+      ..._lockfilePolicy(source),
     ];
     final Lockfile? lockfile = source.lockfile;
     if (lockfile != null && source.ownsLockfile) {
@@ -87,6 +97,16 @@ final class DependencyPolicy {
     }
     return findings;
   }
+
+  /// Whether [finding], a `DEPENDENCY_OVERRIDE` of the pubspec rules, is
+  /// justified by an entry of `overrides.allowed` that has not expired.
+  ///
+  /// Returns `true` when the finding need not be reported.
+  bool justifies(Finding finding) =>
+      finding.ruleId == 'DEPENDENCY_OVERRIDE' &&
+      config.allowedOverrides.any(
+        (entry) => entry.name == finding.packageName && !entry.isExpired(now),
+      );
 
   /// Returns the declarations of [pubspec] in the section [section].
   static Map<String, DependencySpec> _section(
@@ -313,6 +333,134 @@ final class DependencyPolicy {
         );
       }
     }
+  }
+
+  /// Reports hosted constraints that are not written in the configured
+  /// style.
+  Iterable<Finding> _constraintStyle(PolicySource source) sync* {
+    final ConstraintStyle style = config.constraintStyle;
+    if (style == ConstraintStyle.any) {
+      return;
+    }
+    for (final String section in _sections) {
+      for (final MapEntry(key: name, value: spec) in _section(
+        source.pubspec,
+        section,
+      ).entries) {
+        final ConstraintStyle? written = spec.kind == DependencyKind.hosted
+            ? styleOf(spec.constraint)
+            : null;
+        if (written == null || written == style) {
+          continue;
+        }
+        final String? locked = source.lockfile?.packages
+            .where((entry) => entry.name == name)
+            .firstOrNull
+            ?.version;
+        final String? restyled = restyledConstraint(
+          spec.constraint,
+          style,
+          locked: locked,
+        );
+        final fixable = style != ConstraintStyle.pinned;
+        final hint = fixable ? '; "inspectra deps --fix" applies it' : '';
+        final advice = restyled == null
+            ? 'Rewrite it as ${_example(style)}.'
+            : 'Write "$restyled"$hint.';
+        yield _finding(
+          'CONSTRAINT_STYLE',
+          Severity.low,
+          '$name is constrained as a ${written.id}, not a ${style.id} '
+              '(${spec.constraint})',
+          'dependency_policy.constraint_style asks for ${_example(style)} '
+              'constraints. $advice',
+          source.locator.entry(section, name),
+          package: name,
+          fix: restyled,
+        );
+      }
+    }
+  }
+
+  /// Returns an example of a constraint in [style], for a message.
+  static String _example(ConstraintStyle style) => switch (style) {
+    ConstraintStyle.any => 'any',
+    ConstraintStyle.caret => 'caret ("^1.2.0")',
+    ConstraintStyle.range => 'range (">=1.2.0 <2.0.0")',
+    ConstraintStyle.pinned => 'exact ("1.2.3")',
+  };
+
+  /// Reports dependency overrides without a justification that holds.
+  Iterable<Finding> _overrides(PolicySource source) sync* {
+    if (!config.overridesRequireReason) {
+      return;
+    }
+    for (final String name in source.pubspec.dependencyOverrides.keys) {
+      final AllowedOverride? allowed = config.allowedOverrides
+          .where((entry) => entry.name == name)
+          .lastOrNull;
+      if (allowed != null && !allowed.isExpired(now)) {
+        continue;
+      }
+      final String? expired = allowed?.expires?.toIso8601String().substring(
+        0,
+        10,
+      );
+      yield _finding(
+        'UNJUSTIFIED_OVERRIDE',
+        Severity.medium,
+        expired == null
+            ? 'The override of $name has no reason'
+            : 'The reason for overriding $name expired on $expired',
+        'An override replaces the version every dependency agreed on and '
+            'hides incompatibilities. Remove it, or justify it in '
+            'dependency_policy.overrides.allowed with name, reason and '
+            'expires.',
+        source.locator.entry('dependency_overrides', name),
+        package: name,
+      );
+    }
+  }
+
+  /// Reports a `pubspec.lock` that is committed against the policy, or
+  /// missing from the repository.
+  Iterable<Finding> _lockfilePolicy(PolicySource source) sync* {
+    final Pubspec pubspec = source.pubspec;
+    final bool? tracked = source.lockfileTracked;
+    final String? name = pubspec.name;
+    final bool skipped =
+        config.lockfilePolicy == LockfilePolicy.any ||
+        tracked == null ||
+        name == null ||
+        pubspec.isWorkspaceMember;
+    if (skipped) {
+      return;
+    }
+    final bool wanted = switch (config.lockfilePolicy) {
+      LockfilePolicy.any => tracked,
+      LockfilePolicy.committed => true,
+      LockfilePolicy.ignored => false,
+      LockfilePolicy.auto => !pubspec.isPublishable,
+    };
+    if (tracked == wanted) {
+      return;
+    }
+    yield _finding(
+      'LOCKFILE_POLICY',
+      Severity.medium,
+      wanted
+          ? 'The pubspec.lock of $name is not committed'
+          : 'The pubspec.lock of $name is committed',
+      wanted
+          ? 'An application commits pubspec.lock, so that every build '
+                'resolves exactly the versions that were tested. Commit it.'
+          : 'A package others depend on is resolved with their lockfile; a '
+                'committed pubspec.lock only pins its own CI and hides '
+                'breakage with newer versions. Remove it from the repository '
+                'and ignore it.',
+      source.locator.topLevel('name'),
+      package: name,
+    );
   }
 
   /// Reports missing `publish_to` and missing metadata.

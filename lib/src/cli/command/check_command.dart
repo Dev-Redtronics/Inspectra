@@ -31,7 +31,8 @@ final class CheckCommand extends PackageCheckCommand {
   @override
   String get description =>
       'Run every enabled package check: format, lint, style, API, API '
-      'semver, changelog, Trivy scans, dependency policy and coverage.';
+      'semver, changelog, Trivy scans, dependency and workspace policy and '
+      'coverage.';
 
   /// Runs the enabled checks one after the other.
   ///
@@ -48,6 +49,7 @@ final class CheckCommand extends PackageCheckCommand {
       (config.changelog.enabled, () => runChangelogCheck(config)),
       (config.trivy.enabled, () => runScans(config)),
       (config.dependencyPolicy.enabled, () => runDependencyPolicy(config)),
+      (config.workspacePolicy.enabled, () async => runWorkspacePolicy(config)),
       (config.coverage.enabled, () => runCoverageGate(config)),
     ];
     final List<(bool, Future<bool> Function())> enabled = steps
@@ -56,7 +58,8 @@ final class CheckCommand extends PackageCheckCommand {
     if (enabled.isEmpty) {
       out.writeln(
         'Nothing is enabled. Enable "format", "lint", "style", "api", '
-        '"changelog", "trivy", "dependency_policy" or "coverage" in the '
+        '"changelog", "trivy", "dependency_policy", "workspace_policy" or '
+        '"coverage" in the '
         'Inspectra configuration.',
       );
       return true;

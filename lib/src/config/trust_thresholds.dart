@@ -19,7 +19,7 @@ import 'package:inspectra/src/config/yaml_reader.dart';
 /// Thresholds of the pub.dev trust assessment, the `trust:` section of
 /// `inspectra.yaml`.
 final class TrustThresholds {
-  /// Creates trust thresholds; the defaults match the rules of `dart_audit`.
+  /// Creates trust thresholds with conservative defaults.
   const TrustThresholds({
     this.freshPackageDays = 7,
     this.youngPackageDays = 30,

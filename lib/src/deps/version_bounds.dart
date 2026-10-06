@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/constraint_style.dart';
 import 'package:pub_semver/pub_semver.dart';
 
 /// Parses the version [constraint] of a hosted dependency.
@@ -57,4 +58,52 @@ String? boundedConstraint(String? constraint) {
 Version? lowerBound(String? constraint) {
   final VersionConstraint? parsed = parseConstraint(constraint);
   return parsed is VersionRange ? parsed.min : null;
+}
+
+/// Tells how [constraint] is written: as a caret constraint, an exact
+/// version or a range.
+///
+/// Returns the style, or `null` when the constraint is absent, `any` or
+/// malformed, which other rules report.
+ConstraintStyle? styleOf(String? constraint) {
+  final VersionConstraint? parsed = parseConstraint(constraint);
+  if (parsed == null || constraint == null) {
+    return null;
+  }
+  if (constraint.trim().startsWith('^')) {
+    return ConstraintStyle.caret;
+  }
+  return parsed is Version ? ConstraintStyle.pinned : ConstraintStyle.range;
+}
+
+/// Writes [constraint] in the [style]; an exact version takes the
+/// [locked] version of `pubspec.lock`.
+///
+/// Returns the rewritten constraint, which allows the same versions
+/// unless the style itself means otherwise - pinning, or widening an exact
+/// version - or `null` when it cannot be rewritten, such as a range with
+/// another upper bound than the next breaking version as a caret.
+String? restyledConstraint(
+  String? constraint,
+  ConstraintStyle style, {
+  String? locked,
+}) {
+  final VersionConstraint? parsed = parseConstraint(constraint);
+  final Version? min = parsed is Version
+      ? parsed
+      : parsed is VersionRange && parsed.includeMin
+      ? parsed.min
+      : null;
+  final bool caretShaped =
+      min != null &&
+      (parsed is Version || parsed == VersionConstraint.compatibleWith(min));
+  if (style == ConstraintStyle.pinned) {
+    return locked;
+  }
+  if (!caretShaped || style == ConstraintStyle.any) {
+    return null;
+  }
+  return style == ConstraintStyle.caret
+      ? '^$min'
+      : '>=$min <${min.nextBreaking}';
 }

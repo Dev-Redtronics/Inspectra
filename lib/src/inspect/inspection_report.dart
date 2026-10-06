@@ -25,7 +25,7 @@ import 'package:inspectra/src/trust/trust_info.dart';
 
 /// The report of the `inspect` command.
 ///
-/// The JSON body keeps the `dart_audit` fields (`riskScore`, `riskLabel`,
+/// The JSON body has the stable fields (`riskScore`, `riskLabel`,
 /// `regexFindings`, `entropyFindings`, `unicodeFindings`, `archiveFindings`,
 /// `trustInfo`) and adds `pubspecFindings`, `failScore` and `suppressed`.
 final class InspectionReport implements CommandReport {
@@ -121,7 +121,7 @@ final class InspectionReport implements CommandReport {
     'findings': findings.map((finding) => finding.toJson()).toList(),
   };
 
-  /// Serialises a located finding in the `dart_audit` layout.
+  /// Serialises a located finding in the layout of the finding lists.
   ///
   /// Returns the JSON object.
   Map<String, Object?> _located(Finding finding) => <String, Object?>{

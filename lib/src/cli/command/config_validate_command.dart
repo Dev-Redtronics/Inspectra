@@ -20,13 +20,19 @@ import 'package:args/args.dart';
 import 'package:inspectra/src/baseline/baseline.dart';
 import 'package:inspectra/src/cli/command/config_tool_command.dart';
 import 'package:inspectra/src/cli/command_session.dart';
+import 'package:inspectra/src/cli/config_bases.dart';
+import 'package:inspectra/src/cli/shared_options.dart';
+import 'package:inspectra/src/config/config_layers.dart';
+import 'package:inspectra/src/config/config_loader.dart';
+import 'package:inspectra/src/config/config_profiles.dart';
 import 'package:inspectra/src/config/inspectra_config.dart';
+import 'package:inspectra/src/config/inspectra_config_exception.dart';
 import 'package:inspectra/src/config_tools/config_validate_report.dart';
 import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/report/command_report.dart';
 
-/// `inspectra config validate`: checks the configuration and every file it
-/// refers to, and reports all problems at once.
+/// `inspectra config validate`: checks the configuration, every profile it
+/// defines and every file it refers to, and reports all problems at once.
 final class ConfigValidateCommand extends ConfigToolCommand {
   /// Creates the command.
   ConfigValidateCommand(super.context);
@@ -46,8 +52,9 @@ final class ConfigValidateCommand extends ConfigToolCommand {
   /// Returns the report of a valid configuration.
   ///
   /// Throws an [InvalidInputException] listing every referenced file that
-  /// is missing and a baseline file that is malformed; an invalid
-  /// configuration fails before, naming the offending key.
+  /// is missing, every profile that is not valid and a baseline file that
+  /// is malformed; an invalid configuration fails before, naming the
+  /// offending key.
   @override
   Future<CommandReport> execute(
     CommandSession session,
@@ -71,6 +78,22 @@ final class ConfigValidateCommand extends ConfigToolCommand {
         if (!File(session.resolve(file)).existsSync())
           '$key: the file $file does not exist.',
     ];
+    final List<String> profiles = _profiles(results);
+    final String? selected = SharedOptions.overrides(results)[profileOption];
+    for (final profile in profiles) {
+      if (profile == selected) {
+        continue;
+      }
+      try {
+        recordConfig(
+          results,
+          ConfigRecorder(),
+          cli: <String, String>{profileOption: profile},
+        );
+      } on InspectraConfigException catch (error) {
+        problems.add('profile $profile: $error');
+      }
+    }
     final String baseline = session.resolve(config.baseline.file);
     try {
       Baseline.load(baseline);
@@ -86,6 +109,28 @@ final class ConfigValidateCommand extends ConfigToolCommand {
     return ConfigValidateReport(
       source: recorder.source,
       files: <String>[for (final (_, file) in referenced) file],
+      profiles: profiles,
+    );
+  }
+
+  /// Lists the profiles that the project's configuration and its bases
+  /// define, read as the command line [results] give.
+  ///
+  /// Returns the sorted profile names.
+  ///
+  /// Throws an [InspectraConfigException] for a malformed configuration.
+  List<String> _profiles(ArgResults results) {
+    final ConfigLayer project = loadProjectLayer(
+      projectDirectory,
+      environment: context.environment,
+      configFile: results['config'] as String?,
+    );
+    return profileNames(
+      resolveConfigLayers(
+        project,
+        packageRoot: projectDirectory,
+        cacheRoot: cacheRootOf(context),
+      ),
     );
   }
 }

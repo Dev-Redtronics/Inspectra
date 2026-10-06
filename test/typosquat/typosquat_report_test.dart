@@ -41,7 +41,7 @@ void main() {
       attributes: <String, Object?>{'publicVersion': '9.9.9'},
     );
 
-    test('keeps the dart_audit JSON fields', () {
+    test('keeps the stable JSON fields', () {
       const report = TyposquatReport(
         pubspecPath: 'pubspec.yaml',
         packages: <String>['htttp', 'internal_core'],

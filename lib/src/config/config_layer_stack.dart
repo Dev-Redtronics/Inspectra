@@ -16,9 +16,11 @@
 
 import 'package:inspectra/src/config/config_base_reference.dart';
 import 'package:inspectra/src/config/config_layer.dart';
+import 'package:inspectra/src/config/config_layer_kind.dart';
 
 /// The layers of a configuration, from the lowest to the highest
-/// precedence, with the project's own configuration last.
+/// precedence: the bases, the project's own configuration and the layers of
+/// a selected profile.
 ///
 /// A base is followed by the bases that extend it, so the layers from
 /// [starts] at an index up to that index are exactly the layer and its own
@@ -44,10 +46,16 @@ final class ConfigLayerStack {
   final List<RemoteBaseReference> missing;
 
   /// The project's own configuration.
-  ConfigLayer get project => layers.last;
+  ConfigLayer get project =>
+      layers.lastWhere((layer) => layer.kind == ConfigLayerKind.project);
 
-  /// The bases, without the project's own configuration.
-  List<ConfigLayer> get bases => layers.sublist(0, layers.length - 1);
+  /// The bases, without the project's own configuration and profiles.
+  List<ConfigLayer> get bases => <ConfigLayer>[
+    for (final ConfigLayer layer in layers)
+      if (layer.kind != ConfigLayerKind.project &&
+          layer.kind != ConfigLayerKind.profile)
+        layer,
+  ];
 
   /// Returns the layer at [index] with its own bases below it.
   List<ConfigLayer> stackOf(int index) =>

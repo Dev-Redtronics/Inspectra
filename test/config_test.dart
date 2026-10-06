@@ -29,7 +29,7 @@ void main() {
       expect(config.coverage.enabled, isFalse);
     });
 
-    test('mirrors the Kreate defaults for the scans', () {
+    test('has the documented defaults for the scans', () {
       final TrivyConfig trivy = InspectraConfig.defaults('demo').trivy;
 
       expect(trivy.secret.runOnBuild, isTrue);

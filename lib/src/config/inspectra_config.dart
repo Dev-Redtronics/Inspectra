@@ -18,17 +18,23 @@ import 'package:inspectra/src/config/api_config.dart';
 import 'package:inspectra/src/config/baseline_config.dart';
 import 'package:inspectra/src/config/changelog_config.dart';
 import 'package:inspectra/src/config/config_base_reference.dart';
+import 'package:inspectra/src/config/config_entry.dart';
+import 'package:inspectra/src/config/config_kind.dart';
 import 'package:inspectra/src/config/config_layer.dart';
 import 'package:inspectra/src/config/config_layer_kind.dart';
 import 'package:inspectra/src/config/config_layer_stack.dart';
 import 'package:inspectra/src/config/config_layers.dart';
+import 'package:inspectra/src/config/config_override.dart';
 import 'package:inspectra/src/config/config_overrides.dart';
 import 'package:inspectra/src/config/config_policy.dart';
 import 'package:inspectra/src/config/config_policy_check.dart';
+import 'package:inspectra/src/config/config_profiles.dart';
 import 'package:inspectra/src/config/config_recorder.dart';
 import 'package:inspectra/src/config/coverage_config.dart';
 import 'package:inspectra/src/config/dependency_policy_config.dart';
+import 'package:inspectra/src/config/deprecated_option.dart';
 import 'package:inspectra/src/config/format_config.dart';
+import 'package:inspectra/src/config/hook_config.dart';
 import 'package:inspectra/src/config/ignore_rule.dart';
 import 'package:inspectra/src/config/inspect_config.dart';
 import 'package:inspectra/src/config/inspectra_config_exception.dart';
@@ -38,15 +44,18 @@ import 'package:inspectra/src/config/style_config.dart';
 import 'package:inspectra/src/config/trivy_config.dart';
 import 'package:inspectra/src/config/trust_thresholds.dart';
 import 'package:inspectra/src/config/typosquat_config.dart';
+import 'package:inspectra/src/config/workspace_policy_config.dart';
 import 'package:inspectra/src/config/yaml_reader.dart';
 import 'package:inspectra/src/model/severity.dart';
 
 export 'package:inspectra/src/changelog/changelog_section.dart';
+export 'package:inspectra/src/config/allowed_override.dart';
 export 'package:inspectra/src/config/api_config.dart';
 export 'package:inspectra/src/config/baseline_config.dart';
 export 'package:inspectra/src/config/build_scan_config.dart';
 export 'package:inspectra/src/config/changelog_config.dart';
 export 'package:inspectra/src/config/config_base_reference.dart';
+export 'package:inspectra/src/config/config_deprecation.dart';
 export 'package:inspectra/src/config/config_entry.dart';
 export 'package:inspectra/src/config/config_kind.dart';
 export 'package:inspectra/src/config/config_layer.dart';
@@ -57,17 +66,23 @@ export 'package:inspectra/src/config/config_override.dart';
 export 'package:inspectra/src/config/config_policy.dart';
 export 'package:inspectra/src/config/config_recorder.dart';
 export 'package:inspectra/src/config/config_strictness.dart';
+export 'package:inspectra/src/config/constraint_style.dart';
 export 'package:inspectra/src/config/coverage_config.dart';
 export 'package:inspectra/src/config/coverage_runner.dart';
 export 'package:inspectra/src/config/denied_package.dart';
 export 'package:inspectra/src/config/dependency_policy_config.dart';
+export 'package:inspectra/src/config/deprecated_option.dart';
 export 'package:inspectra/src/config/filesystem_scan_config.dart';
 export 'package:inspectra/src/config/format_config.dart';
+export 'package:inspectra/src/config/hook_check.dart';
+export 'package:inspectra/src/config/hook_config.dart';
 export 'package:inspectra/src/config/ignore_rule.dart';
 export 'package:inspectra/src/config/inspect_config.dart';
+export 'package:inspectra/src/config/libyear_scope.dart';
 export 'package:inspectra/src/config/license_scan_config.dart';
 export 'package:inspectra/src/config/lint_config.dart';
 export 'package:inspectra/src/config/lint_level.dart';
+export 'package:inspectra/src/config/lockfile_policy.dart';
 export 'package:inspectra/src/config/network_config.dart';
 export 'package:inspectra/src/config/scan_config.dart';
 export 'package:inspectra/src/config/secret_scan_config.dart';
@@ -76,7 +91,10 @@ export 'package:inspectra/src/config/trivy_config.dart';
 export 'package:inspectra/src/config/trivy_mode.dart';
 export 'package:inspectra/src/config/trust_thresholds.dart';
 export 'package:inspectra/src/config/typosquat_config.dart';
+export 'package:inspectra/src/config/version_alignment.dart';
 export 'package:inspectra/src/config/vulnerability_scan_config.dart';
+export 'package:inspectra/src/config/workspace_layer.dart';
+export 'package:inspectra/src/config/workspace_policy_config.dart';
 export 'package:inspectra/src/style/style_preset.dart';
 
 /// The name of the dedicated configuration file in the package root.
@@ -121,6 +139,10 @@ final class InspectraConfig {
     this.typosquat = const TyposquatConfig(),
     this.baseline = const BaselineConfig(),
     this.dependencyPolicy = const DependencyPolicyConfig(),
+    this.forbiddenIgnoreSeverities = const <Severity>{},
+    this.deprecatedOptions = const <DeprecatedOption>[],
+    this.workspacePolicy = const WorkspacePolicyConfig(),
+    this.hook = const HookConfig(),
   });
 
   /// The configuration with every default, for the package [packageName].
@@ -161,21 +183,27 @@ final class InspectraConfig {
     recorder: recorder,
   );
 
-  /// Parses the layers of [stack], the project's configuration and the
-  /// bases it extends, with the [overrides] layered on top, and enforces
-  /// the policies of the layers; a [recorder] records every value with its
-  /// origin and the layer it comes from.
+  /// Parses [layers], the project's configuration and the bases it
+  /// extends, with the profile the [overrides] select and the [overrides]
+  /// themselves layered on top, and enforces the policies of the layers; a
+  /// [recorder] records every value with its origin and the layer it comes
+  /// from.
   ///
   /// Returns the configuration.
   ///
   /// Throws an [InspectraConfigException] for an unknown key, a value of
-  /// the wrong type, or a value that violates a policy.
+  /// the wrong type, an unknown profile, or a value that violates a policy.
   factory InspectraConfig.fromLayers(
-    ConfigLayerStack stack, {
+    ConfigLayerStack layers, {
     required String packageName,
     ConfigOverrides? overrides,
     ConfigRecorder? recorder,
   }) {
+    final ConfigOverrides active = overrides ?? ConfigOverrides.none();
+    final ConfigOverride? profile = active.resolve(profileOption);
+    final ConfigLayerStack stack = profile == null
+        ? layers
+        : withProfile(layers, profile.value.trim());
     final bool policies = stack.layers.any(
       (layer) => !ConfigPolicy.of(layer).isEmpty,
     );
@@ -188,9 +216,21 @@ final class InspectraConfig {
     final config = InspectraConfig._parseLayers(
       stack.layers,
       packageName,
-      overrides ?? ConfigOverrides.none(),
+      active,
       target,
     );
+    if (profile != null) {
+      target?.record(
+        ConfigEntry(
+          key: profileOption,
+          kind: ConfigKind.string,
+          value: profile.value.trim(),
+          defaultValue: null,
+          origin: profile.origin,
+          variable: profile.variable,
+        ),
+      );
+    }
     if (policies && target != null) {
       checkConfigPolicies(stack, target, (layers) {
         final reference = ConfigRecorder();
@@ -223,7 +263,7 @@ final class InspectraConfig {
       layers,
       overrides: overrides,
       recorder: recorder,
-    )..reserve(const <String>['extends', 'policy']);
+    )..reserve(const <String>['extends', 'policy', profilesKey]);
     final severities = <String, Severity?>{
       for (final severity in Severity.values) severity.name: severity,
     };
@@ -248,6 +288,17 @@ final class InspectraConfig {
       baseline: BaselineConfig.fromYaml(root.section('baseline')),
       dependencyPolicy: DependencyPolicyConfig.fromYaml(
         root.section('dependency_policy'),
+      ),
+      workspacePolicy: WorkspacePolicyConfig.fromYaml(
+        root.section('workspace_policy'),
+      ),
+      hook: HookConfig.fromYaml(root.section('hook')),
+      forbiddenIgnoreSeverities: <Severity>{
+        for (final ConfigLayer layer in layers)
+          ...ConfigPolicy.of(layer).forbidIgnoreOf,
+      },
+      deprecatedOptions: List<DeprecatedOption>.unmodifiable(
+        root.deprecatedOptions,
       ),
     );
     root.ensureFullyRead();
@@ -374,4 +425,17 @@ final class InspectraConfig {
 
   /// The rules for the dependencies of the package.
   final DependencyPolicyConfig dependencyPolicy;
+
+  /// The severities of findings that no ignore rule, `--ignore` flag or
+  /// baseline may suppress: the `forbid_ignore_of` entries of every policy.
+  final Set<Severity> forbiddenIgnoreSeverities;
+
+  /// The places that still use the old name of a renamed option.
+  final List<DeprecatedOption> deprecatedOptions;
+
+  /// The rules for the packages of a pub workspace.
+  final WorkspacePolicyConfig workspacePolicy;
+
+  /// The pre-commit hook.
+  final HookConfig hook;
 }

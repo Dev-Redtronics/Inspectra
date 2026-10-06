@@ -109,9 +109,6 @@
                 <a href="Troubleshooting.md" summary="The errors you are most likely to see, and what each one means.">
                     Troubleshooting
                 </a>
-                <a href="Migrating-From-Kreate.md" summary="Coming from Kreate's Gradle tasks? The same features, the Dart way.">
-                    Coming from Kreate
-                </a>
             </cards>
 
             <links narrow="true">

@@ -7,7 +7,7 @@
 
 <link-summary>Every command and option of the inspectra command line, with output and exit codes.</link-summary>
 
-<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog, baseline, config, deps and report; options and exit codes.</card-summary>
+<card-summary>scan, audit, inspect, trust, typosquat, add, hook, trivy, check, format, lint, style, api, coverage, changelog, baseline, config, deps, graph, workspace, explain, doctor and report; options and exit codes.</card-summary>
 
 ```text
 Supply-chain security scanner for Dart and Flutter projects.
@@ -25,12 +25,15 @@ Available commands:
   audit       Scan pubspec.lock against the OSV.dev vulnerability database.
   baseline    Record the accepted findings, so that only new ones fail, or prune the fixed ones.
   changelog   Generate the changelog from Conventional Commits, check it and print release notes.
-  check       Run every enabled package check: format, lint, style, API, API semver, changelog, Trivy scans, dependency policy and coverage.
-  config      Show where each configuration value comes from, validate and lint the configuration, print its JSON Schema.
+  check       Run every enabled package check: format, lint, style, API, API semver, changelog, Trivy scans, dependency and workspace policy and coverage.
+  config      Show where each configuration value comes from, validate and lint the configuration, print its JSON Schema, fetch its remote bases, create, migrate and compare configurations.
   coverage    Run the tests with coverage, write lcov.info and check the threshold.
-  deps        Check the dependencies of pubspec.yaml against the pubspec rules and the dependency policy, offline; --fix applies the fixable rules.
+  deps        Check the dependencies of pubspec.yaml against the pubspec rules and the dependency policy, offline unless --online; --fix applies the fixable rules.
+  graph       Print the dependency graph of a pub workspace as text, DOT, Mermaid or JSON.
   format      Check that the Dart files are formatted, or format them with --fix.
-  hook        Install or remove the Git pre-commit hook.
+  hook        Install or remove the Git pre-commit hook, or run its checks on the staged files.
+  explain     Explain a rule: what it reports, why, and how to resolve it; without a rule id, list every rule.
+  doctor      Check the configuration, the Dart and Flutter SDKs, Git, Trivy, the network and the cache.
   inspect     Statically analyse a pub.dev package before adding it.
   lint        Analyze the package with the rules of analysis_options.yaml.
   report      Run every evaluation - codebase, supply chain, dependencies, configuration, format, lint, style, API, changelog, Trivy and coverage - and report them at once, for example as an HTML dashboard.
@@ -39,6 +42,7 @@ Available commands:
   trivy       Run Trivy: the configured scans, or a filesystem scan of the package.
   trust       Query pub.dev and print a trust assessment for a package.
   typosquat   Scan pubspec.yaml for typosquatting and dependency confusion risks.
+  workspace   Tools for pub workspaces: the packages a change affects.
 
 Run "inspectra help <command>" for more information about a command.
 ```
@@ -77,6 +81,7 @@ The supply-chain commands - `scan`, `audit`, `inspect`, `trust`, `typosquat`, `d
 | Option | Description |
 |:--|:--|
 | `--config <path>` | The configuration file. Default: `%config_file%` if present, else the `%pubspec_key%:` section of `pubspec.yaml`. See [Where the configuration lives](Configuration-Overview.md). |
+| `--profile <name>` | Apply a [configuration profile](Configuration-Inheritance.md#profiles), for example `--profile ci`. Default: the environment variable `INSPECTRA_PROFILE`. `check`, `format`, `lint`, `coverage`, `api check|dump` and `changelog check` take it as well. |
 | `--set <key=value>` | Override a configuration key by its dotted path, for example `--set trivy.version=latest`. Repeatable. An unknown key is a configuration error. |
 | `-f`, `--format` | `text` (default), `json`, `sarif`, `markdown`, `junit`, `gitlab`, `sonarqube`, `checkstyle` or `html`. See [Reports and dashboards](Reports.md#formats). |
 | `-o`, `--output <path>` | Write the report to a file instead of standard output. |
@@ -238,17 +243,38 @@ finding, or when its risk score reaches `inspect.fail_score`.
 inspectra hook                 # install
 inspectra hook install
 inspectra hook remove          # or: inspectra hook --remove
+inspectra hook run             # what the hook runs: the checks of hook.checks on the staged files
 ```
 
-Installs a Git pre-commit hook that audits a staged `pubspec.lock` and checks a staged `pubspec.yaml` for
-typosquatting, in every package of the repository. The hook runs `inspectra` from the `PATH`, or `dart run inspectra`.
-It honours `core.hooksPath` and worktrees, and never overwrites a hook it did not install.
+Installs a Git pre-commit hook that runs `inspectra hook run` before every commit. The hook runs `inspectra` from the
+`PATH`, or `dart run inspectra`. It honours `core.hooksPath` and worktrees, and never overwrites a hook it did not
+install; installing again updates an older hook of %product%.
+
+`inspectra hook run` checks the files staged for the commit with the checks of `hook.checks`:
+
+| Check | Looks at |
+|:--|:--|
+| `audit` (default) | The staged content of every `pubspec.lock`, against OSV.dev |
+| `typosquat` (default) | The staged content of every `pubspec.yaml`: typosquatting, and dependency confusion while online |
+| `deps` | The staged content of every `pubspec.yaml`: the pubspec rules and the dependency policy |
+| `format` | The staged Dart files that `format.include` covers, as they are in the working tree |
+| `style` | The staged content of the Dart files that `style.include` covers |
+
+```yaml
+hook:
+  checks: [audit, typosquat, deps, format, style]
+```
+
+A staged Dart file with further unstaged changes is named in a warning, because `format` checks the working tree. An
+invalid configuration stops the commit with `65`. Ignore rules, the baseline and `--fail-on` apply; typosquatting and
+confusion fail from `high`, every other finding by default.
 
 | Option | Description |
 |:--|:--|
 | `--remove` | Remove the hook installed by %product%. |
 
-Exits with `0` once the hook is installed, updated or removed.
+`install` and `remove` exit with `0`. `hook run` exits with `0` when no finding reaches the threshold, `1` otherwise, and
+with `-f json` writes `checks`, `staged`, `partiallyStaged` and `findings`.
 
 ## trivy {id="trivy"}
 
@@ -559,21 +585,65 @@ dart run inspectra deps -r --fix
 ```
 
 Checks every `pubspec.yaml` against the built-in pubspec rules and, with `dependency_policy.enabled`, the
-[dependency policy](Dependency-Policy.md), without network access. `directory` defaults to the current one. The shared
-options apply; findings are of the source `pubspec`. With `-f json` the report holds `pubspecs`, `fixed`, `suppressed`,
-`baselined` and `findings`.
+[dependency policy](Dependency-Policy.md), without network access unless `--online` is given. `directory` defaults to
+the current one. The shared options apply; findings are of the source `pubspec`. With `-f json` the report holds
+`pubspecs`, `fixed`, `suppressed`, `baselined` and `findings`, and while `max_major_behind` or `max_libyear` is
+configured `outdatedChecked` and, once checked, `libyears`.
 
 | Option | Description |
 |:--|:--|
-| `-r`, `--recursive` | Also check the packages below the directory, such as the members of a pub workspace. |
-| `--fix` | Bound constraints with a caret, move `dev_only` packages to `dev_dependencies` and add `publish_to: none`, keeping comments and formatting; then report what remains. |
+| `-r`, `--recursive` | Also check the packages below the directory; at the root of a pub workspace, its members, and with `workspace_policy.enabled` the [workspace policy](Workspace-Policy.md). |
+| `--online` | Also check `max_major_behind` and `max_libyear` against the package registry. No effect with `--offline`. |
+| `--changed-since <revision>` | With `-r` at the root of a pub workspace, check only the packages changed since the Git revision and the packages depending on them. |
+| `--fix` | Bound constraints with a caret, rewrite them in the `constraint_style`, move `dev_only` packages to `dev_dependencies` and add `publish_to: none`, keeping comments and formatting; then report what remains. |
 
 | Result | Exit code |
 |:--|:--|
 | No finding at or above `--fail-on` (default: any) | `0` |
 | Findings | `1` |
 | No `pubspec.yaml`, a malformed pubspec or lockfile, an invalid configuration | `65` |
-| A fixed `pubspec.yaml` cannot be written | `69` |
+| A fixed `pubspec.yaml` cannot be written, or the registry cannot be queried with `--online` | `69` |
+
+## graph {id="graph"}
+
+```bash
+dart run inspectra graph -f mermaid
+```
+
+Prints the dependencies between the packages of a pub workspace, grouped by the layers of `workspace_policy`, or the
+direct dependencies of a single package. `directory` defaults to the current one. See
+[Workspace policy](Workspace-Policy.md#graph).
+
+| Option | Description |
+|:--|:--|
+| `-f`, `--format` | `text` (default), `dot`, `mermaid` or `json` (`nodes` with `name` and `layer`, `edges` with `from`, `to` and `external`). |
+| `--include-dev` | Also draw `dev_dependencies`. |
+| `--external` | Also draw the dependencies outside the workspace. |
+
+Exit code `0`; `65` without a `pubspec.yaml`, or for a malformed pubspec or configuration.
+
+## workspace affected {id="workspace-affected"}
+
+```bash
+dart run inspectra workspace affected --since origin/main
+```
+
+Lists the directories of the packages of a pub workspace that the files changed since the Git revision affect, with
+every package depending on them; a change of a file all packages share affects all of them. See
+[Workspace policy](Workspace-Policy.md#affected).
+
+| Option | Description |
+|:--|:--|
+| `--since <revision>` | The revision to compare with. Required. |
+| `-f`, `--format` | `text`, one directory per line (default), or `json` with `since`, `changedFiles` and `packages` (`name`, `path`). |
+| `--[no-]include-dev` | Count packages that use a changed package only as a `dev_dependency`. Default: on. |
+
+| Result | Exit code |
+|:--|:--|
+| Listed | `0` |
+| No workspace root, or a revision Git cannot resolve | `64` |
+| A malformed pubspec | `65` |
+| Git is not installed or fails | `69` |
 
 ## config show {id="config-show"}
 
@@ -600,12 +670,13 @@ With `-f json` the report holds `source` and `values`, one object per option wit
 dart run inspectra config validate
 ```
 
-Loads the configuration and checks that every file it refers to exists and that the baseline file is well-formed.
+Loads the configuration, every [profile](Configuration-Inheritance.md#profiles) it defines, and checks that every file it
+refers to exists and that the baseline file is well-formed.
 See [Configuration tools](Configuration-Tools.md#validate).
 
 | Result | Exit code |
 |:--|:--|
-| Valid; with `-f json`: `source`, `valid` and `files` | `0` |
+| Valid; with `-f json`: `source`, `valid`, `files` and `profiles` | `0` |
 | An invalid key or value, or missing referenced files - all listed at once | `65` |
 
 ## config lint {id="config-lint"}
@@ -635,6 +706,57 @@ dart run inspectra config schema -o inspectra.schema.json
 Prints the JSON Schema (draft-07) of `inspectra.yaml`, generated from the options the configuration reads. It reads no
 project configuration and takes only `-o`, `--output <path>`. Exit code `0`, or `69` when the file cannot be written.
 See [Editor support](Configuration-Tools.md#schema).
+
+## config init {id="config-init"}
+
+```bash
+dart run inspectra config init --preset library
+```
+
+Writes a starting `inspectra.yaml` for an `app`, `library`, `plugin` or `enterprise` project; without `--preset` the
+kind is detected from `pubspec.yaml`. Reads no configuration. See [Configuration tools](Configuration-Tools.md#init).
+
+| Option | Description |
+|:--|:--|
+| `--preset <kind>` | `app`, `library`, `plugin` or `enterprise`. Default: `plugin` for a Flutter plugin, `library` for a package that can be published, `app` otherwise. |
+| `--stdout` | Print the configuration instead of writing the file. |
+| `--force` | Replace an existing `inspectra.yaml`. |
+
+| Result | Exit code |
+|:--|:--|
+| Written or printed | `0` |
+| `inspectra.yaml` exists, without `--force` | `64` |
+| A malformed `pubspec.yaml` | `65` |
+| The file cannot be written | `69` |
+
+## config migrate {id="config-migrate"}
+
+```bash
+dart run inspectra config migrate --dry-run
+```
+
+Replaces the old names of renamed options in the configuration file and its profiles, keeping values, comments and
+order. Takes `--config <path>`, `--dry-run` and `-f text|json`. Exit code `0`, also when nothing changes; `65` for a
+malformed file or an option written under both names; `69` when the file cannot be written. See
+[Configuration tools](Configuration-Tools.md#migrate).
+
+## config diff {id="config-diff"}
+
+```bash
+dart run inspectra config diff git:main --fail-on-weaker
+```
+
+Compares two configurations - files or `git:<revision>` - option by option; with one, the second is the effective
+configuration. Takes the [shared options](#shared-options), the Trivy provisioning options and `--fail-on-weaker`. See
+[Configuration tools](Configuration-Tools.md#diff).
+
+| Result | Exit code |
+|:--|:--|
+| Compared; with `-f json`: `from`, `to` and `changes` | `0` |
+| An option got weaker, with `--fail-on-weaker` | `1` |
+| No or more than two configurations, or an unknown revision | `64` |
+| A file that does not exist or an invalid configuration | `65` |
+| Git is not installed or fails | `69` |
 
 ## report {id="report"}
 
@@ -677,6 +799,29 @@ Downloads and verifies the remote bases the configuration [extends](Configuratio
 lists every base. Takes the shared and Trivy provisioning options; `-f json` writes `bases` with `label`, `kind` and
 `downloaded`. Exit code `0`; `65` for a malformed configuration or a download that does not match its SHA-256; `69`
 when a base cannot be downloaded, for example with `--offline`.
+
+## explain {id="explain"}
+
+```bash
+dart run inspectra explain MISSING_UPPER_BOUND
+dart run inspectra explain -f markdown
+```
+
+Explains a rule offline: its source, default severity, what it reports, why it matters and how to resolve it. The id
+is found in any case; an advisory id such as `GHSA-…` or `CVE-…` is pointed to OSV.dev. Without an id, every rule is
+listed. `-f text|markdown|json`. Exit code `0`, or `64` with the closest rule for an id that names none. See the
+[Rule reference](Rule-Reference.md).
+
+## doctor {id="doctor"}
+
+```bash
+dart run inspectra doctor
+```
+
+Checks the configuration, the Dart and Flutter SDKs, Git, Trivy, proxy, CA bundle, the reachability of the services,
+the registry token and the cache, and says what to do. Works while the configuration is broken. `--offline` contacts
+no service, `-f json` writes `healthy` and `checks`. Exit code `0`, or `1` when a check failed. See
+[Doctor](Doctor.md).
 
 ## Exit codes {id="exit-codes"}
 

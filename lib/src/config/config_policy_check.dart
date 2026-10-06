@@ -28,7 +28,12 @@ import 'package:inspectra/src/config/inspectra_config_exception.dart';
 
 /// The options whose entries every layer adds to, which therefore cannot be
 /// locked.
-const _collected = <String>{'ignore', 'dependency_policy.denied'};
+const _collected = <String>{
+  'ignore',
+  'dependency_policy.denied',
+  'dependency_policy.overrides.allowed',
+  'workspace_policy.layers',
+};
 
 /// Checks the effective configuration in [effective] against the policy of
 /// every layer of [stack].

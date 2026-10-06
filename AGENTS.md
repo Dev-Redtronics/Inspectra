@@ -96,7 +96,8 @@ coverage gate configured in the `inspectra:` section of `pubspec.yaml`. After a 
 - Expected failures are `InspectraException` subtypes; `ExitCode.of` maps them exhaustively:
   usage `64`, input `65`, unavailable `69`. Anything else is an internal error, `70`.
 - Command names, flags, rule ids, JSON field names and exit codes are the consumer contract and
-  change only in a major version. The `dart_audit` compatible names must never change.
+  change only in a major version. The names of the supply-chain commands, their rule ids and
+  JSON fields must never change.
 
 ## Code rules
 
@@ -137,8 +138,9 @@ the loopback `FakeHttpServer`, `TestHarness`). No mocking library and no real ne
 use fakes instead of real external tools; the only exceptions are the integration test tagged
 `trivy` (`@Tags(['trivy'])`), which runs the real Trivy and is skipped when Trivy is not installed,
 the tests tagged `slow` (a generated package under `dart test`, a real Git repository, skipped
-without Git, custom style rules run through `dart run`), and the quality tests that run the real `dart format` and `dart analyze` in
-temporary packages. Tests follow the production packages where practical. Every change ships with
+without Git, custom style rules run through `dart run`), the tests tagged `analyzer`, which resolve
+Dart sources and wait for the SDK summary (3 minutes timeout, as `slow`), and the quality tests that
+run the real `dart format` and `dart analyze` in temporary packages. Tests follow the production packages where practical. Every change ships with
 its tests; every fixed bug gets a regression test.
 
 ## Public API

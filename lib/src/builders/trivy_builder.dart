@@ -110,9 +110,14 @@ sealed class TrivyBuilder implements Builder {
         ),
         packageRoot,
       );
-      final ScanResult result = baselineScans(<ScanResult>[
-        scanned,
-      ], BaselineMatcher.load(config.baseline, packageRoot)).single;
+      final ScanResult result = baselineScans(
+        <ScanResult>[scanned],
+        BaselineMatcher.load(
+          config.baseline,
+          packageRoot,
+          unignorable: config.forbiddenIgnoreSeverities,
+        ),
+      ).single;
       await buildStep.writeAsString(
         AssetId(buildStep.inputId.package, _report),
         const JsonEncoder.withIndent('  ').convert(result.toJson()),

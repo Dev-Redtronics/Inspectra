@@ -21,8 +21,8 @@ import 'package:inspectra/src/model/severity.dart';
 /// The result of one Inspectra command, renderable in every output format.
 ///
 /// Each command contributes its own human readable layout ([writeText]) and
-/// its own JSON structure ([toJson]), which keeps the field names that
-/// `dart_audit` users rely on. The generic [findings] list drives SARIF,
+/// its own JSON structure ([toJson]), whose field names are stable. The
+/// generic [findings] list drives SARIF,
 /// Markdown and the exit code.
 abstract interface class CommandReport {
   /// The command that produced the report, for example `audit`.

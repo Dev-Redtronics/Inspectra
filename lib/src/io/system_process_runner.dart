@@ -40,6 +40,7 @@ final class SystemProcessRunner implements ProcessRunner {
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Map<String, String>? environment,
     bool runInShell = false,
     Duration? timeout,
   }) async {
@@ -47,6 +48,7 @@ final class SystemProcessRunner implements ProcessRunner {
       executable,
       arguments,
       workingDirectory: workingDirectory,
+      environment: environment,
       runInShell: runInShell,
     );
     const decoder = Utf8Decoder(allowMalformed: true);

@@ -24,7 +24,9 @@ import 'package:inspectra/src/report/severity_breakdown.dart';
 /// The report of `deps`: the pubspec rules and the dependency policy.
 ///
 /// The JSON body has `pubspecs`, `fixed` (one text per applied fix),
-/// `suppressed` and `baselined` next to the `findings`.
+/// `suppressed` and `baselined` next to the `findings`, and when
+/// `max_major_behind` or `max_libyear` is configured `outdatedChecked` and,
+/// once checked, `libyears`.
 final class DepsReport implements CommandReport {
   /// Creates the report of [result] with the policy filtered [findings];
   /// [suppressedCount] findings were removed by ignore rules and
@@ -69,6 +71,8 @@ final class DepsReport implements CommandReport {
     'fixed': result.fixes,
     'suppressed': suppressedCount,
     'baselined': baselinedCount,
+    'outdatedChecked': ?result.outdatedChecked,
+    'libyears': ?result.libyears,
   };
 
   /// Writes the human readable report.
@@ -89,7 +93,17 @@ final class DepsReport implements CommandReport {
         out.writeln('    ${finding.description}');
       }
     }
+    if (result.outdatedChecked == false) {
+      out.writeln(
+        style.yellow(
+          '! max_major_behind and max_libyear were not checked; they need '
+          'the registry: run "inspectra deps --online".',
+        ),
+      );
+    }
+    final double? libyears = result.libyears;
     final notes = <String>[
+      if (libyears != null) '${libyears.toStringAsFixed(1)} libyears',
       if (suppressedCount > 0) '$suppressedCount suppressed by ignore rules',
       if (baselinedCount > 0) '$baselinedCount covered by the baseline',
     ];

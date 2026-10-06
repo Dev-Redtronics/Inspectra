@@ -29,6 +29,9 @@ final class FakeProcessRunner implements ProcessRunner {
   /// Every call as `executable arguments...`, in order.
   final calls = <String>[];
 
+  /// The environment given to every call, in order.
+  final environments = <Map<String, String>?>[];
+
   /// Records the call and answers it from [handler].
   ///
   /// Returns the scripted outcome.
@@ -37,10 +40,12 @@ final class FakeProcessRunner implements ProcessRunner {
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Map<String, String>? environment,
     bool runInShell = false,
     Duration? timeout,
   }) async {
     calls.add(<String>[executable, ...arguments].join(' '));
+    environments.add(environment);
     return handler(executable, arguments);
   }
 }

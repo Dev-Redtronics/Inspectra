@@ -21,8 +21,8 @@ import 'fake_process_runner.dart';
 /// Returns a 40 character object name derived from [seed].
 String hashOf(int seed) => seed.toRadixString(16).padRight(40, 'c');
 
-/// A scripted `git` for the changelog and API commands: it answers `log`,
-/// `tag`, `show` and `rev-parse` from fixed data.
+/// A scripted `git` for the changelog, API and workspace commands: it
+/// answers `log`, `tag`, `show`, `diff` and `rev-parse` from fixed data.
 final class FakeGit {
   /// Creates a repository whose `git log <range>` answers [logs] by range,
   /// whose tags are [tags], whose `git show <revision>:./<path>` answers
@@ -36,6 +36,7 @@ final class FakeGit {
     this.shallow = false,
     this.empty = false,
     this.failure,
+    this.changes = const <String, List<String>>{},
   });
 
   /// The commits returned by `git log`, keyed by the requested range.
@@ -52,6 +53,9 @@ final class FakeGit {
 
   /// Whether the repository has no commit yet.
   final bool empty;
+
+  /// The files changed since each revision, for `git diff`.
+  final Map<String, List<String>> changes;
 
   /// The outcome of every call, to simulate failures.
   final ProcessOutcome? failure;
@@ -88,6 +92,21 @@ final class FakeGit {
     }
     if (name == 'show') {
       return _show(command.last);
+    }
+    if (name == 'diff') {
+      final String revision = command[command.length - 2];
+      final List<String>? changed = changes[revision];
+      return changed == null
+          ? ProcessOutcome(
+              exitCode: 128,
+              stdout: '',
+              stderr: "fatal: bad revision '$revision'",
+            )
+          : ProcessOutcome(
+              exitCode: 0,
+              stdout: changed.map((path) => '$path\u0000').join(),
+              stderr: '',
+            );
     }
     if (name == 'tag') {
       return ProcessOutcome(

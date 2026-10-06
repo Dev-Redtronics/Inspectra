@@ -126,7 +126,7 @@ dependencies:
   }
 
   group('audit', () {
-    test('reports advisories in the dart_audit JSON layout', () async {
+    test('reports advisories in the stable JSON layout', () async {
       serveAdvisory();
       final TestHarness harness = project(<String, String>{
         'pubspec.lock': lockfile,
@@ -484,5 +484,74 @@ dependencies:
       );
       expect(await harness.run(<String>['hook', 'remove']), 0);
     });
+
+    test(
+      'hook run checks the staged content of the configured checks',
+      () async {
+        const staged = <String>[
+          'pubspec.yaml',
+          'lib/good.dart',
+          'lib/messy.dart',
+          'README.md',
+        ];
+        final runner = FakeProcessRunner((executable, arguments) {
+          if (executable != 'git') {
+            return const ProcessOutcome(exitCode: 0, stdout: '', stderr: '');
+          }
+          final bool unstaged =
+              arguments.contains('diff') && !arguments.contains('--cached');
+          if (arguments.contains('diff')) {
+            return ProcessOutcome(
+              exitCode: 0,
+              stdout: unstaged ? 'lib/messy.dart\u0000' : staged.join('\u0000'),
+              stderr: '',
+            );
+          }
+          final String object = arguments.last;
+          final String? content = <String, String>{
+            ':./pubspec.yaml':
+                'name: app\ndependencies:\n  http: any\n  htpp: ^1.0.0\n',
+            ':./lib/good.dart': 'void main() {}\n',
+            ':./lib/messy.dart': 'void main() {\n  if (true) {} else {}\n}\n',
+          }[object];
+          return ProcessOutcome(
+            exitCode: content == null ? 128 : 0,
+            stdout: content ?? '',
+            stderr: content == null ? 'fatal: not staged' : '',
+          );
+        });
+        final TestHarness harness = project(<String, String>{
+          'pubspec.yaml': 'name: app\n',
+          'inspectra.yaml':
+              'network:\n  offline: true\n'
+              'hook:\n  checks: [typosquat, deps, style]\n'
+              'style:\n  rules:\n    no_else: true\n',
+          'lib/good.dart': 'void main() {}\n',
+          'lib/messy.dart': 'void main() {}\n',
+        }, processRunner: runner);
+        expect(
+          await harness.run(<String>['hook', 'run', '-f', 'json']),
+          1,
+          reason: harness.err,
+        );
+        final report = jsonDecode(harness.out) as Map<String, Object?>;
+        expect(report['command'], 'hook run');
+        expect(report['staged'], <String>[
+          'lib/good.dart',
+          'lib/messy.dart',
+          'pubspec.yaml',
+        ]);
+        final List<Map<String, Object?>> findings =
+            (report['findings']! as List<Object?>).cast<Map<String, Object?>>();
+        expect(
+          findings.map((finding) => '${finding['ruleId']} ${finding['file']}'),
+          <String>[
+            'LEVENSHTEIN_1 pubspec.yaml',
+            'ANY_VERSION pubspec.yaml',
+            'no_else lib/messy.dart',
+          ],
+        );
+      },
+    );
   });
 }

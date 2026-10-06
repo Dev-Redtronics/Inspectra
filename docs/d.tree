@@ -17,6 +17,7 @@
         <toc-element topic="Baseline.md"/>
         <toc-element topic="Configuration-Tools.md"/>
         <toc-element topic="Dependency-Policy.md"/>
+        <toc-element topic="Workspace-Policy.md"/>
         <toc-element topic="Build-Sources.md"/>
     </toc-element>
 
@@ -68,6 +69,7 @@
     <toc-element toc-title="Reference">
         <toc-element topic="Builder-Reference.md"/>
         <toc-element topic="CLI-Reference.md"/>
+        <toc-element topic="Rule-Reference.md"/>
         <toc-element topic="Library-API.md"/>
         <toc-element topic="Compatibility.md"/>
     </toc-element>
@@ -75,8 +77,8 @@
     <toc-element toc-title="Operations">
         <toc-element topic="CI-Integration.md"/>
         <toc-element topic="Reports.md"/>
+        <toc-element topic="Doctor.md"/>
         <toc-element topic="Troubleshooting.md"/>
-        <toc-element topic="Migrating-From-Kreate.md"/>
         <toc-element topic="Inspectra-On-Itself.md"/>
     </toc-element>
 

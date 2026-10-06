@@ -15,18 +15,26 @@
  */
 
 import 'package:args/args.dart';
+import 'package:inspectra/src/changelog/git_history.dart';
 import 'package:inspectra/src/cli/command_session.dart';
 import 'package:inspectra/src/cli/inspectra_command.dart';
 import 'package:inspectra/src/deps/deps_report.dart';
 import 'package:inspectra/src/deps/deps_result.dart';
 import 'package:inspectra/src/deps/deps_service.dart';
+import 'package:inspectra/src/model/inspectra_exception.dart';
 import 'package:inspectra/src/policy/filter_outcome.dart';
 import 'package:inspectra/src/report/command_report.dart';
+import 'package:inspectra/src/workspace/affected_packages.dart';
+import 'package:inspectra/src/workspace/workspace.dart';
+import 'package:inspectra/src/workspace/workspace_check.dart';
+import 'package:inspectra/src/workspace/workspace_member.dart';
 
 /// `inspectra deps`: checks the pubspecs against the pubspec rules and the
-/// dependency policy, without network access, and fixes what can be fixed.
+/// dependency policy, without network access unless `--online` asks for
+/// the rules that need the registry, and fixes what can be fixed.
 final class DepsCommand extends InspectraCommand {
-  /// Creates the command with its `--recursive` and `--fix` flags.
+  /// Creates the command with its `--recursive`, `--changed-since`,
+  /// `--online` and `--fix` options.
   DepsCommand(super.context) {
     argParser
       ..addFlag(
@@ -36,6 +44,20 @@ final class DepsCommand extends InspectraCommand {
         help:
             'Also check nested packages, such as the members of a pub '
             'workspace.',
+      )
+      ..addOption(
+        'changed-since',
+        valueHelp: 'revision',
+        help:
+            'With -r on a pub workspace, check only the packages changed '
+            'since the Git revision and the packages depending on them.',
+      )
+      ..addFlag(
+        'online',
+        negatable: false,
+        help:
+            'Also check max_major_behind and max_libyear against the '
+            'package registry.',
       )
       ..addFlag(
         'fix',
@@ -55,7 +77,8 @@ final class DepsCommand extends InspectraCommand {
   @override
   String get description =>
       'Check the dependencies of pubspec.yaml against the pubspec rules and '
-      'the dependency policy, offline; --fix applies the fixable rules.';
+      'the dependency policy, offline unless --online; --fix applies the '
+      'fixable rules.';
 
   /// The positional arguments.
   @override
@@ -80,11 +103,35 @@ final class DepsCommand extends InspectraCommand {
         'Nothing to fix: dependency_policy.enabled is not set.',
       );
     }
-    final DepsResult result = service.run(
-      session.resolve(results.rest.firstOrNull ?? '.'),
-      recursive: results['recursive'] == true,
+    final String root = session.resolve(results.rest.firstOrNull ?? '.');
+    final online = results['online'] == true;
+    if (online && session.config.network.offline) {
+      session.console.warning(
+        '--online has no effect while network access is off.',
+      );
+    }
+    final recursive = results['recursive'] == true;
+    final changedSince = results['changed-since'] as String?;
+    final Set<String>? affected = changedSince == null
+        ? null
+        : await _affected(session, root, changedSince);
+    final DepsResult checked = await service.runOnline(
+      root,
+      recursive: recursive,
       fix: fix,
+      trackedFiles: await session.lockfileTracking(root),
+      outdated: online ? session.outdatedPolicy() : null,
+      include: affected?.contains,
     );
+    final DepsResult result = recursive
+        ? checked.withFindings(
+            checkWorkspace(
+              session.config.workspacePolicy,
+              root,
+              workingDirectory: session.workingDirectory,
+            ),
+          )
+        : checked;
     final FilterOutcome outcome = session.filter().apply(result.findings);
     return DepsReport(
       result: result,
@@ -92,5 +139,35 @@ final class DepsCommand extends InspectraCommand {
       suppressedCount: outcome.suppressed.length,
       baselinedCount: outcome.baselined.length,
     );
+  }
+
+  /// Finds the pubspecs of the workspace in [root] that the changes since
+  /// [revision] affect.
+  ///
+  /// Returns their absolute paths.
+  ///
+  /// Throws an [InvalidUsageException] when [root] is no workspace root or
+  /// Git cannot resolve the revision, and an `UnavailableException` when
+  /// Git fails.
+  Future<Set<String>> _affected(
+    CommandSession session,
+    String root,
+    String revision,
+  ) async {
+    final Workspace? workspace = Workspace.load(root);
+    if (workspace == null) {
+      throw const InvalidUsageException(
+        '--changed-since needs the root of a pub workspace; its '
+        'pubspec.yaml has no workspace: list.',
+      );
+    }
+    final List<String> changed = await GitHistory(
+      processRunner: session.context.processRunner,
+      workingDirectory: root,
+    ).changedFiles(revision);
+    return <String>{
+      for (final WorkspaceMember member in affectedPackages(workspace, changed))
+        member.pubspecPath,
+    };
   }
 }

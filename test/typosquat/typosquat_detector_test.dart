@@ -19,8 +19,8 @@ import 'package:inspectra/src/typosquat/typosquat_detector.dart';
 import 'package:inspectra/src/util/levenshtein.dart';
 import 'package:test/test.dart';
 
-/// Tests typosquatting detection, including the false positives of
-/// `dart_audit`.
+/// Tests typosquatting detection, including names that must not be
+/// reported.
 void main() {
   /// Analyses [names] and returns `name:rule` pairs.
   List<String> analyze(List<String> names, {List<String> allow = const []}) =>
@@ -61,7 +61,7 @@ void main() {
     ]);
   });
 
-  test('does not report the false positives of dart_audit', () {
+  test('does not report well-known false positives', () {
     expect(
       analyze(<String>[
         'lints',

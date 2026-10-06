@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import 'package:inspectra/src/config/constraint_style.dart';
 import 'package:inspectra/src/config/dependency_policy_config.dart';
 import 'package:inspectra/src/deps/pubspec_fix.dart';
 import 'package:inspectra/src/deps/version_bounds.dart';
@@ -29,7 +30,8 @@ import 'package:yaml_edit/yaml_edit.dart';
 /// its comments, order and formatting.
 ///
 /// It bounds constraints without an upper bound (`MISSING_UPPER_BOUND`),
-/// moves development packages to `dev_dependencies`
+/// rewrites constraints in the configured style (`CONSTRAINT_STYLE`, but
+/// for exact versions), moves development packages to `dev_dependencies`
 /// (`DEV_ONLY_DEPENDENCY`) and adds `publish_to: none` below the name
 /// (`MISSING_PUBLISH_TO`). Every other rule needs a decision a tool cannot
 /// make.
@@ -48,6 +50,7 @@ final class DependencyFixer {
     final editor = YamlEditor(content);
     final applied = <String>[
       if (config.requireUpperBound) ..._bound(editor, pubspec),
+      ..._restyle(editor, pubspec),
       ..._moveDevOnly(editor, pubspec),
     ];
     final edited = editor.toString();
@@ -88,6 +91,58 @@ final class DependencyFixer {
     }
     return applied;
   }
+
+  /// Rewrites the hosted constraints in [editor] as `constraint_style`
+  /// asks, when that keeps the versions they allow: caret and range
+  /// constraints into each other, exact versions into either. Exact
+  /// versions are never written, because they need the lockfile.
+  ///
+  /// Returns a description per change.
+  List<String> _restyle(YamlEditor editor, Pubspec pubspec) {
+    final ConstraintStyle style = config.constraintStyle;
+    final bool fixable =
+        style == ConstraintStyle.caret || style == ConstraintStyle.range;
+    if (!fixable) {
+      return const <String>[];
+    }
+    final applied = <String>[];
+    for (final section in <String>['dependencies', 'dev_dependencies']) {
+      for (final MapEntry(key: name, value: spec) in _declared(
+        pubspec,
+        section,
+      ).entries) {
+        final bool constrained =
+            spec.kind == DependencyKind.hosted &&
+            styleOf(spec.constraint) != null;
+        if (!constrained) {
+          continue;
+        }
+        final YamlNode node = editor.parseAt(<Object>[section, name]);
+        final path = node is YamlMap
+            ? <Object>[section, name, 'version']
+            : <Object>[section, name];
+        final current = '${editor.parseAt(path).value}';
+        final ConstraintStyle? written = styleOf(current);
+        final String? restyled = written == null || written == style
+            ? null
+            : restyledConstraint(current, style);
+        if (restyled == null) {
+          continue;
+        }
+        editor.update(path, restyled);
+        applied.add('$name: $current -> $restyled');
+      }
+    }
+    return applied;
+  }
+
+  /// Returns the declarations of [pubspec] in [section].
+  static Map<String, DependencySpec> _declared(
+    Pubspec pubspec,
+    String section,
+  ) => section == 'dependencies'
+      ? pubspec.dependencies
+      : pubspec.devDependencies;
 
   /// Moves the packages of `dev_only` from `dependencies` to
   /// `dev_dependencies` in [editor].

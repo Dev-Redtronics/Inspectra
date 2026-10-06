@@ -11,7 +11,7 @@
 
 <tldr>
 <p><b>Inherit</b>: <code>extends: package:acme_policy/inspectra.yaml</code>, a relative path, or <code>{url: https://…, sha256: …}</code></p>
-<p><b>Enforce</b>: <code>policy: { locked: [...], minimum: {...} }</code> in the base</p>
+<p><b>Enforce</b>: <code>policy: { locked: [...], minimum: {...}, forbid_ignore_of: [...] }</code> in the base</p>
 <p><b>Inspect</b>: <code>dart run %package% config show --explain</code> names the file of every value</p>
 <p><b>Offline</b>: <code>dart run %package% config fetch</code> caches remote bases</p>
 </tldr>
@@ -55,13 +55,28 @@ From the lowest to the highest:
 1. The built-in defaults.
 2. The bases: earlier entries of a list below later ones, and the bases of a base below it.
 3. The project's own configuration.
-4. `INSPECTRA_*` environment variables.
-5. The command line.
+4. The selected [profile](#profiles), as the bases and the project define it.
+5. `INSPECTRA_*` environment variables.
+6. The command line.
 
 Mappings merge key by key, so a base can set `coverage.enabled` and the project `coverage.min_line_coverage`. A scalar or
 a list of a higher layer replaces the lower one; `key: ~` resets a base's value to the default. Two lists collect the
 entries of every layer instead, the bases' first: `ignore` and `dependency_policy.denied` - an organisation's denied
 packages stay denied, and a repository adds its own.
+
+To add to a list of the lower layers instead of replacing it, write the key with a `+`:
+
+```yaml
+extends: package:acme_policy/inspectra.yaml
+dependency_policy:
+  dev_only+: [golden_toolkit]          # the policy's dev_only plus golden_toolkit
+coverage:
+  exclude+: ['lib/src/l10n/**']        # the default exclusions plus the l10n files
+```
+
+`key+` appends to what the layers below produced, or to the default when no layer sets the list; a later `key` replaces
+everything again. A file may not set both `key` and `key+`. Every list option accepts the suffix, and the JSON Schema
+knows it. A value on the command line or in an `INSPECTRA_*` variable replaces the whole list.
 
 ### Files a base ships {id="files"}
 
@@ -69,6 +84,45 @@ packages stay denied, and a repository adds its own.
 relative to that base, so a policy package can ship the license header, the secret rules and the company CA bundle.
 All other paths, such as `baseline.file` or `api.output`, stay relative to the project. A remote base cannot name
 files.
+
+## Profiles {id="profiles"}
+
+A profile is a named part of a configuration that is applied only when it is selected - fast checks on the developer's
+machine, strict ones in CI, the strictest for a release:
+
+```yaml
+extends: package:acme_policy/inspectra.yaml
+coverage:
+  enabled: true
+  min_line_coverage: 70
+profiles:
+  local:
+    network:
+      offline: true
+    trivy:
+      mode: disabled
+  ci:
+    fail_on: low
+  release:
+    fail_on: low
+    coverage:
+      min_line_coverage: 85
+```
+
+```bash
+dart run %package% check --profile ci
+INSPECTRA_PROFILE=release dart run %package% scan
+```
+
+`--profile <name>` or the variable `INSPECTRA_PROFILE` selects the profile. Its values sit above the project's own
+configuration and below `INSPECTRA_*` variables and the command line. Bases may define profiles as well: a profile of the
+same name in the bases and the project is merged like the files themselves, the project's last, so an organisation can
+ship `ci` and `release` profiles that every repository refines. A profile cannot set `extends`, `policy` or `profiles`.
+
+Policies bind profiles like any layer above them: a profile cannot unlock a locked option or go below a minimum. An
+unknown profile is a configuration error that names the closest one, and `config validate` checks every profile, not only
+the selected one. `config show --explain` names the profile each value comes from, and records the selected profile as
+`profile`.
 
 ## Policies {id="policy"}
 
@@ -83,6 +137,7 @@ policy:
     fail_on: high
     lint.fail_on: warning
     trivy.mode: auto
+  forbid_ignore_of: [critical]
 trivy:
   enabled: true
 coverage:
@@ -103,6 +158,9 @@ error: Invalid Inspectra configuration at "trivy.secret.enabled": locked to true
   value is allowed. `ignore` and `dependency_policy.denied` collect entries and cannot be locked.
 - **`minimum`**: the effective value must be at least as strict. Tightening is always allowed; an unset value counts
   as the weakest.
+- **`forbid_ignore_of`**: findings of these severities stay reported whatever ignores them - an `ignore` rule of any
+  layer, an `--ignore` flag or the baseline. A finding an ignore matched carries the attribute `ignoreForbidden: true`
+  in JSON and SARIF. The severities of every policy add up; names are accepted in any case.
 
 | Option | Stricter is |
 |:--|:--|

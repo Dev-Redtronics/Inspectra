@@ -51,7 +51,7 @@ final class TrustReport implements CommandReport {
   bool isFailing(Severity threshold) =>
       findings.any((finding) => finding.severity.isAtLeast(threshold));
 
-  /// Builds the JSON body with the field names of `dart_audit`.
+  /// Builds the JSON body with its stable field names.
   ///
   /// Returns the JSON body.
   @override

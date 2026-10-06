@@ -58,7 +58,10 @@ enum FindingSource {
 
   /// The package quality gates in a report: format, lint, the public API,
   /// the changelog and the coverage threshold.
-  quality('quality');
+  quality('quality'),
+
+  /// The rules for the packages of a pub workspace, `workspace_policy`.
+  workspace('workspace');
 
   /// Creates a source with its stable machine readable [id].
   const FindingSource(this.id);

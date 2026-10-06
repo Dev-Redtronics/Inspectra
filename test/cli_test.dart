@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+@Tags(['analyzer'])
+library;
+
 import 'dart:convert';
 import 'dart:io';
 

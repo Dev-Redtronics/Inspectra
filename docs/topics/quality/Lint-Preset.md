@@ -15,8 +15,7 @@
 <p><b>Adjust</b>: override anything below the include</p>
 </tldr>
 
-%product% ships the analysis configuration its own repository uses as a preset - what Kreate's Detekt rules are for
-Kotlin. It is the strict end of the spectrum: every rule that catches a bug or an inconsistency, and the formatting
+%product% ships the analysis configuration its own repository uses as a preset. It is the strict end of the spectrum: every rule that catches a bug or an inconsistency, and the formatting
 rules that keep a code base uniform.
 
 ## Using it

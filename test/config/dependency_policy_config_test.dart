@@ -34,6 +34,14 @@ void main() {
     expect(config.requireUpperBound, isFalse);
     expect(config.minSdk, isNull);
     expect(config.unusedAllow, <String>['cupertino_icons']);
+    expect(config.constraintStyle, ConstraintStyle.any);
+    expect(config.overridesRequireReason, isFalse);
+    expect(config.allowedOverrides, isEmpty);
+    expect(config.lockfilePolicy, LockfilePolicy.any);
+    expect(config.maxMajorBehind, isNull);
+    expect(config.maxLibyear, isNull);
+    expect(config.libyearScope, LibyearScope.direct);
+    expect(config.hasOutdatedRules, isFalse);
   });
 
   test('reads every key', () {
@@ -60,6 +68,21 @@ void main() {
       'lockfile_checksums': true,
       'check_imports': true,
       'unused_allow': <String>[],
+      'constraint_style': 'Caret',
+      'overrides': <String, Object?>{
+        'require_reason': true,
+        'allowed': <Object?>[
+          <String, Object?>{
+            'name': 'intl',
+            'reason': 'Flutter pins an older intl.',
+            'expires': '2027-01-31',
+          },
+        ],
+      },
+      'lockfile_policy': 'auto',
+      'max_major_behind': 1,
+      'max_libyear': 12.5,
+      'libyear_scope': 'all',
     });
     expect(config.enabled, isTrue);
     expect(config.denied.single.replacement, 'string_padding');
@@ -69,6 +92,22 @@ void main() {
     expect(config.requiredMetadata, <String>['description', 'topics']);
     expect(config.unusedAllow, isEmpty);
     expect(config.checkImports, isTrue);
+    expect(config.constraintStyle, ConstraintStyle.caret);
+    expect(config.overridesRequireReason, isTrue);
+    expect(config.allowedOverrides.single.name, 'intl');
+    expect(
+      config.allowedOverrides.single.isExpired(DateTime.utc(2027, 1, 31, 23)),
+      isFalse,
+    );
+    expect(
+      config.allowedOverrides.single.isExpired(DateTime.utc(2027, 2)),
+      isTrue,
+    );
+    expect(config.lockfilePolicy, LockfilePolicy.auto);
+    expect(config.maxMajorBehind, 1);
+    expect(config.maxLibyear, 12.5);
+    expect(config.libyearScope, LibyearScope.all);
+    expect(config.hasOutdatedRules, isTrue);
   });
 
   test('rejects malformed values with the offending key', () {
@@ -134,6 +173,61 @@ void main() {
       },
       'dependency_policy.required_metadata[0]',
       'expected one of description',
+    );
+    rejects(
+      <String, Object?>{'constraint_style': 'loose'},
+      'dependency_policy.constraint_style',
+      'expected one of any, caret, range, pinned',
+    );
+    rejects(
+      <String, Object?>{
+        'overrides': <String, Object?>{
+          'allowed': <Object?>[
+            <String, Object?>{'name': 'intl'},
+          ],
+        },
+      },
+      'dependency_policy.overrides.allowed[0].reason',
+      'a reason is required',
+    );
+    rejects(
+      <String, Object?>{
+        'overrides': <String, Object?>{
+          'allowed': <Object?>[
+            <String, Object?>{'name': 'intl', 'reason': 'r', 'expires': 'soon'},
+          ],
+        },
+      },
+      'dependency_policy.overrides.allowed[0].expires',
+      'expected a date',
+    );
+    rejects(
+      <String, Object?>{
+        'overrides': <String, Object?>{'require_reasons': true},
+      },
+      'dependency_policy.overrides.require_reasons',
+      'Did you mean "require_reason"?',
+    );
+    rejects(
+      <String, Object?>{'max_major_behind': -1},
+      'dependency_policy.max_major_behind',
+      'a whole number between 0 and 100',
+    );
+  });
+
+  test('limits of the registry rules may only be tightened', () {
+    final ConfigStrictness? order = ConfigStrictness.of(
+      'dependency_policy.max_libyear',
+    );
+    expect(order, ConfigStrictness.lowerNumber);
+    final double? five = order?.rankOf(5);
+    final double? ten = order?.rankOf(10.0);
+    final double? unset = order?.rankOf(null);
+    expect(five, greaterThan(ten ?? 0));
+    expect(ten, greaterThan(unset ?? 0));
+    expect(
+      ConfigStrictness.of('dependency_policy.overrides.require_reason'),
+      ConfigStrictness.enabledFlag,
     );
   });
 }
