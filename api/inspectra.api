@@ -1054,7 +1054,7 @@ Future<String> dumpApi(InspectraConfig config, String packageRoot);
 
 SemverResult evaluateSemver({required String before, required String after, required String baseline, required Version? baselineVersion, required Version version, List<ConventionalCommit>? commits, String dumpPath = ''});
 
-const String inspectraVersion = '1.0.0';
+const String inspectraVersion = '2.0.0';
 
 InspectraConfig loadConfig(String packageRoot, {ConfigOverrides? overrides, String? configFile, bool requirePubspec = true, ConfigRecorder? recorder, String? cacheRoot});
 

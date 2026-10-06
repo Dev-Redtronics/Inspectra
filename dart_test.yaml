@@ -6,4 +6,9 @@ tags:
   # custom style rules under "dart run" in a package depending on Inspectra.
   slow:
     timeout: 3m
+  # Resolves Dart sources with the analyzer, whose first resolution builds
+  # the summary of the SDK; on a busy CI runner that alone takes longer than
+  # the default timeout of 30 seconds.
+  analyzer:
+    timeout: 3m
 concurrency: 8

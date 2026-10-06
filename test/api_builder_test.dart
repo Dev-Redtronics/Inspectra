@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+@Tags(['analyzer'])
+library;
+
 import 'package:build/build.dart';
 import 'package:build_test/build_test.dart';
 import 'package:inspectra/builder.dart';
